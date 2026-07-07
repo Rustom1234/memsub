@@ -1,0 +1,4 @@
+protocol_version,condition,sessions,frame_breaks,rate
+1,control_no_memory,16,1,0.062
+1,memory_context_stuffing,12,2,0.167
+1,memory_retrieval,20,4,0.2
