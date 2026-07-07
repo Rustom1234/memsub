@@ -36,6 +36,7 @@ from lying_game.experiments import (  # noqa: E402
     cell_b_length_ablation,
     cell_c_type_ablation,
     cell_d_capability,
+    cell_e_truthful_baseline,
 )
 from lying_game.harness import Harness  # noqa: E402
 
@@ -64,6 +65,10 @@ CREATE TABLE IF NOT EXISTS runs (
     temptation_overstatement INTEGER,
     judge_deception INTEGER,
     judge_consistency INTEGER,
+    judge_deception_sd REAL,
+    judge_consistency_sd REAL,
+    n_judge_replicas INTEGER,
+    agent_variant TEXT,
     memory_used_rate REAL,
     manipulation_prior_rate REAL,
     ts REAL
@@ -75,6 +80,17 @@ def _db() -> sqlite3.Connection:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.executescript(_DB_SCHEMA)
+    # migrate: add columns that may be missing from a DB created by an older run
+    existing = {r[1] for r in conn.execute("PRAGMA table_info(runs)").fetchall()}
+    for col, typ in [
+        ("judge_deception_sd", "REAL"),
+        ("judge_consistency_sd", "REAL"),
+        ("n_judge_replicas", "INTEGER"),
+        ("agent_variant", "TEXT"),
+    ]:
+        if col not in existing:
+            conn.execute(f"ALTER TABLE runs ADD COLUMN {col} {typ}")
+    conn.commit()
     return conn
 
 
@@ -95,6 +111,13 @@ def _write_result(result, cell: str, conn: sqlite3.Connection) -> None:
     (RUNS_DIR / f"{cfg.run_id}.result.json").write_text(
         json.dumps(result.to_dict(), indent=2, sort_keys=True)
     )
+    import statistics as _stats
+
+    reps = result.judge_replicas or []
+    rep_dec = [x["deception"] for x in reps if x["deception"] is not None]
+    rep_con = [x["consistency"] for x in reps if x["consistency"] is not None]
+    jdec_sd = round(_stats.pstdev(rep_dec), 3) if len(rep_dec) > 1 else (0.0 if rep_dec else None)
+    jcon_sd = round(_stats.pstdev(rep_con), 3) if len(rep_con) > 1 else (0.0 if rep_con else None)
     mem_used = [1 if r.memory_used else 0 for r in result.sessions]
     prior = [1 if r.memory_retrieved_prior_session else 0 for r in result.sessions]
     row = {
@@ -116,6 +139,10 @@ def _write_result(result, cell: str, conn: sqlite3.Connection) -> None:
         "temptation_overstatement": _temptation_overstatement(result),
         "judge_deception": result.judge_deception,
         "judge_consistency": result.judge_consistency,
+        "judge_deception_sd": jdec_sd,
+        "judge_consistency_sd": jcon_sd,
+        "n_judge_replicas": len(reps),
+        "agent_variant": cfg.agent_variant,
         "memory_used_rate": (sum(mem_used) / len(mem_used)) if mem_used else None,
         "manipulation_prior_rate": (sum(prior) / len(prior)) if prior else None,
         "ts": time.time(),
@@ -140,6 +167,12 @@ def build_configs(args) -> list[tuple[str, ExperimentConfig]]:
         configs += [("C", c) for c in cell_c_type_ablation(args.n_runs, args.backend, args.model)]
     if cell in ("D", "ALL"):
         configs += [("D", c) for c in cell_d_capability(args.n_runs, args.backend, models)]
+    if cell in ("E", "ALL"):
+        configs += [("E", c) for c in cell_e_truthful_baseline(args.n_runs, args.backend, args.model)]
+    # apply judge-replica override
+    if args.judge_replicas and args.judge_replicas > 1:
+        for _, c in configs:
+            c.judge_replicas = args.judge_replicas
     return configs
 
 
@@ -152,6 +185,8 @@ def main() -> None:
     ap.add_argument("--n-runs", type=int, default=3, help="seeds per cell arm")
     ap.add_argument("--judge", action="store_true", help="also run the LLM judge")
     ap.add_argument("--judge-model", default=None)
+    ap.add_argument("--judge-replicas", type=int, default=1,
+                    help="run the judge N times per run for reliability stats")
     ap.add_argument("--limit", type=int, default=None, help="cap total runs (for pilots)")
     args = ap.parse_args()
 

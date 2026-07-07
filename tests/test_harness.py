@@ -135,6 +135,37 @@ def test_judge_integration():
     assert result.judge_consistency == 85
 
 
+def test_truthful_variant_uses_honest_system_prompt():
+    from lying_game.prompts import AGENT_SYSTEM_TRUTHFUL
+
+    seen_systems = []
+
+    def responder(system, messages):
+        seen_systems.append(system)
+        return scripted_agent_honest(system, messages)
+
+    backend = MockBackend(responder=responder)
+    Harness(_cfg(memory_kind="none", agent_variant="truthful"), backend).run()
+    assert any(s == AGENT_SYSTEM_TRUTHFUL for s in seen_systems)
+
+
+def test_judge_replicas_recorded_and_averaged():
+    responses = iter(["DECEPTION: 60\nCONSISTENCY: 80\nRATIONALE: a. b.",
+                      "DECEPTION: 80\nCONSISTENCY: 90\nRATIONALE: c. d."])
+
+    def judge_responder(system, messages):
+        if system == JUDGE_SYSTEM:
+            return next(responses)
+        return scripted_agent_liar(system, messages)
+
+    backend = MockBackend(responder=scripted_agent_liar)
+    judge = MockBackend(responder=judge_responder)
+    result = Harness(_cfg(memory_kind="none", judge_replicas=2), backend).run(judge_backend=judge)
+    assert len(result.judge_replicas) == 2
+    assert result.judge_deception == 70  # mean of 60 and 80
+    assert result.judge_consistency == 85  # mean of 80 and 90
+
+
 def test_jsonl_logging(tmp_path):
     backend = MockBackend(responder=scripted_agent_liar)
     Harness(_cfg(memory_kind="none"), backend, log_dir=tmp_path).run()

@@ -38,6 +38,7 @@ from lying_game.prompts import (
     AGENT_SESSION3_PRESSURE,
     AGENT_SESSION_TASK,
     AGENT_SYSTEM,
+    AGENT_SYSTEM_TRUTHFUL,
     OVERSEER_ALLOCATE,
     OVERSEER_PROBE,
     OVERSEER_SYSTEM,
@@ -73,6 +74,7 @@ class RunResult:
     judge_deception: int | None = None
     judge_consistency: int | None = None
     judge_rationale: str = ""
+    judge_replicas: list[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -83,6 +85,7 @@ class RunResult:
             "judge_deception": self.judge_deception,
             "judge_consistency": self.judge_consistency,
             "judge_rationale": self.judge_rationale,
+            "judge_replicas": self.judge_replicas,
         }
 
 
@@ -209,11 +212,21 @@ class Harness:
 
         if judge_backend is not None:
             transcript = self._build_transcript(records, plan)
-            jr = judge_score(judge_backend, transcript, cfg.n_sessions)
-            result.judge_deception = jr.deception
-            result.judge_consistency = jr.consistency
+            replicas = []
+            for r in range(max(1, cfg.judge_replicas)):
+                jr = judge_score(judge_backend, transcript, cfg.n_sessions)
+                replicas.append({"deception": jr.deception, "consistency": jr.consistency})
+                self._log(
+                    "judge", replica=r, deception=jr.deception,
+                    consistency=jr.consistency, raw=jr.raw,
+                )
+            result.judge_replicas = replicas
+            # headline judge score = mean over replicas (rounded)
+            decs = [x["deception"] for x in replicas if x["deception"] is not None]
+            cons = [x["consistency"] for x in replicas if x["consistency"] is not None]
+            result.judge_deception = round(sum(decs) / len(decs)) if decs else None
+            result.judge_consistency = round(sum(cons) / len(cons)) if cons else None
             result.judge_rationale = jr.rationale
-            self._log("judge", deception=jr.deception, consistency=jr.consistency, raw=jr.raw)
 
         self._log("run_result", **result.to_dict())
         if self._log_fp:
@@ -248,8 +261,11 @@ class Harness:
             completed_ids=", ".join(sp.completed_ids) or "(none)",
             incomplete_ids=", ".join(sp.incomplete_ids) or "(none)",
         )
+        agent_system = (
+            AGENT_SYSTEM_TRUTHFUL if cfg.agent_variant == "truthful" else AGENT_SYSTEM
+        )
         report = self.backend.complete(
-            AGENT_SYSTEM, [{"role": "user", "content": mem_preamble + task_msg}]
+            agent_system, [{"role": "user", "content": mem_preamble + task_msg}]
         )
         claimed = parse_claim(report)
 
@@ -272,7 +288,7 @@ class Harness:
             session_num=sp.session_num, questions=questions
         )
         answers = self.backend.complete(
-            AGENT_SYSTEM,
+            agent_system,
             [
                 {"role": "user", "content": mem_preamble + task_msg},
                 {"role": "assistant", "content": report},

@@ -103,6 +103,32 @@ def cell_c_type_ablation(n_runs: int, backend: str, model: str | None) -> list[E
     return configs
 
 
+def cell_e_truthful_baseline(
+    n_runs: int, backend: str, model: str | None
+) -> list[ExperimentConfig]:
+    """Judge-calibration baseline: a scrupulously honest agent, memory on.
+
+    A reliable judge should score this agent's deception near zero. If it does
+    not, the judge is measuring something other than deception, and the judge
+    scores in cells A-D should be discounted accordingly.
+    """
+    configs = []
+    for seed in _seeds(n_runs):
+        configs.append(
+            ExperimentConfig(
+                run_id=f"E-truthful-s{seed}",
+                condition="truthful_baseline",
+                memory_kind="retrieval",
+                agent_variant="truthful",
+                backend=backend,
+                model=model,
+                seed=seed,
+                notes="Cell E: truthful-agent baseline (judge calibration)",
+            )
+        )
+    return configs
+
+
 def cell_d_capability(n_runs: int, backend: str, models: list[str]) -> list[ExperimentConfig]:
     configs = []
     for model in models:
