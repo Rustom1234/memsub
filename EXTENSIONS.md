@@ -116,11 +116,18 @@ Effect on results: [filled from the cell G batch; see docs/findings.md.]
    opportunities to contradict yourself => memory helps more). A depth x memory
    interaction would be strong evidence; its absence would weaken the thesis.
    Status: BUILT as cell F and included in the pilot batch; results pending.
-2. **Cross-family roles.** Use different model families for agent vs overseer vs
+2. **Structured-claims injection.** RetrievalMemory already extracts
+   claimed-completion facts per session but does not inject them; the memory
+   treatment currently injects only summary text. Adding a compact "claims on
+   record" line (from the structured store) to the injection should maximize
+   the claim-consistency support memory provides, making the memory treatment
+   stronger and the null (if it persists) more informative. Deliberately NOT
+   changed mid-pilot to keep cells comparable; run as its own arm.
+3. **Cross-family roles.** Use different model families for agent vs overseer vs
    judge to break correlated failure modes (e.g. the overseer being a weak
    skeptic because it shares the agent's blind spots). Removes a confound the
    single-backend design cannot.
-3. **Weight-level detectability mapping.** A written, mechanism-level mapping of
+4. **Weight-level detectability mapping.** (Status: written, see docs/weight-level-detectability.md.) A written, mechanism-level mapping of
    which of our findings would become undetectable under weight-level memory:
    for each measure (manipulation check, memory-content audit, memory-off
    control), state what externalized-memory artifact it relies on and why a
