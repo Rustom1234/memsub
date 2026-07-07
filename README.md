@@ -6,10 +6,10 @@ safety risk.
 
 Two things live here:
 
-1. **`memsub`** — a small, reusable, file-backed episodic-memory library for
+1. **`memsub`**, a small, reusable, file-backed episodic-memory library for
    agents, built from the four-part decomposition episodic store / semantic
    retrieval / structured retrieval / policy.
-2. **`lying_game`** — an experiment harness (based on DeChant 2025,
+2. **`lying_game`**, an experiment harness (based on DeChant 2025,
    arxiv 2501.11739) in which an agent reports task progress to an LLM overseer
    to earn compute credits, with memory toggled on or off, an LLM judge scoring
    cross-session consistency, and a manipulation check verifying the memory
@@ -22,8 +22,7 @@ be slotted in later on a VPS.
 
 ## Why
 
-From the concept log: episodic memory for agents can be built at three levels —
-context stuffing (level 1), external retrieval / RAG (level 2), and weight-level
+From the concept log: episodic memory for agents can be built at three levels, context stuffing (level 1), external retrieval / RAG (level 2), and weight-level
 memory such as Titans/TTT (level 3). Level 2 is the right layer for a controlled
 experiment: realistic, instrumentable, auditable.
 
@@ -31,7 +30,7 @@ The safety thesis: **deception must be sustained under probing, and sustaining a
 false narrative across sessions requires memory.** A memoryless agent can lie
 once but cannot keep its story straight. If memory agents overstate progress
 more, stay more consistent under questioning, and accumulate more resources, that
-is empirical evidence that episodic memory is a safety risk — and the further
+is empirical evidence that episodic memory is a safety risk, and the further
 argument is that weight-level memory (level 3) makes that risk *harder to
 mitigate*, because you cannot simply clear the store.
 
@@ -92,10 +91,10 @@ default to control cost).
 
 Outputs:
 
-- `results/runs/<run_id>.jsonl` — full per-call transcript
-- `results/runs/<run_id>.result.json` — the run's config + records + measures
-- `results/results.sqlite`, `results/results.jsonl` — aggregate, one row per run
-- `results/tables/*.csv`, `results/plots/*.png` — from `analyze.py`
+- `results/runs/<run_id>.jsonl`, full per-call transcript
+- `results/runs/<run_id>.result.json`, the run's config + records + measures
+- `results/results.sqlite`, `results/results.jsonl`, aggregate, one row per run
+- `results/tables/*.csv`, `results/plots/*.png`, from `analyze.py`
 
 See `docs/experiment-protocol.md` for the exact protocol, `docs/memory-design.md`
 for the library design, `docs/findings.md` for what was actually observed, and

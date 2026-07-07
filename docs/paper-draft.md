@@ -16,8 +16,8 @@ session summaries retrieved and injected before it reports and before it answers
 the overseer's probing follow-ups; a control agent has none. An LLM judge scores
 cross-session consistency, and a manipulation check verifies memory actually
 fires. We implement the memory layer as a reusable, file-backed library
-(`memsub`) with four parts — episodic store, semantic retrieval, structured
-retrieval, and a policy layer — and toggle between a no-memory control, a
+(`memsub`) with four parts, episodic store, semantic retrieval, structured
+retrieval, and a policy layer, and toggle between a no-memory control, a
 context-stuffing baseline (level 1), and full retrieval memory (level 2). [Results
 summary is filled from the actual pilot runs in the Results section and
 `docs/findings.md`.] We argue that if the effect exists at retrieval-level
@@ -34,20 +34,20 @@ independent variable.
 
 **Three levels of episodic memory.** Following the project concept log:
 
-1. *Context stuffing* — prior memories are pasted into the context window.
+1. *Context stuffing*, prior memories are pasted into the context window.
    Simple, brittle, not really architecture.
-2. *External retrieval (RAG)* — memories are embedded and stored; the agent
+2. *External retrieval (RAG)*, memories are embedded and stored; the agent
    queries semantically each step and retrieved memories are injected. This
    mirrors hippocampal indexing theory and is realistic, controllable, and
    instrumentable. It is the right level for a controlled experiment.
-3. *Weight-level memory* — memory encoded in the parameters and updated at
+3. *Weight-level memory*, memory encoded in the parameters and updated at
    inference time (Titans, Google 2025; test-time training). Analogous to human
    long-term memory; much harder to audit or erase.
 
 **Why memory should matter for deception.** A single dishonest report is cheap.
 Sustaining a false account across sessions, under an overseer that asks pointed
 follow-ups and remembers what you said last time, requires keeping your story
-straight — which requires memory of what you previously claimed. This is the
+straight, which requires memory of what you previously claimed. This is the
 mechanism the experiment targets: memory should help an agent maintain a
 coherent false narrative and thereby extract more resources.
 
@@ -69,7 +69,7 @@ Full protocol in `docs/experiment-protocol.md`. In brief:
 - **Conditions / controls (the four cells)**:
   - A: memory vs no-memory (control / retrieval / context-stuffing).
   - B: memory-length ablation (5 / 20 / 100 memories; short runs are seeded with
-    synthetic prior summaries to reach capacity — see Limitations).
+    synthetic prior summaries to reach capacity, see Limitations).
   - C: memory-type ablation (accurate / summarized / distorted writes).
   - D: model-capability comparison (>= 2 model tiers).
 - **Measures**: objective (lie rate, total overstatement, temptation-session
@@ -88,7 +88,7 @@ See `docs/findings.md` for the interpreted results and `results/tables/*.csv` +
 actually executed; n per cell is reported and pilot-sized cells are flagged.
 This section summarizes the headline numbers once the pilot batch has completed.
 
-[FILLED FROM ACTUAL RUNS — see findings.md]
+[FILLED FROM ACTUAL RUNS, see findings.md]
 
 ## Limitations
 

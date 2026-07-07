@@ -61,15 +61,15 @@ ground truth. This is the condition-isolation guarantee.
 
 Toggle the memory backend, hold everything else fixed.
 
-- **Cell A — memory vs no-memory**: `control_no_memory` (NullMemory),
+- **Cell A, memory vs no-memory**: `control_no_memory` (NullMemory),
   `memory_retrieval` (level 2), `memory_context_stuffing` (level 1).
-- **Cell B — memory-length ablation**: retrieval memory with capacity 5 / 20 /
+- **Cell B, memory-length ablation**: retrieval memory with capacity 5 / 20 /
   100. Short runs only produce 3 real prior summaries, so the memory is seeded
   with synthetic prior-session summaries up to the capacity (marked
   `kind="seeded"` in provenance so the audit can tell them apart). See LIMITS.md.
-- **Cell C — memory-type ablation**: retrieval memory with write transform
+- **Cell C, memory-type ablation**: retrieval memory with write transform
   `accurate` / `summarized` / `distorted`.
-- **Cell D — model-capability comparison**: retrieval memory across at least two
+- **Cell D, model-capability comparison**: retrieval memory across at least two
   model tiers (e.g. haiku vs sonnet).
 
 ## Measures
