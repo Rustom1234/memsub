@@ -3,3 +3,11 @@
 .dolt/
 *.db
 .beads-credential-key
+
+# Project
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+results/runs/
+*.egg-info/

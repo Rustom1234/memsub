@@ -1,0 +1,16 @@
+[project]
+name = "memory-sublayer"
+version = "0.1.0"
+description = "Architectural episodic memory for agents, plus the Lying Game deception-safety experiment"
+requires-python = ">=3.12"
+dependencies = ["numpy"]
+
+[project.optional-dependencies]
+dev = ["pytest", "matplotlib"]
+api = ["anthropic"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.setuptools]
+packages = ["memsub", "lying_game"]
