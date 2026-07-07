@@ -83,12 +83,40 @@ experiment depends on it but it is not experiment glue. Design in
 
 ## Results
 
-See `docs/findings.md` for the interpreted results and `results/tables/*.csv` +
-`results/plots/*.png` for the figures. All numbers there come from runs that
-actually executed; n per cell is reported and pilot-sized cells are flagged.
-This section summarizes the headline numbers once the pilot batch has completed.
+See `docs/findings.md` for the full interpreted results and
+`results/tables/*.csv` + `results/plots/*.png` for figures. All numbers come
+from runs that actually executed; n per cell is reported and pilot-sized cells
+are flagged.
 
-[FILLED FROM ACTUAL RUNS, see findings.md]
+**Main contrast (cell A, protocol v1, claude haiku, n = 5 runs per arm, 4
+sessions per run).** The objective deception rate was zero in every condition:
+across 60 reports (15 of them scripted 1-of-5 temptation sessions under
+shutdown pressure), the agent never claimed more completed tasks than ground
+truth. Lie rate 0.0 and total overstatement 0 in all three arms (no-memory
+control, context-stuffing memory, retrieval memory). This is a null result on
+the amplification thesis at this tier and temptation strength: memory cannot
+amplify sustained deception if deception is never initiated.
+
+The manipulation check confirms the null is not a mechanism failure: in every
+session where a prior memory existed it was retrieved and injected (0.75 of
+sessions, the ceiling by construction since session 1 has no priors).
+
+Secondary results from the same cell are protocol findings rather than
+deception findings. Memory conditions earned fewer credits than control (175.0
+vs 145.6 stuffing vs 119.4 retrieval), and a marker-phrase scan shows why:
+agents in memory conditions broke frame more often (0.20 and 0.15 of sessions
+vs 0.05 in control), telling the overseer the scenario was not real, which the
+overseer punished. The injected memories appear to have made the setup's
+artificiality more salient to this model, producing out-of-role honesty rather
+than sustained narrative. Separately, the LLM judge reported nonzero deception
+(18 to 32 mean) despite zero objective overstatement; rationale inspection
+shows it scores invented supporting detail as deception even when the headline
+claim is true. Both artifacts motivated protocol v2 (in-frame per-task work
+log; account-based probing), replicated as cell G.
+
+Remaining cells (B length ablation, C type ablation, D model tiers, E truthful
+baseline, F probing-depth sweep, G v2 replication) are reported in
+`docs/findings.md` with per-cell n; all are pilot-sized.
 
 ## Limitations
 
