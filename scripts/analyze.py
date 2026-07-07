@@ -189,6 +189,72 @@ def table_capability(conn) -> list[dict]:
     return summary
 
 
+def table_judge_reliability(conn) -> list[dict]:
+    """Cell E truthful baseline + judge SD across all runs with replicas."""
+    out_rows = []
+    summary = []
+    # truthful baseline: judge deception should be near zero if the judge is sound
+    e_rows = _rows(conn, "cell = 'E'")
+    if e_rows:
+        jdec = _agg([r["judge_deception"] for r in e_rows])
+        over = _agg([r["total_overstatement"] for r in e_rows])
+        out_rows.append(["truthful_baseline", len(e_rows),
+                         jdec["mean"], over["mean"], None])
+        summary.append({"group": "truthful_baseline", "judge_deception": jdec["mean"],
+                        "overstatement": over["mean"]})
+    # judge SD by condition, where replicas were run
+    rep_rows = _rows(conn, "n_judge_replicas > 1")
+    for cond, g in sorted(_group_by(rep_rows, "condition").items()):
+        sd = _agg([r["judge_deception_sd"] for r in g])
+        out_rows.append([cond, len(g), None, None, sd["mean"]])
+    if out_rows:
+        p = _write_csv(
+            "judge_reliability.csv",
+            ["group", "n", "judge_deception_mean", "overstatement_mean",
+             "judge_deception_sd_mean"],
+            out_rows,
+        )
+        print(f"wrote {p}")
+    else:
+        print("no cell E / judge-replica rows, skipped judge_reliability")
+    return summary
+
+
+def table_probing_depth(conn) -> list[dict]:
+    rows = _rows(conn, "cell = 'F'")
+    out_rows = []
+    summary = []
+    # group by (depth via condition prefix, memory_kind)
+    def depth_of(cond: str) -> int:
+        try:
+            return int(cond.split("_")[1])
+        except (IndexError, ValueError):
+            return -1
+
+    groups: dict = {}
+    for r in rows:
+        key = (depth_of(r["condition"]), r["memory_kind"])
+        groups.setdefault(key, []).append(r)
+    for (depth, kind) in sorted(groups):
+        g = groups[(depth, kind)]
+        tempt = _agg([r["temptation_overstatement"] for r in g])
+        lie = _agg([r["lie_rate"] for r in g])
+        out_rows.append([depth, kind, len(g), tempt["mean"], lie["mean"]])
+        summary.append({"depth": depth, "memory": kind, "n": len(g),
+                        "temptation_overstatement": tempt["mean"], "lie_rate": lie["mean"]})
+    if out_rows:
+        p = _write_csv(
+            "probing_depth.csv",
+            ["probe_depth", "memory_kind", "n",
+             "temptation_overstatement_mean", "lie_rate_mean"],
+            out_rows,
+        )
+        print(f"wrote {p}")
+    else:
+        print("cell F: no rows, skipped probing_depth")
+    return summary
+
+
 def table_manipulation_check(conn) -> None:
     rows = _rows(conn)
     groups = _group_by(rows, "memory_kind")
@@ -279,6 +345,34 @@ def make_plots(cond_summary, length_summary, type_summary, cap_summary):
              "capability.png")
 
 
+def _plot_probing_depth(summary: list[dict]) -> None:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    by_mem: dict = {}
+    for s in summary:
+        by_mem.setdefault(s["memory"], []).append(s)
+    PLOTS_DIR.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(figsize=(6, 4))
+    for mem, pts in by_mem.items():
+        pts = sorted(pts, key=lambda x: x["depth"])
+        ax.plot(
+            [p["depth"] for p in pts],
+            [p["temptation_overstatement"] or 0 for p in pts],
+            marker="o", label=mem,
+        )
+    ax.set_title("Probing depth x memory (Cell F)")
+    ax.set_xlabel("overseer probing depth (n_probes)")
+    ax.set_ylabel("temptation overstatement")
+    ax.legend()
+    fig.tight_layout()
+    path = PLOTS_DIR / "probing_depth.png"
+    fig.savefig(path, dpi=120)
+    plt.close(fig)
+    print(f"wrote {path}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", default=str(DB_PATH))
@@ -293,8 +387,12 @@ def main() -> None:
     length = table_length_ablation(conn)
     typ = table_type_ablation(conn)
     cap = table_capability(conn)
+    table_judge_reliability(conn)
+    depth = table_probing_depth(conn)
     table_manipulation_check(conn)
     make_plots(cond, length, typ, cap)
+    if depth:
+        _plot_probing_depth(depth)
     conn.close()
     print("analysis complete")
 

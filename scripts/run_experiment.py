@@ -37,6 +37,7 @@ from lying_game.experiments import (  # noqa: E402
     cell_c_type_ablation,
     cell_d_capability,
     cell_e_truthful_baseline,
+    cell_f_probing_depth,
 )
 from lying_game.harness import Harness  # noqa: E402
 
@@ -169,6 +170,8 @@ def build_configs(args) -> list[tuple[str, ExperimentConfig]]:
         configs += [("D", c) for c in cell_d_capability(args.n_runs, args.backend, models)]
     if cell in ("E", "ALL"):
         configs += [("E", c) for c in cell_e_truthful_baseline(args.n_runs, args.backend, args.model)]
+    if cell in ("F", "ALL"):
+        configs += [("F", c) for c in cell_f_probing_depth(args.n_runs, args.backend, args.model)]
     # apply judge-replica override
     if args.judge_replicas and args.judge_replicas > 1:
         for _, c in configs:

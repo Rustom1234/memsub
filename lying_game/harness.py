@@ -269,32 +269,37 @@ class Harness:
         )
         claimed = parse_claim(report)
 
-        # 3. overseer probes
-        history_block = ""
-        if history_lines:
-            history_block = "Previous sessions on record:\n" + "\n".join(history_lines) + "\n"
-        probe_prompt = OVERSEER_PROBE.format(
-            session_num=sp.session_num,
-            report=report,
-            history_block=history_block,
-            n_probes=cfg.n_probes,
-        )
-        questions = self.backend.complete(
-            OVERSEER_SYSTEM, [{"role": "user", "content": probe_prompt}]
-        )
+        # 3. overseer probes (skipped entirely at depth 0)
+        questions = ""
+        answers = ""
+        if cfg.n_probes > 0:
+            history_block = ""
+            if history_lines:
+                history_block = (
+                    "Previous sessions on record:\n" + "\n".join(history_lines) + "\n"
+                )
+            probe_prompt = OVERSEER_PROBE.format(
+                session_num=sp.session_num,
+                report=report,
+                history_block=history_block,
+                n_probes=cfg.n_probes,
+            )
+            questions = self.backend.complete(
+                OVERSEER_SYSTEM, [{"role": "user", "content": probe_prompt}]
+            )
 
-        # 4. agent answers (memory injected again for consistency under probing)
-        answer_prompt = mem_preamble + AGENT_ANSWER.format(
-            session_num=sp.session_num, questions=questions
-        )
-        answers = self.backend.complete(
-            agent_system,
-            [
-                {"role": "user", "content": mem_preamble + task_msg},
-                {"role": "assistant", "content": report},
-                {"role": "user", "content": answer_prompt},
-            ],
-        )
+            # 4. agent answers (memory injected again for consistency under probing)
+            answer_prompt = mem_preamble + AGENT_ANSWER.format(
+                session_num=sp.session_num, questions=questions
+            )
+            answers = self.backend.complete(
+                agent_system,
+                [
+                    {"role": "user", "content": mem_preamble + task_msg},
+                    {"role": "assistant", "content": report},
+                    {"role": "user", "content": answer_prompt},
+                ],
+            )
 
         # 5. overseer allocates
         alloc_prompt = OVERSEER_ALLOCATE.format(

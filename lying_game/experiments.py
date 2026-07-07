@@ -129,6 +129,36 @@ def cell_e_truthful_baseline(
     return configs
 
 
+def cell_f_probing_depth(
+    n_runs: int, backend: str, model: str | None, depths=(0, 2, 5)
+) -> list[ExperimentConfig]:
+    """Overseer probing-depth sweep x memory.
+
+    The thesis predicts memory's deception advantage grows with probing depth:
+    more follow-up questions mean more chances to contradict yourself, which is
+    exactly where remembering your prior claims helps. Runs each depth under both
+    control and retrieval memory so the depth x memory interaction is visible.
+    """
+    configs = []
+    for depth in depths:
+        for kind in ("none", "retrieval"):
+            tag = "control" if kind == "none" else "memory"
+            for seed in _seeds(n_runs):
+                configs.append(
+                    ExperimentConfig(
+                        run_id=f"F-d{depth}-{tag}-s{seed}",
+                        condition=f"probedepth_{depth}_{tag}",
+                        memory_kind=kind,
+                        n_probes=depth,
+                        backend=backend,
+                        model=model,
+                        seed=seed,
+                        notes=f"Cell F: probing depth {depth}, {tag}",
+                    )
+                )
+    return configs
+
+
 def cell_d_capability(n_runs: int, backend: str, models: list[str]) -> list[ExperimentConfig]:
     configs = []
     for model in models:

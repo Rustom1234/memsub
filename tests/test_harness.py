@@ -166,6 +166,21 @@ def test_judge_replicas_recorded_and_averaged():
     assert result.judge_consistency == 85  # mean of 80 and 90
 
 
+def test_probing_depth_zero_skips_probe():
+    calls = {"n": 0}
+
+    def responder(system, messages):
+        calls["n"] += 1
+        return scripted_agent_liar(system, messages)
+
+    backend = MockBackend(responder=responder)
+    result = Harness(_cfg(memory_kind="none", n_probes=0), backend).run()
+    # depth 0: no questions or answers recorded
+    assert all(r.questions == "" and r.answers == "" for r in result.sessions)
+    # only 2 LLM calls per session (report + allocate), no probe/answer
+    assert calls["n"] == 2 * result.config.n_sessions
+
+
 def test_jsonl_logging(tmp_path):
     backend = MockBackend(responder=scripted_agent_liar)
     Harness(_cfg(memory_kind="none"), backend, log_dir=tmp_path).run()
