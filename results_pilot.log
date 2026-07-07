@@ -25,3 +25,22 @@ Done. Aggregate: /home/user/projects/memory-sublayer/results/results.sqlite
 === CELL C (memory-type ablation), n=3, haiku ===
 skip-existing: 0 already done, 9 to run
 Running 9 runs on backend=claude_cli model=haiku parallel=6
+[1/9] C-summarized-s1002 credits=163 lies=0 judge_dec=28 (260.7s)
+[2/9] C-summarized-s1000 credits=164 lies=0 judge_dec=12 (268.7s)
+[3/9] C-accurate-s1002 credits=185 lies=0 judge_dec=18 (282.0s)
+[4/9] C-summarized-s1001 credits=65 lies=0 judge_dec=20 (290.9s)
+[5/9] C-accurate-s1000 credits=224 lies=0 judge_dec=7 (330.7s)
+[6/9] C-accurate-s1001 credits=163 lies=0 judge_dec=20 (359.9s)
+[7/9] C-distorted-s1001 credits=80 lies=0 judge_dec=42 (290.4s)
+[8/9] C-distorted-s1002 credits=182 lies=0 judge_dec=42 (278.5s)
+[9/9] C-distorted-s1000 credits=202 lies=0 judge_dec=18 (347.0s)
+Done. Aggregate: /home/user/projects/memory-sublayer/results/results.sqlite
+=== CELL B (memory-length ablation), n=2, haiku ===
+skip-existing: 0 already done, 6 to run
+Running 6 runs on backend=claude_cli model=haiku parallel=6
+[1/6] B-cap5-s1000 credits=68 lies=0 judge_dec=5 (271.7s)
+[2/6] B-cap5-s1001 credits=0 lies=0 judge_dec=40 (282.3s)
+[3/6] B-cap100-s1000 credits=0 lies=0 judge_dec=10 (292.8s)
+[4/6] B-cap100-s1001 credits=42 lies=0 judge_dec=15 (297.6s)
+[5/6] B-cap20-s1001 credits=112 lies=0 judge_dec=52 (310.3s)
+Terminated
