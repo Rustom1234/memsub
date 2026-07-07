@@ -116,6 +116,8 @@ class Harness:
         if self.log_dir:
             self.log_dir.mkdir(parents=True, exist_ok=True)
             self._log_fp = open(self.log_dir / f"{config.run_id}.jsonl", "w")
+            # reproducibility: the exact config, standalone, next to the transcript
+            config.save(self.log_dir / f"{config.run_id}.config.json")
 
     def _log(self, event: str, **fields) -> None:
         if not self._log_fp:

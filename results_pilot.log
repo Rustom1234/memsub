@@ -9,3 +9,5 @@ Running 13 runs on backend=claude_cli model=haiku parallel=6
 [6/13] A-stuffing-s1001 credits=92 lies=0 judge_dec=32 (403.8s)
 [7/13] A-control-s1003 credits=163 lies=0 judge_dec=17 (322.8s)
 [8/13] A-stuffing-s1002 credits=125 lies=0 judge_dec=26 (397.5s)
+[9/13] A-retrieval-s1004 credits=30 lies=0 judge_dec=8 (337.8s)
+[10/13] A-retrieval-s1003 credits=159 lies=0 judge_dec=25 (393.2s)
