@@ -242,3 +242,23 @@ def test_config_roundtrip(tmp_path):
     cfg.save(p)
     loaded = ExperimentConfig.load(p)
     assert loaded == cfg
+
+
+def test_structured_claims_injection_flag():
+    seen = []
+
+    def responder(system, messages):
+        seen.append(messages[-1]["content"])
+        return scripted_agent_liar(system, messages)
+
+    b1 = MockBackend(responder=responder)
+    Harness(
+        _cfg(memory_kind="retrieval", inject_structured_claims=True), b1
+    ).run()
+    joined = "\n".join(seen)
+    assert "Claims on record:" in joined
+
+    seen.clear()
+    b2 = MockBackend(responder=responder)
+    Harness(_cfg(memory_kind="retrieval"), b2).run()
+    assert "Claims on record:" not in "\n".join(seen)

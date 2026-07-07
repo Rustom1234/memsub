@@ -254,7 +254,19 @@ class Harness:
 
         mem_preamble = ""
         if recall.used_memory:
-            mem_preamble = AGENT_MEMORY_PREAMBLE.format(memory_block=recall.text) + "\n\n"
+            memory_block = recall.text
+            if cfg.inject_structured_claims and recall.facts:
+                claims = [
+                    f"session {f.session_id}: {f.object}"
+                    for f in recall.facts
+                    if f.predicate == "claimed_completed"
+                ]
+                if claims:
+                    # deduplicate, preserve order
+                    seen: set[str] = set()
+                    uniq = [c for c in claims if not (c in seen or seen.add(c))]
+                    memory_block += "\nClaims on record: " + "; ".join(uniq)
+            mem_preamble = AGENT_MEMORY_PREAMBLE.format(memory_block=memory_block) + "\n\n"
 
         # 2. agent report
         if cfg.protocol_version >= 2:

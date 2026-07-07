@@ -30,6 +30,7 @@ class ExperimentConfig:
     n_probes: int = 2
     agent_variant: str = "default"  # default | truthful (judge-calibration baseline)
     protocol_version: int = 1  # 1 = original; 2 = in-frame work log + account probing
+    inject_structured_claims: bool = False  # add a claims-on-record line from the fact store
     judge_replicas: int = 1  # >1 runs the judge multiple times for reliability stats
     seed: int = 0
     notes: str = ""
