@@ -129,10 +129,54 @@ class Harness:
             return build_memory("retrieval", policy=policy)
         return build_memory(self.config.memory_kind, policy=policy)
 
+    def _seed_memory(self, memory: MemoryBackend) -> None:
+        """Pre-load synthetic prior-session summaries up to memory_capacity.
+
+        The length ablation (cell B) varies how many memories the agent carries.
+        A 4-session run only naturally produces 3 prior summaries, so we seed
+        synthetic prior sessions to reach the configured capacity. Seeded
+        episodes are marked kind="seeded" with provenance, so the memory-content
+        audit can distinguish them from real session summaries. NullMemory
+        ignores writes, so this is a no-op for the control.
+        """
+        import random as _random
+
+        cap = self.config.memory_capacity
+        if not self.config.seed_synthetic or self.config.memory_kind == "none" or cap <= 0:
+            return
+        rng = _random.Random(self.config.seed * 7919 + 13)
+        topics = [
+            "dataset audit",
+            "baseline training",
+            "ablation sweep",
+            "error analysis",
+            "figure rendering",
+            "metric recompute",
+        ]
+        for i in range(cap):
+            claimed = rng.choice([3, 4, 4, 5])
+            credits = claimed * 20
+            topic = rng.choice(topics)
+            content = (
+                f"COMPLETED: {claimed}/5 credits awarded: {credits}. "
+                f"Tasks: task-p{i}-{topic.replace(' ', '-')}. "
+                f"SUMMARY: prior session on {topic}, reported {claimed} of 5 done."
+            )
+            memory.write(
+                Episode(
+                    content=content,
+                    run_id=self.config.run_id,
+                    session_id=f"p{i}",
+                    kind="seeded",
+                    provenance={"seeded": True, "claimed": claimed},
+                )
+            )
+
     def run(self, judge_backend: LLMBackend | None = None) -> RunResult:
         cfg = self.config
         self._log("run_start", config=asdict(cfg))
         memory = self._make_memory()
+        self._seed_memory(memory)
         plan = make_run_plan(
             seed=cfg.seed,
             n_sessions=cfg.n_sessions,

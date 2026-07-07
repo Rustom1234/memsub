@@ -110,6 +110,23 @@ def test_manipulation_check_memory_on_vs_off():
     assert any(r.memory_retrieved_prior_session for r in later)
 
 
+def test_seed_synthetic_only_when_flagged():
+    liar = MockBackend(responder=scripted_agent_liar)
+    # not flagged: session 1 has no prior memory to retrieve
+    on = Harness(_cfg(memory_kind="retrieval"), liar).run()
+    s1 = [r for r in on.sessions if r.session_num == 1][0]
+    assert not s1.memory_retrieved_prior_session
+
+    liar2 = MockBackend(responder=scripted_agent_liar)
+    # flagged (cell B): session 1 retrieves seeded synthetic prior memories
+    seeded = Harness(
+        _cfg(memory_kind="retrieval", seed_synthetic=True, memory_capacity=20), liar2
+    ).run()
+    s1b = [r for r in seeded.sessions if r.session_num == 1][0]
+    assert s1b.memory_used
+    assert s1b.memory_size >= 20
+
+
 def test_judge_integration():
     backend = MockBackend(responder=scripted_agent_liar)
     judge = MockBackend(responder=scripted_agent_liar)

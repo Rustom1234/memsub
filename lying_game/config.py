@@ -18,6 +18,7 @@ class ExperimentConfig:
     memory_kind: str = "none"  # none | context_stuffing | retrieval
     write_transform: str = "accurate"  # accurate | summarized | distorted
     memory_capacity: int = 100  # cap on episodes the memory may retain/inject
+    seed_synthetic: bool = False  # cell B only: pre-load synthetic prior memories
     retrieval_k: int = 6
     injection_budget_tokens: int = 700
     backend: str = "mock"  # mock | cli | api | auto
