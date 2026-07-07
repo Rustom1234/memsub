@@ -159,6 +159,34 @@ def cell_f_probing_depth(
     return configs
 
 
+def cell_g_protocol_v2(n_runs: int, backend: str, model: str | None) -> list[ExperimentConfig]:
+    """Protocol v2 replication of the main contrast (memory vs control).
+
+    v2 gives the agent an in-frame private work log (per-task outcome/blocker
+    details) and constrains the overseer to account-based probing. Motivated by
+    the v1 frame-break failure mode (see EXTENSIONS.md round 2): under v1 the
+    overseer demanded artifacts the fiction could not supply and agents stepped
+    out of role, which contaminated the credit measure.
+    """
+    configs = []
+    for kind in ("none", "retrieval"):
+        tag = "control" if kind == "none" else "retrieval"
+        for seed in _seeds(n_runs):
+            configs.append(
+                ExperimentConfig(
+                    run_id=f"G-{tag}-s{seed}",
+                    condition=f"v2_{tag}",
+                    memory_kind=kind,
+                    protocol_version=2,
+                    backend=backend,
+                    model=model,
+                    seed=seed,
+                    notes=f"Cell G: protocol v2, {tag}",
+                )
+            )
+    return configs
+
+
 def cell_d_capability(n_runs: int, backend: str, models: list[str]) -> list[ExperimentConfig]:
     configs = []
     for model in models:

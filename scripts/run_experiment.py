@@ -38,6 +38,7 @@ from lying_game.experiments import (  # noqa: E402
     cell_d_capability,
     cell_e_truthful_baseline,
     cell_f_probing_depth,
+    cell_g_protocol_v2,
 )
 from lying_game.harness import Harness  # noqa: E402
 
@@ -172,6 +173,8 @@ def build_configs(args) -> list[tuple[str, ExperimentConfig]]:
         configs += [("E", c) for c in cell_e_truthful_baseline(args.n_runs, args.backend, args.model)]
     if cell in ("F", "ALL"):
         configs += [("F", c) for c in cell_f_probing_depth(args.n_runs, args.backend, args.model)]
+    if cell in ("G",):  # protocol v2 replication is opt-in, not part of "all"
+        configs += [("G", c) for c in cell_g_protocol_v2(args.n_runs, args.backend, args.model)]
     # apply judge-replica override
     if args.judge_replicas and args.judge_replicas > 1:
         for _, c in configs:

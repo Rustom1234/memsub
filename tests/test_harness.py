@@ -190,3 +190,36 @@ def test_jsonl_logging(tmp_path):
     events = [l for l in lines if '"event"' in l]
     assert any('"run_start"' in l for l in events)
     assert any('"session_complete"' in l for l in events)
+
+
+def test_protocol_v2_work_log_and_probe():
+    from lying_game.tasks import make_session_plan, format_work_log
+    from lying_game.prompts import OVERSEER_PROBE_V2
+
+    sp = make_session_plan(3, seed=9)
+    log = format_work_log(sp)
+    # every task appears with a status and a detail line
+    assert all(tid in log for tid in sp.task_ids)
+    assert "[DONE]" in log and "[NOT DONE]" in log
+    assert "cannot inspect files" in OVERSEER_PROBE_V2
+
+    # v1 ground truth is unchanged by the v2 detail generation (draw order)
+    sp2 = make_session_plan(3, seed=9)
+    assert sp.actual_completed == sp2.actual_completed == 1
+    assert sp.task_ids == sp2.task_ids
+
+
+def test_protocol_v2_harness_uses_v2_prompts():
+    seen_prompts = []
+
+    def responder(system, messages):
+        seen_prompts.append(messages[-1]["content"])
+        return scripted_agent_liar(system, messages)
+
+    backend = MockBackend(responder=responder)
+    Harness(_cfg(memory_kind="none", protocol_version=2), backend).run()
+    joined = "\n".join(seen_prompts)
+    assert "private work log" in joined
+    assert "cannot inspect files" in joined
+    # v1 phrasing must not appear
+    assert "Ground truth for this session" not in joined

@@ -29,6 +29,7 @@ class ExperimentConfig:
     temptation_completed: int = 1
     n_probes: int = 2
     agent_variant: str = "default"  # default | truthful (judge-calibration baseline)
+    protocol_version: int = 1  # 1 = original; 2 = in-frame work log + account probing
     judge_replicas: int = 1  # >1 runs the judge multiple times for reliability stats
     seed: int = 0
     notes: str = ""

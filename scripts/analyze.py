@@ -275,7 +275,27 @@ def table_manipulation_check(conn) -> None:
 
 # --------------------------------------------------------------------------- #
 # Plots
+#
+# Palette: validated categorical slots (fixed order, never cycled) from the
+# dataviz reference palette, light-mode surface. Single-series charts use slot 1
+# only. Grid is recessive; identity for >= 2 series is carried by a legend plus
+# direct labels, not color alone.
 # --------------------------------------------------------------------------- #
+PALETTE = ["#2a78d6", "#1baf7a", "#eda100", "#008300", "#4a3aa7", "#e34948"]
+INK = "#333333"
+GRID = "#e3e3e3"
+
+
+def _style_axes(ax):
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_color(GRID)
+    ax.spines["bottom"].set_color(GRID)
+    ax.tick_params(colors=INK, labelsize=8)
+    ax.yaxis.grid(True, color=GRID, linewidth=0.8, zorder=0)
+    ax.set_axisbelow(True)
+
+
 def _bar(names, values, title, ylabel, fname):
     import matplotlib
     matplotlib.use("Agg")
@@ -284,11 +304,16 @@ def _bar(names, values, title, ylabel, fname):
     vals = [v if v is not None else 0 for v in values]
     PLOTS_DIR.mkdir(parents=True, exist_ok=True)
     fig, ax = plt.subplots(figsize=(6, 4))
-    ax.bar(range(len(names)), vals, color="#4C72B0")
+    bars = ax.bar(range(len(names)), vals, color=PALETTE[0], width=0.62, zorder=2)
+    for rect, orig in zip(bars, values):
+        label = "n/a" if orig is None else f"{orig:g}"
+        ax.annotate(label, (rect.get_x() + rect.get_width() / 2, rect.get_height()),
+                    ha="center", va="bottom", fontsize=8, color=INK)
     ax.set_xticks(range(len(names)))
     ax.set_xticklabels(names, rotation=20, ha="right", fontsize=8)
-    ax.set_title(title)
-    ax.set_ylabel(ylabel)
+    ax.set_title(title, fontsize=10, color=INK)
+    ax.set_ylabel(ylabel, fontsize=9, color=INK)
+    _style_axes(ax)
     fig.tight_layout()
     path = PLOTS_DIR / fname
     fig.savefig(path, dpi=120)
@@ -303,10 +328,12 @@ def _line(x, y, title, xlabel, ylabel, fname):
 
     PLOTS_DIR.mkdir(parents=True, exist_ok=True)
     fig, ax = plt.subplots(figsize=(6, 4))
-    ax.plot(x, [v if v is not None else 0 for v in y], marker="o", color="#C44E52")
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
+    ax.plot(x, [v if v is not None else 0 for v in y], marker="o", markersize=6,
+            linewidth=2, color=PALETTE[0], zorder=2)
+    ax.set_title(title, fontsize=10, color=INK)
+    ax.set_xlabel(xlabel, fontsize=9, color=INK)
+    ax.set_ylabel(ylabel, fontsize=9, color=INK)
+    _style_axes(ax)
     fig.tight_layout()
     path = PLOTS_DIR / fname
     fig.savefig(path, dpi=120)
@@ -355,17 +382,24 @@ def _plot_probing_depth(summary: list[dict]) -> None:
         by_mem.setdefault(s["memory"], []).append(s)
     PLOTS_DIR.mkdir(parents=True, exist_ok=True)
     fig, ax = plt.subplots(figsize=(6, 4))
-    for mem, pts in by_mem.items():
-        pts = sorted(pts, key=lambda x: x["depth"])
-        ax.plot(
-            [p["depth"] for p in pts],
-            [p["temptation_overstatement"] or 0 for p in pts],
-            marker="o", label=mem,
-        )
-    ax.set_title("Probing depth x memory (Cell F)")
-    ax.set_xlabel("overseer probing depth (n_probes)")
-    ax.set_ylabel("temptation overstatement")
-    ax.legend()
+    # fixed slot assignment: control -> slot 1, retrieval -> slot 2 (never cycled)
+    slot = {"none": PALETTE[0], "retrieval": PALETTE[1]}
+    for mem in sorted(by_mem):
+        pts = sorted(by_mem[mem], key=lambda x: x["depth"])
+        xs = [p["depth"] for p in pts]
+        ys = [p["temptation_overstatement"] or 0 for p in pts]
+        color = slot.get(mem, PALETTE[2])
+        ax.plot(xs, ys, marker="o", markersize=6, linewidth=2,
+                label=mem, color=color, zorder=2)
+        # direct label at the line's right end (identity not by color alone)
+        if xs:
+            ax.annotate(mem, (xs[-1], ys[-1]), textcoords="offset points",
+                        xytext=(6, 0), fontsize=8, color=INK)
+    ax.set_title("Probing depth x memory (Cell F)", fontsize=10, color=INK)
+    ax.set_xlabel("overseer probing depth (n_probes)", fontsize=9, color=INK)
+    ax.set_ylabel("temptation overstatement", fontsize=9, color=INK)
+    ax.legend(fontsize=8, frameon=False)
+    _style_axes(ax)
     fig.tight_layout()
     path = PLOTS_DIR / "probing_depth.png"
     fig.savefig(path, dpi=120)

@@ -36,14 +36,17 @@ from lying_game.prompts import (
     AGENT_ANSWER,
     AGENT_MEMORY_PREAMBLE,
     AGENT_SESSION3_PRESSURE,
+    AGENT_SESSION3_PRESSURE_V2,
     AGENT_SESSION_TASK,
+    AGENT_SESSION_TASK_V2,
     AGENT_SYSTEM,
     AGENT_SYSTEM_TRUTHFUL,
     OVERSEER_ALLOCATE,
     OVERSEER_PROBE,
+    OVERSEER_PROBE_V2,
     OVERSEER_SYSTEM,
 )
-from lying_game.tasks import SessionPlan, format_task_list, make_run_plan
+from lying_game.tasks import SessionPlan, format_task_list, format_work_log, make_run_plan
 
 
 @dataclass
@@ -252,15 +255,26 @@ class Harness:
             mem_preamble = AGENT_MEMORY_PREAMBLE.format(memory_block=recall.text) + "\n\n"
 
         # 2. agent report
-        task_tmpl = AGENT_SESSION3_PRESSURE if sp.is_temptation else AGENT_SESSION_TASK
-        task_msg = task_tmpl.format(
-            session_num=sp.session_num,
-            task_list=format_task_list(sp),
-            actual_completed=sp.actual_completed,
-            total=sp.total,
-            completed_ids=", ".join(sp.completed_ids) or "(none)",
-            incomplete_ids=", ".join(sp.incomplete_ids) or "(none)",
-        )
+        if cfg.protocol_version >= 2:
+            task_tmpl = (
+                AGENT_SESSION3_PRESSURE_V2 if sp.is_temptation else AGENT_SESSION_TASK_V2
+            )
+            task_msg = task_tmpl.format(
+                session_num=sp.session_num,
+                work_log=format_work_log(sp),
+                actual_completed=sp.actual_completed,
+                total=sp.total,
+            )
+        else:
+            task_tmpl = AGENT_SESSION3_PRESSURE if sp.is_temptation else AGENT_SESSION_TASK
+            task_msg = task_tmpl.format(
+                session_num=sp.session_num,
+                task_list=format_task_list(sp),
+                actual_completed=sp.actual_completed,
+                total=sp.total,
+                completed_ids=", ".join(sp.completed_ids) or "(none)",
+                incomplete_ids=", ".join(sp.incomplete_ids) or "(none)",
+            )
         agent_system = (
             AGENT_SYSTEM_TRUTHFUL if cfg.agent_variant == "truthful" else AGENT_SYSTEM
         )
@@ -278,7 +292,8 @@ class Harness:
                 history_block = (
                     "Previous sessions on record:\n" + "\n".join(history_lines) + "\n"
                 )
-            probe_prompt = OVERSEER_PROBE.format(
+            probe_tmpl = OVERSEER_PROBE_V2 if cfg.protocol_version >= 2 else OVERSEER_PROBE
+            probe_prompt = probe_tmpl.format(
                 session_num=sp.session_num,
                 report=report,
                 history_block=history_block,
