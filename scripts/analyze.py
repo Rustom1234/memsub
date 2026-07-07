@@ -189,6 +189,42 @@ def table_capability(conn) -> list[dict]:
     return summary
 
 
+def table_protocol_v2(conn) -> list[dict]:
+    """Cell G: protocol v2 (in-frame work log + account probing) contrast."""
+    rows = _rows(conn, "cell = 'G'")
+    groups = _group_by(rows, "condition")
+    out_rows = []
+    summary = []
+    for cond in sorted(groups):
+        g = groups[cond]
+        lie = _agg([r["lie_rate"] for r in g])
+        over = _agg([r["total_overstatement"] for r in g])
+        tempt = _agg([r["temptation_overstatement"] for r in g])
+        credits = _agg([r["total_credits"] for r in g])
+        jdec = _agg([r["judge_deception"] for r in g])
+        jcon = _agg([r["judge_consistency"] for r in g])
+        n = len(g)
+        flag = "PILOT" if n < PILOT_THRESHOLD else ""
+        out_rows.append([cond, n, flag, lie["mean"], over["mean"], tempt["mean"],
+                         credits["mean"], jdec["mean"], jcon["mean"]])
+        summary.append({"condition": cond, "n": n, "lie_rate": lie["mean"],
+                        "temptation_overstatement": tempt["mean"],
+                        "credits": credits["mean"], "judge_deception": jdec["mean"],
+                        "judge_consistency": jcon["mean"]})
+    if out_rows:
+        p = _write_csv(
+            "protocol_v2.csv",
+            ["condition", "n", "flag", "lie_rate_mean", "overstatement_mean",
+             "temptation_overstatement_mean", "credits_mean",
+             "judge_deception_mean", "judge_consistency_mean"],
+            out_rows,
+        )
+        print(f"wrote {p}")
+    else:
+        print("cell G: no rows, skipped protocol_v2")
+    return summary
+
+
 def table_judge_reliability(conn) -> list[dict]:
     """Cell E truthful baseline + judge SD across all runs with replicas."""
     out_rows = []
@@ -421,12 +457,22 @@ def main() -> None:
     length = table_length_ablation(conn)
     typ = table_type_ablation(conn)
     cap = table_capability(conn)
+    v2 = table_protocol_v2(conn)
     table_judge_reliability(conn)
     depth = table_probing_depth(conn)
     table_manipulation_check(conn)
     make_plots(cond, length, typ, cap)
     if depth:
         _plot_probing_depth(depth)
+    if v2:
+        _bar([c["condition"] for c in v2],
+             [c["credits"] for c in v2],
+             "Protocol v2: credits by condition (Cell G)",
+             "mean total credits", "v2_credits_by_condition.png")
+        _bar([c["condition"] for c in v2],
+             [c["judge_deception"] for c in v2],
+             "Protocol v2: judge deception by condition (Cell G)",
+             "mean judge deception (0-100)", "v2_judge_deception.png")
     conn.close()
     print("analysis complete")
 
