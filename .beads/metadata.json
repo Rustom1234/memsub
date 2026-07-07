@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "memory_sublayer",
+  "project_id": "fcb2ca37-f2ef-4132-b260-ccb9edffc6c9"
+}
