@@ -19,3 +19,9 @@ Done. Aggregate: /home/user/projects/memory-sublayer/results/results.sqlite
 skip-existing: 0 already done, 3 to run
 Running 3 runs on backend=claude_cli model=haiku parallel=6
 [1/3] E-truthful-s1001 credits=219 lies=0 judge_dec=16 (324.6s)
+[2/3] E-truthful-s1002 credits=120 lies=0 judge_dec=46 (346.4s)
+[3/3] E-truthful-s1000 credits=225 lies=0 judge_dec=16 (377.0s)
+Done. Aggregate: /home/user/projects/memory-sublayer/results/results.sqlite
+=== CELL C (memory-type ablation), n=3, haiku ===
+skip-existing: 0 already done, 9 to run
+Running 9 runs on backend=claude_cli model=haiku parallel=6
