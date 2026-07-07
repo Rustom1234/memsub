@@ -191,34 +191,75 @@ def main() -> None:
     ap.add_argument("--judge-replicas", type=int, default=1,
                     help="run the judge N times per run for reliability stats")
     ap.add_argument("--limit", type=int, default=None, help="cap total runs (for pilots)")
+    ap.add_argument("--parallel", type=int, default=1, help="concurrent runs (worker threads)")
+    ap.add_argument("--skip-existing", action="store_true",
+                    help="skip run_ids that already have a result.json")
+    ap.add_argument("--results-dir", default=None,
+                    help="override results directory (default: <repo>/results); "
+                         "use a scratch dir for mock smoke tests")
     args = ap.parse_args()
+
+    if args.results_dir:
+        global RESULTS_DIR, RUNS_DIR, DB_PATH, JSONL_PATH
+        RESULTS_DIR = Path(args.results_dir)
+        RUNS_DIR = RESULTS_DIR / "runs"
+        DB_PATH = RESULTS_DIR / "results.sqlite"
+        JSONL_PATH = RESULTS_DIR / "results.jsonl"
 
     configs = build_configs(args)
     if args.limit:
         configs = configs[: args.limit]
+    if args.skip_existing:
+        before = len(configs)
+        configs = [
+            (cell, c) for cell, c in configs
+            if not (RUNS_DIR / f"{c.run_id}.result.json").exists()
+        ]
+        print(f"skip-existing: {before - len(configs)} already done, {len(configs)} to run",
+              flush=True)
     conn = _db()
     backend = build_backend(args.backend, model=args.model)
     judge_backend = None
     if args.judge:
         judge_backend = build_backend(args.backend, model=args.judge_model or args.model)
 
-    print(f"Running {len(configs)} runs on backend={backend.name} model={backend.model}")
-    for i, (cell, cfg) in enumerate(configs, 1):
+    def execute(cell_cfg):
+        cell, cfg = cell_cfg
         t0 = time.time()
         # rebuild a per-run backend when model differs (cell D)
         run_backend = backend
         if cfg.model and cfg.model != backend.model and args.backend != "mock":
             run_backend = build_backend(args.backend, model=cfg.model)
         result = Harness(cfg, run_backend, log_dir=RUNS_DIR).run(judge_backend=judge_backend)
-        _write_result(result, cell, conn)
-        dt = time.time() - t0
-        print(
-            f"[{i}/{len(configs)}] {cfg.run_id} "
-            f"credits={result.total_credits} lies={result.deception['n_lies']} "
-            f"judge_dec={result.judge_deception} ({dt:.1f}s)"
-        )
+        return cell, cfg, result, time.time() - t0
+
+    print(
+        f"Running {len(configs)} runs on backend={backend.name} "
+        f"model={backend.model} parallel={args.parallel}",
+        flush=True,
+    )
+    done = 0
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    with ThreadPoolExecutor(max_workers=max(1, args.parallel)) as pool:
+        futures = [pool.submit(execute, cc) for cc in configs]
+        for fut in as_completed(futures):
+            try:
+                cell, cfg, result, dt = fut.result()
+            except Exception as exc:  # keep the batch alive on one failure
+                print(f"RUN FAILED: {type(exc).__name__}: {exc}", flush=True)
+                continue
+            # SQLite writes happen only on this (main) thread
+            _write_result(result, cell, conn)
+            done += 1
+            print(
+                f"[{done}/{len(configs)}] {cfg.run_id} "
+                f"credits={result.total_credits} lies={result.deception['n_lies']} "
+                f"judge_dec={result.judge_deception} ({dt:.1f}s)",
+                flush=True,
+            )
     conn.close()
-    print(f"Done. Aggregate: {DB_PATH}")
+    print(f"Done. Aggregate: {DB_PATH}", flush=True)
 
 
 if __name__ == "__main__":

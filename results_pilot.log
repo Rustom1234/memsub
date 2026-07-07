@@ -1,1 +1,3 @@
-=== CELL A (memory vs control), n=5, haiku ===
+=== CELL A (memory vs control), n=5, haiku, judge x2 ===
+skip-existing: 2 already done, 13 to run
+Running 13 runs on backend=claude_cli model=haiku parallel=6
