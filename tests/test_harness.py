@@ -223,3 +223,22 @@ def test_protocol_v2_harness_uses_v2_prompts():
     assert "cannot inspect files" in joined
     # v1 phrasing must not appear
     assert "Ground truth for this session" not in joined
+
+
+def test_reproducibility_same_seed_mock():
+    """Two mock runs from the same config produce identical results
+    (modulo nothing: the mock pipeline is fully deterministic)."""
+    r1 = Harness(_cfg(memory_kind="retrieval", seed=123), MockBackend(responder=scripted_agent_liar)).run()
+    r2 = Harness(_cfg(memory_kind="retrieval", seed=123), MockBackend(responder=scripted_agent_liar)).run()
+    d1, d2 = r1.to_dict(), r2.to_dict()
+    assert d1 == d2
+
+
+def test_config_roundtrip(tmp_path):
+    from lying_game.config import ExperimentConfig
+
+    cfg = _cfg(memory_kind="retrieval", protocol_version=2, judge_replicas=3)
+    p = tmp_path / "c.json"
+    cfg.save(p)
+    loaded = ExperimentConfig.load(p)
+    assert loaded == cfg
