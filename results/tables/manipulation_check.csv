@@ -1,0 +1,4 @@
+memory_kind,n_runs,memory_used_rate_mean,retrieved_prior_rate_mean
+context_stuffing,2,0.75,0.75
+none,3,0.0,0.0
+retrieval,3,0.75,0.75

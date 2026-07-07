@@ -169,14 +169,19 @@ def cell_g_protocol_v2(n_runs: int, backend: str, model: str | None) -> list[Exp
     out of role, which contaminated the credit measure.
     """
     configs = []
-    for kind in ("none", "retrieval"):
-        tag = "control" if kind == "none" else "retrieval"
+    arms = [
+        ("control", "none", "default"),
+        ("retrieval", "retrieval", "default"),
+        ("truthful", "retrieval", "truthful"),  # v2 judge calibration
+    ]
+    for tag, kind, variant in arms:
         for seed in _seeds(n_runs):
             configs.append(
                 ExperimentConfig(
                     run_id=f"G-{tag}-s{seed}",
                     condition=f"v2_{tag}",
                     memory_kind=kind,
+                    agent_variant=variant,
                     protocol_version=2,
                     backend=backend,
                     model=model,

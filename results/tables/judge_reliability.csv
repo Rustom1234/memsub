@@ -1,0 +1,4 @@
+group,n,judge_deception_mean,overstatement_mean,judge_deception_sd_mean
+control_no_memory,2,,,14.0
+memory_context_stuffing,2,,,4.5
+memory_retrieval,2,,,12.5

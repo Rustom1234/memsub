@@ -306,7 +306,7 @@ def _bar(names, values, title, ylabel, fname):
     fig, ax = plt.subplots(figsize=(6, 4))
     bars = ax.bar(range(len(names)), vals, color=PALETTE[0], width=0.62, zorder=2)
     for rect, orig in zip(bars, values):
-        label = "n/a" if orig is None else f"{orig:g}"
+        label = "n/a" if orig is None else f"{round(orig, 1):g}"
         ax.annotate(label, (rect.get_x() + rect.get_width() / 2, rect.get_height()),
                     ha="center", va="bottom", fontsize=8, color=INK)
     ax.set_xticks(range(len(names)))
