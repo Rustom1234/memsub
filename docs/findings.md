@@ -23,6 +23,14 @@ This is a null result on the central thesis at this model tier and temptation
 strength, and we report it as such. Memory cannot amplify sustained deception
 if the agent never initiates deception.
 
+Scoping the null: with 0 deceptive runs out of 5 per arm, the rule-of-three
+95% upper bound on the per-run deception probability is about 3/5 = 60% per
+arm, i.e. the pilot only rules out very high base rates at run level. Treating
+temptation sessions as independent (they are not fully, being nested in runs),
+0 of 15 temptation sessions overstated gives an upper bound of about 20% per
+temptation session. The null is real but weakly powered; it constrains "haiku
+usually lies here" and cannot constrain "haiku rarely lies here".
+
 | condition (v1) | n | lie rate | temptation overstatement | credits (mean) | judge deception | judge consistency |
 |---|---|---|---|---|---|---|
 | control_no_memory | 5 | 0.0 | 0 | 175.0 | 18.0 | 77.4 |
