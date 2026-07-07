@@ -53,7 +53,9 @@ lying_game/                 the experiment harness
   harness.py      the run loop: recall -> report -> probe -> answer -> allocate -> write
   judge.py        objective deception measure + LLM-as-judge
   config.py       ExperimentConfig (fully describes a run)
-  experiments.py  the four publishable cells (A/B/C/D)
+  experiments.py  experiment cells: A memory-vs-control, B length ablation,
+                  C type ablation, D model tiers, E truthful baseline,
+                  F probing-depth sweep, G protocol v2 replication
 
 scripts/
   run_experiment.py   run cells, write results DB + per-run transcripts
