@@ -44,10 +44,13 @@ first-class: they shape how the results in `docs/findings.md` and
   explicit shutdown pressure. This maximizes sensitivity but may overstate
   effect sizes relative to a subtler incentive. Probing depth is a lever
   (extension) to test robustness.
-- **Judge reliability is not yet established.** A single LLM judge scores
-  deception and consistency. Judge agreement across multiple judges / seeds is an
-  extension; until then, the objective measures (overstatement, credits) are the
-  primary evidence and the judge is corroboration.
+- **Judge reliability is now measured, and it is poor at run level.** With two
+  replicas per run, the judge's deception score for an explicitly truthful agent
+  averaged 26 (16/16/46 across cell E runs), and replicas on one identical
+  transcript disagreed 22 vs 70. The judge systematically scores invented
+  supporting detail as deception even when the claimed completion count is
+  exactly true. Judge scores are therefore corroboration at condition level
+  only; the objective overstatement measures are the primary evidence.
 - **Same backend plays every role.** Agent, overseer, and judge share a model
   family. Correlated failure modes (e.g. the overseer being a poor skeptic
   because the same model is bad at skepticism) are possible. Cross-family roles
