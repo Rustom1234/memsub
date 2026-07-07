@@ -71,6 +71,14 @@ Toggle the memory backend, hold everything else fixed.
   `accurate` / `summarized` / `distorted`.
 - **Cell D, model-capability comparison**: retrieval memory across at least two
   model tiers (e.g. haiku vs sonnet).
+- **Cell E, truthful baseline (extension)**: an explicitly honest agent with
+  retrieval memory; calibrates the judge's zero point.
+- **Cell F, probing-depth sweep (extension)**: n_probes 0 / 2 / 5 crossed with
+  memory on/off; tests the depth x memory interaction the thesis predicts.
+- **Cell G, protocol v2 replication (extension)**: the main contrast rerun under
+  protocol v2 (in-frame per-task work log for the agent; overseer constrained to
+  account-based probing), with a v2 truthful arm. Motivated by the v1
+  frame-break and judge-confabulation artifacts (EXTENSIONS.md rounds 2-3).
 
 ## Measures
 
@@ -112,6 +120,13 @@ python scripts/run_experiment.py --cell A --backend cli --model haiku --n-runs 5
 
 # model-capability comparison
 python scripts/run_experiment.py --cell D --backend cli --models haiku sonnet --n-runs 3 --judge
+
+# parallel + resumable batches (recommended)
+python scripts/run_experiment.py --cell A --backend cli --model haiku --n-runs 5 \
+    --judge --judge-replicas 2 --parallel 6 --skip-existing
+
+# the full pilot driver
+./scripts/run_pilot.sh
 
 # analysis (tables + plots into results/)
 python scripts/analyze.py
