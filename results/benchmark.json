@@ -1,0 +1,282 @@
+{
+  "generated_at": 1783531707.1962945,
+  "seeds": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "part_a": [
+    {
+      "system": "naive-topk",
+      "budget": 100,
+      "n": 150,
+      "correct": 150,
+      "stale_only": 0,
+      "avg_tokens_used": 93.7,
+      "recall": 1.0,
+      "stale_rate": 0.0
+    },
+    {
+      "system": "policy",
+      "budget": 100,
+      "n": 150,
+      "correct": 129,
+      "stale_only": 12,
+      "avg_tokens_used": 94.0,
+      "recall": 0.86,
+      "stale_rate": 0.08
+    },
+    {
+      "system": "policy+cons",
+      "budget": 100,
+      "n": 150,
+      "correct": 150,
+      "stale_only": 0,
+      "avg_tokens_used": 94.3,
+      "recall": 1.0,
+      "stale_rate": 0.0
+    },
+    {
+      "system": "recent",
+      "budget": 100,
+      "n": 150,
+      "correct": 0,
+      "stale_only": 0,
+      "avg_tokens_used": 94.8,
+      "recall": 0.0,
+      "stale_rate": 0.0
+    },
+    {
+      "system": "naive-topk",
+      "budget": 200,
+      "n": 150,
+      "correct": 150,
+      "stale_only": 0,
+      "avg_tokens_used": 195.2,
+      "recall": 1.0,
+      "stale_rate": 0.0
+    },
+    {
+      "system": "policy",
+      "budget": 200,
+      "n": 150,
+      "correct": 149,
+      "stale_only": 0,
+      "avg_tokens_used": 194.7,
+      "recall": 0.9933333333333333,
+      "stale_rate": 0.0
+    },
+    {
+      "system": "policy+cons",
+      "budget": 200,
+      "n": 150,
+      "correct": 150,
+      "stale_only": 0,
+      "avg_tokens_used": 194.2,
+      "recall": 1.0,
+      "stale_rate": 0.0
+    },
+    {
+      "system": "recent",
+      "budget": 200,
+      "n": 150,
+      "correct": 0,
+      "stale_only": 0,
+      "avg_tokens_used": 195.4,
+      "recall": 0.0,
+      "stale_rate": 0.0
+    },
+    {
+      "system": "naive-topk",
+      "budget": 400,
+      "n": 150,
+      "correct": 150,
+      "stale_only": 0,
+      "avg_tokens_used": 395.8,
+      "recall": 1.0,
+      "stale_rate": 0.0
+    },
+    {
+      "system": "policy",
+      "budget": 400,
+      "n": 150,
+      "correct": 150,
+      "stale_only": 0,
+      "avg_tokens_used": 395.4,
+      "recall": 1.0,
+      "stale_rate": 0.0
+    },
+    {
+      "system": "policy+cons",
+      "budget": 400,
+      "n": 150,
+      "correct": 150,
+      "stale_only": 0,
+      "avg_tokens_used": 395.0,
+      "recall": 1.0,
+      "stale_rate": 0.0
+    },
+    {
+      "system": "recent",
+      "budget": 400,
+      "n": 150,
+      "correct": 0,
+      "stale_only": 0,
+      "avg_tokens_used": 390.8,
+      "recall": 0.0,
+      "stale_rate": 0.0
+    },
+    {
+      "system": "naive-topk",
+      "budget": 800,
+      "n": 150,
+      "correct": 150,
+      "stale_only": 0,
+      "avg_tokens_used": 795.1,
+      "recall": 1.0,
+      "stale_rate": 0.0
+    },
+    {
+      "system": "policy",
+      "budget": 800,
+      "n": 150,
+      "correct": 150,
+      "stale_only": 0,
+      "avg_tokens_used": 795.1,
+      "recall": 1.0,
+      "stale_rate": 0.0
+    },
+    {
+      "system": "policy+cons",
+      "budget": 800,
+      "n": 150,
+      "correct": 150,
+      "stale_only": 0,
+      "avg_tokens_used": 795.3,
+      "recall": 1.0,
+      "stale_rate": 0.0
+    },
+    {
+      "system": "recent",
+      "budget": 800,
+      "n": 150,
+      "correct": 0,
+      "stale_only": 0,
+      "avg_tokens_used": 797.8,
+      "recall": 0.0,
+      "stale_rate": 0.0
+    }
+  ],
+  "part_b": [
+    {
+      "system": "naive-topk",
+      "budget": 500,
+      "n": 1536,
+      "all_evidence_hit": 540,
+      "any_evidence_hit": 694,
+      "answer_in_context": 248,
+      "avg_tokens_used": 498.3,
+      "recall_all": 0.3515625,
+      "recall_any": 0.4518229166666667,
+      "answer_rate": 0.16145833333333334
+    },
+    {
+      "system": "policy",
+      "budget": 500,
+      "n": 1536,
+      "all_evidence_hit": 185,
+      "any_evidence_hit": 234,
+      "answer_in_context": 117,
+      "avg_tokens_used": 498.4,
+      "recall_all": 0.12044270833333333,
+      "recall_any": 0.15234375,
+      "answer_rate": 0.076171875
+    },
+    {
+      "system": "recent",
+      "budget": 500,
+      "n": 1536,
+      "all_evidence_hit": 22,
+      "any_evidence_hit": 29,
+      "answer_in_context": 35,
+      "avg_tokens_used": 497.2,
+      "recall_all": 0.014322916666666666,
+      "recall_any": 0.018880208333333332,
+      "answer_rate": 0.022786458333333332
+    },
+    {
+      "system": "naive-topk",
+      "budget": 1000,
+      "n": 1536,
+      "all_evidence_hit": 658,
+      "any_evidence_hit": 850,
+      "answer_in_context": 312,
+      "avg_tokens_used": 998.4,
+      "recall_all": 0.4283854166666667,
+      "recall_any": 0.5533854166666666,
+      "answer_rate": 0.203125
+    },
+    {
+      "system": "policy",
+      "budget": 1000,
+      "n": 1536,
+      "all_evidence_hit": 251,
+      "any_evidence_hit": 338,
+      "answer_in_context": 152,
+      "avg_tokens_used": 998.4,
+      "recall_all": 0.16341145833333334,
+      "recall_any": 0.22005208333333334,
+      "answer_rate": 0.09895833333333333
+    },
+    {
+      "system": "recent",
+      "budget": 1000,
+      "n": 1536,
+      "all_evidence_hit": 64,
+      "any_evidence_hit": 88,
+      "answer_in_context": 64,
+      "avg_tokens_used": 999.2,
+      "recall_all": 0.041666666666666664,
+      "recall_any": 0.057291666666666664,
+      "answer_rate": 0.041666666666666664
+    },
+    {
+      "system": "naive-topk",
+      "budget": 2000,
+      "n": 1536,
+      "all_evidence_hit": 787,
+      "any_evidence_hit": 1004,
+      "answer_in_context": 374,
+      "avg_tokens_used": 1998.3,
+      "recall_all": 0.5123697916666666,
+      "recall_any": 0.6536458333333334,
+      "answer_rate": 0.24348958333333334
+    },
+    {
+      "system": "policy",
+      "budget": 2000,
+      "n": 1536,
+      "all_evidence_hit": 386,
+      "any_evidence_hit": 502,
+      "answer_in_context": 226,
+      "avg_tokens_used": 1998.3,
+      "recall_all": 0.2513020833333333,
+      "recall_any": 0.3268229166666667,
+      "answer_rate": 0.14713541666666666
+    },
+    {
+      "system": "recent",
+      "budget": 2000,
+      "n": 1536,
+      "all_evidence_hit": 133,
+      "any_evidence_hit": 186,
+      "answer_in_context": 116,
+      "avg_tokens_used": 1998.9,
+      "recall_all": 0.08658854166666667,
+      "recall_any": 0.12109375,
+      "answer_rate": 0.07552083333333333
+    }
+  ]
+}
