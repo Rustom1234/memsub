@@ -9,6 +9,6 @@
 __pycache__/
 *.pyc
 .pytest_cache/
-results/runs/
+experiments/lying-game/results/runs/
 *.egg-info/
 .gstack/

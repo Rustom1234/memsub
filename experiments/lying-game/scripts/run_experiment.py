@@ -28,6 +28,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+# Repo root, for the memsub library the harness depends on.
+sys.path.insert(0, str(ROOT.parent.parent))
 
 from lying_game.backends import build_backend  # noqa: E402
 from lying_game.config import ExperimentConfig  # noqa: E402

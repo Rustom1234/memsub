@@ -1,7 +1,7 @@
 [project]
 name = "memory-sublayer"
 version = "0.1.0"
-description = "Architectural episodic memory for agents, plus the Lying Game deception-safety experiment"
+description = "Local-first, zero-infrastructure memory for AI agents (SQLite + local embeddings + a policy layer), served over MCP"
 requires-python = ">=3.12"
 dependencies = ["numpy"]
 
@@ -13,4 +13,4 @@ api = ["anthropic"]
 testpaths = ["tests"]
 
 [tool.setuptools]
-packages = ["memsub", "lying_game"]
+packages = ["memsub"]
