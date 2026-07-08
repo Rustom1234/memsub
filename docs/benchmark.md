@@ -94,3 +94,20 @@ Not attempted, with reasons: LLM query decomposition and HyDE (answer-time
 LLM call per query changes the product's cost profile; deferred until the
 zero-cost stack stalls on holdout), full HippoRAG (engineering cost),
 cross-encoder rerank (breaks zero-infra).
+
+## Retrieval v2: FINAL HOLDOUT (one run, conversations 4-10, never used in selection)
+
+Executed 2026-07-08 14:35 by `scripts/holdout_eval.py`. Stack frozen on dev before this run; no parameter was changed afterwards.
+
+| budget | category | n | policy (before) all/any | naive-topk all/any | hybrid-v2 (after) all/any |
+|---|---|---|---|---|---|
+| 500 | multi-hop | 208 | 2.4% / 38.0% | 3.4% / 41.8% | 15.9% / 70.2% |
+| 500 | temporal | 231 | 43.3% / 51.1% | 42.9% / 51.1% | 67.5% / 77.1% |
+| 500 | open-domain | 73 | 11.0% / 19.2% | 12.3% / 20.5% | 31.5% / 50.7% |
+| 500 | single-hop | 641 | 46.0% / 49.0% | 45.7% / 48.8% | 83.3% / 85.2% |
+| 500 | **TOTAL** | 1153 | **35.4% / 45.5%** | **35.4% / 46.2%** | **64.7% / 78.7%** |
+| 1000 | multi-hop | 208 | 5.8% / 51.9% | 5.3% / 52.9% | 25.0% / 79.3% |
+| 1000 | temporal | 231 | 49.8% / 58.4% | 51.1% / 60.6% | 78.8% / 84.8% |
+| 1000 | open-domain | 73 | 17.8% / 31.5% | 20.5% / 37.0% | 35.6% / 56.2% |
+| 1000 | single-hop | 641 | 55.4% / 59.1% | 55.5% / 59.1% | 92.2% / 93.3% |
+| 1000 | **TOTAL** | 1153 | **42.9% / 55.9%** | **43.4% / 56.9%** | **73.8% / 86.7%** |

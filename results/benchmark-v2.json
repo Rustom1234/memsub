@@ -1,0 +1,258 @@
+{
+  "frozen_params": {
+    "dense_weight": 0.5,
+    "bm25_weight": 1.0,
+    "rrf_k": 60,
+    "temporal": true,
+    "temporal_weight": 1.0,
+    "speaker_boost": 1.0,
+    "session_weight": 3.0
+  },
+  "policy_params": {
+    "recency_weight": 0.999,
+    "recency_floor": 0.75,
+    "importance_floor": 0.0
+  },
+  "rows": [
+    {
+      "budget": 500,
+      "category": "multi-hop",
+      "system": "policy (before)",
+      "n": 208,
+      "all": 5,
+      "any": 79
+    },
+    {
+      "budget": 500,
+      "category": "multi-hop",
+      "system": "naive-topk",
+      "n": 208,
+      "all": 7,
+      "any": 87
+    },
+    {
+      "budget": 500,
+      "category": "multi-hop",
+      "system": "hybrid-v2 (after)",
+      "n": 208,
+      "all": 33,
+      "any": 146
+    },
+    {
+      "budget": 500,
+      "category": "temporal",
+      "system": "policy (before)",
+      "n": 231,
+      "all": 100,
+      "any": 118
+    },
+    {
+      "budget": 500,
+      "category": "temporal",
+      "system": "naive-topk",
+      "n": 231,
+      "all": 99,
+      "any": 118
+    },
+    {
+      "budget": 500,
+      "category": "temporal",
+      "system": "hybrid-v2 (after)",
+      "n": 231,
+      "all": 156,
+      "any": 178
+    },
+    {
+      "budget": 500,
+      "category": "open-domain",
+      "system": "policy (before)",
+      "n": 73,
+      "all": 8,
+      "any": 14
+    },
+    {
+      "budget": 500,
+      "category": "open-domain",
+      "system": "naive-topk",
+      "n": 73,
+      "all": 9,
+      "any": 15
+    },
+    {
+      "budget": 500,
+      "category": "open-domain",
+      "system": "hybrid-v2 (after)",
+      "n": 73,
+      "all": 23,
+      "any": 37
+    },
+    {
+      "budget": 500,
+      "category": "single-hop",
+      "system": "policy (before)",
+      "n": 641,
+      "all": 295,
+      "any": 314
+    },
+    {
+      "budget": 500,
+      "category": "single-hop",
+      "system": "naive-topk",
+      "n": 641,
+      "all": 293,
+      "any": 313
+    },
+    {
+      "budget": 500,
+      "category": "single-hop",
+      "system": "hybrid-v2 (after)",
+      "n": 641,
+      "all": 534,
+      "any": 546
+    },
+    {
+      "budget": 500,
+      "category": "TOTAL",
+      "system": "policy (before)",
+      "n": 1153,
+      "all": 408,
+      "any": 525
+    },
+    {
+      "budget": 500,
+      "category": "TOTAL",
+      "system": "naive-topk",
+      "n": 1153,
+      "all": 408,
+      "any": 533
+    },
+    {
+      "budget": 500,
+      "category": "TOTAL",
+      "system": "hybrid-v2 (after)",
+      "n": 1153,
+      "all": 746,
+      "any": 907
+    },
+    {
+      "budget": 1000,
+      "category": "multi-hop",
+      "system": "policy (before)",
+      "n": 208,
+      "all": 12,
+      "any": 108
+    },
+    {
+      "budget": 1000,
+      "category": "multi-hop",
+      "system": "naive-topk",
+      "n": 208,
+      "all": 11,
+      "any": 110
+    },
+    {
+      "budget": 1000,
+      "category": "multi-hop",
+      "system": "hybrid-v2 (after)",
+      "n": 208,
+      "all": 52,
+      "any": 165
+    },
+    {
+      "budget": 1000,
+      "category": "temporal",
+      "system": "policy (before)",
+      "n": 231,
+      "all": 115,
+      "any": 135
+    },
+    {
+      "budget": 1000,
+      "category": "temporal",
+      "system": "naive-topk",
+      "n": 231,
+      "all": 118,
+      "any": 140
+    },
+    {
+      "budget": 1000,
+      "category": "temporal",
+      "system": "hybrid-v2 (after)",
+      "n": 231,
+      "all": 182,
+      "any": 196
+    },
+    {
+      "budget": 1000,
+      "category": "open-domain",
+      "system": "policy (before)",
+      "n": 73,
+      "all": 13,
+      "any": 23
+    },
+    {
+      "budget": 1000,
+      "category": "open-domain",
+      "system": "naive-topk",
+      "n": 73,
+      "all": 15,
+      "any": 27
+    },
+    {
+      "budget": 1000,
+      "category": "open-domain",
+      "system": "hybrid-v2 (after)",
+      "n": 73,
+      "all": 26,
+      "any": 41
+    },
+    {
+      "budget": 1000,
+      "category": "single-hop",
+      "system": "policy (before)",
+      "n": 641,
+      "all": 355,
+      "any": 379
+    },
+    {
+      "budget": 1000,
+      "category": "single-hop",
+      "system": "naive-topk",
+      "n": 641,
+      "all": 356,
+      "any": 379
+    },
+    {
+      "budget": 1000,
+      "category": "single-hop",
+      "system": "hybrid-v2 (after)",
+      "n": 641,
+      "all": 591,
+      "any": 598
+    },
+    {
+      "budget": 1000,
+      "category": "TOTAL",
+      "system": "policy (before)",
+      "n": 1153,
+      "all": 495,
+      "any": 645
+    },
+    {
+      "budget": 1000,
+      "category": "TOTAL",
+      "system": "naive-topk",
+      "n": 1153,
+      "all": 500,
+      "any": 656
+    },
+    {
+      "budget": 1000,
+      "category": "TOTAL",
+      "system": "hybrid-v2 (after)",
+      "n": 1153,
+      "all": 851,
+      "any": 1000
+    }
+  ]
+}
