@@ -20,8 +20,33 @@ _STOP = frozenset(
 )
 
 
-def tokenize(text: str) -> list[str]:
-    return [t for t in _TOKEN_RE.findall(text.lower()) if t not in _STOP]
+def stem(token: str) -> str:
+    """Tiny deterministic suffix stripper (s-stemmer + ing/ed/ly).
+
+    Not Porter, deliberately: just enough to unify research/researching,
+    camp/camped/camping, activity/activities on both query and corpus sides.
+    """
+    t = token
+    if len(t) > 4 and t.endswith("ies"):
+        t = t[:-3] + "y"
+    elif len(t) > 3 and t.endswith("es") and not t.endswith(("ses", "zes", "ches", "shes")):
+        t = t[:-1]
+    elif len(t) > 3 and t.endswith("s") and not t.endswith(("ss", "us", "is")):
+        t = t[:-1]
+    if len(t) > 5 and t.endswith("ing"):
+        t = t[:-3]
+    elif len(t) > 4 and t.endswith("ed"):
+        t = t[:-2]
+    elif len(t) > 5 and t.endswith("ly"):
+        t = t[:-2]
+    if len(t) > 3 and t[-1] == t[-2] and t[-1] not in "aeiou":
+        t = t[:-1]
+    return t
+
+
+def tokenize(text: str, use_stem: bool = True) -> list[str]:
+    toks = [t for t in _TOKEN_RE.findall(text.lower()) if t not in _STOP]
+    return [stem(t) for t in toks] if use_stem else toks
 
 
 class BM25Index:
