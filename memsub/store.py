@@ -29,7 +29,36 @@ CREATE TABLE IF NOT EXISTS episodes (
 );
 CREATE INDEX IF NOT EXISTS idx_episodes_run ON episodes(run_id, ts);
 CREATE INDEX IF NOT EXISTS idx_episodes_session ON episodes(session_id);
+CREATE TABLE IF NOT EXISTS memory_events (
+    id TEXT PRIMARY KEY,
+    ts REAL NOT NULL,
+    episode_id TEXT NOT NULL,
+    event TEXT NOT NULL,
+    detail TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_events_episode ON memory_events(episode_id, ts);
+CREATE INDEX IF NOT EXISTS idx_events_ts ON memory_events(ts);
 """
+
+# Events that end an episode's active life. The episode row is never deleted;
+# status is derived from the event log, which is the audit trail.
+TERMINAL_EVENTS = ("superseded", "forgotten")
+
+
+@dataclass(frozen=True)
+class MemoryEvent:
+    """One lifecycle or usage event for an episode.
+
+    event: "superseded" | "forgotten" | "retrieved" | "injected" (open set).
+    detail: structured context, e.g. {"reason": ..., "by": <episode_id>} for
+    supersede, {"query": ..., "score": ...} for retrieval.
+    """
+
+    episode_id: str
+    event: str
+    detail: dict[str, Any] = field(default_factory=dict)
+    ts: float = 0.0
+    id: str = ""
 
 
 @dataclass(frozen=True)
@@ -124,6 +153,76 @@ class EpisodicStore:
         return self._conn.execute(
             "SELECT COUNT(*) FROM episodes WHERE run_id = ?", (run_id,)
         ).fetchone()[0]
+
+    # ------------------------------------------------------------------ #
+    # Event log: lifecycle (supersede/forget) and usage (retrieve/inject)
+    # ------------------------------------------------------------------ #
+    def log_event(self, episode_id: str, event: str, detail: dict[str, Any] | None = None) -> MemoryEvent:
+        ev = MemoryEvent(
+            episode_id=episode_id,
+            event=event,
+            detail=detail or {},
+            ts=time.time(),
+            id=uuid.uuid4().hex,
+        )
+        self._conn.execute(
+            "INSERT INTO memory_events (id, ts, episode_id, event, detail) VALUES (?, ?, ?, ?, ?)",
+            (ev.id, ev.ts, ev.episode_id, ev.event, json.dumps(ev.detail, sort_keys=True)),
+        )
+        self._conn.commit()
+        return ev
+
+    def events(
+        self,
+        episode_id: str | None = None,
+        event: str | None = None,
+        limit: int | None = None,
+    ) -> list[MemoryEvent]:
+        """Events newest first, optionally filtered by episode or event type."""
+        query = "SELECT id, ts, episode_id, event, detail FROM memory_events WHERE 1=1"
+        params: list[Any] = []
+        if episode_id is not None:
+            query += " AND episode_id = ?"
+            params.append(episode_id)
+        if event is not None:
+            query += " AND event = ?"
+            params.append(event)
+        query += " ORDER BY ts DESC, id DESC"
+        if limit is not None:
+            query += " LIMIT ?"
+            params.append(limit)
+        rows = self._conn.execute(query, params).fetchall()
+        return [
+            MemoryEvent(id=r[0], ts=r[1], episode_id=r[2], event=r[3], detail=json.loads(r[4]))
+            for r in rows
+        ]
+
+    def status(self, episode_id: str) -> str:
+        """"active", or the terminal event name ("superseded"/"forgotten")."""
+        row = self._conn.execute(
+            "SELECT event FROM memory_events WHERE episode_id = ? AND event IN (?, ?)"
+            " ORDER BY ts DESC LIMIT 1",
+            (episode_id, *TERMINAL_EVENTS),
+        ).fetchone()
+        return row[0] if row else "active"
+
+    def active(self, run_id: str | None = None, kind: str | None = None) -> list[Episode]:
+        """Episodes with no terminal event, oldest first."""
+        query = (
+            "SELECT id, ts, run_id, session_id, kind, content, importance, provenance"
+            " FROM episodes WHERE id NOT IN"
+            " (SELECT episode_id FROM memory_events WHERE event IN (?, ?))"
+        )
+        params: list[Any] = list(TERMINAL_EVENTS)
+        if run_id is not None:
+            query += " AND run_id = ?"
+            params.append(run_id)
+        if kind is not None:
+            query += " AND kind = ?"
+            params.append(kind)
+        query += " ORDER BY ts ASC, id ASC"
+        rows = self._conn.execute(query, params).fetchall()
+        return [self._row_to_episode(r) for r in rows]
 
     def __iter__(self) -> Iterator[Episode]:
         return iter(self.all())

@@ -8,3 +8,4 @@
 {"id":"int-d7b5a7ac","kind":"field_change","created_at":"2026-07-07T19:27:46.588448454Z","actor":"Rustom Dubash","issue_id":"memory-sublayer-drt","extra":{"field":"status","new_value":"in_progress","old_value":"open"}}
 {"id":"int-c064843b","kind":"field_change","created_at":"2026-07-08T08:00:12.36069694Z","actor":"Rustom Dubash","issue_id":"memory-sublayer-byd","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Closed"}}
 {"id":"int-ba8fbc4e","kind":"field_change","created_at":"2026-07-08T17:14:11.343128684Z","actor":"Rustom Dubash","issue_id":"memory-sublayer-upr","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Closed"}}
+{"id":"int-a70b875e","kind":"field_change","created_at":"2026-07-08T17:17:38.458530057Z","actor":"Rustom Dubash","issue_id":"memory-sublayer-ush","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Closed"}}

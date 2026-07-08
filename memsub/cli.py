@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 from .backends import build_backend
+from .consolidate import ConsolidationConfig, consolidate
 from .extraction import extract_file
 from .store import EpisodicStore
 
@@ -47,6 +48,31 @@ def _cmd_extract(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_consolidate(args: argparse.Namespace) -> int:
+    db = Path(args.db)
+    if not db.exists():
+        print(f"no store at {db}")
+        return 1
+    backend = None if args.no_llm else build_backend(prefer=args.backend, model=args.model)
+    cfg = ConsolidationConfig(
+        dedup_threshold=args.dedup_threshold,
+        decay_half_life_days=args.half_life_days,
+        decay_min_age_days=args.min_age_days,
+        decay_value_threshold=args.decay_threshold,
+    )
+    store = EpisodicStore(db)
+    actions = consolidate(
+        store, backend=backend, config=cfg, run_id=args.run_id, dry_run=args.dry_run
+    )
+    for a in actions:
+        extra = f" by={a.detail['by']}" if "by" in a.detail else ""
+        print(f"{a.action:>9} [{a.reason}] {a.episode_id}{extra}")
+    label = "proposed (dry run)" if args.dry_run else "applied"
+    print(f"{len(actions)} action(s) {label}; {len(store.active(run_id=args.run_id))} active memories remain")
+    store.close()
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="memsub", description="local-first memory for agents")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -66,6 +92,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_ext.add_argument("--max-chars", type=int, default=12000, help="chunk size in characters")
     p_ext.add_argument("--dry-run", action="store_true", help="print candidates, write nothing")
     p_ext.set_defaults(func=_cmd_extract)
+
+    p_con = sub.add_parser("consolidate", help="dedup, resolve contradictions, decay low-value memories")
+    p_con.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    p_con.add_argument("--backend", default="auto", choices=["auto", "api", "cli", "mock"])
+    p_con.add_argument("--model", default=None, help="model override for the backend")
+    p_con.add_argument("--run-id", default=None, help="restrict to one run id")
+    p_con.add_argument("--no-llm", action="store_true", help="skip the LLM contradiction pass")
+    p_con.add_argument("--dedup-threshold", type=float, default=0.92)
+    p_con.add_argument("--decay-threshold", type=float, default=0.2)
+    p_con.add_argument("--half-life-days", type=float, default=30.0)
+    p_con.add_argument("--min-age-days", type=float, default=14.0)
+    p_con.add_argument("--dry-run", action="store_true", help="print actions, apply nothing")
+    p_con.set_defaults(func=_cmd_consolidate)
 
     return parser
 
