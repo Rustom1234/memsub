@@ -12,3 +12,4 @@ __pycache__/
 experiments/lying-game/results/runs/
 *.egg-info/
 .gstack/
+data/locomo10.json

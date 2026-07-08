@@ -388,6 +388,7 @@ class LocomoResultRow:
     n: int
     all_evidence_hit: int
     any_evidence_hit: int
+    answer_in_context: int
     avg_tokens_used: float
 
     @property
@@ -397,6 +398,10 @@ class LocomoResultRow:
     @property
     def recall_any(self) -> float:
         return self.any_evidence_hit / self.n if self.n else 0.0
+
+    @property
+    def answer_rate(self) -> float:
+        return self.answer_in_context / self.n if self.n else 0.0
 
 
 def run_locomo_benchmark(
@@ -415,23 +420,26 @@ def run_locomo_benchmark(
             system.ingest(list(conv.episodes))
             for budget in budgets:
                 key = (system.name, budget)
-                cell = acc.setdefault(key, [0, 0, 0, 0.0])
+                cell = acc.setdefault(key, [0, 0, 0, 0, 0.0])
                 for q in qa:
                     packed = system.inject(q.question, budget)
                     packed_ids = {ep.id for ep in packed}
                     ev_ids = {f"{conv.conversation_id}:{e}" for e in q.evidence}
                     hits = len(ev_ids & packed_ids)
+                    text = "\n".join(ep.content for ep in packed).lower()
                     used = sum(approx_tokens(ep.content) + 1 for ep in packed)
                     cell[0] += 1
                     cell[1] += int(hits == len(ev_ids))
                     cell[2] += int(hits > 0)
-                    cell[3] += used
+                    cell[3] += int(bool(q.answer) and q.answer.lower() in text)
+                    cell[4] += used
     rows = []
-    for (name, budget), (n, all_hit, any_hit, tokens) in sorted(acc.items(), key=lambda kv: (kv[0][1], kv[0][0])):
+    for (name, budget), (n, all_hit, any_hit, ans, tokens) in sorted(acc.items(), key=lambda kv: (kv[0][1], kv[0][0])):
         rows.append(
             LocomoResultRow(
                 system=name, budget=budget, n=n, all_evidence_hit=all_hit,
-                any_evidence_hit=any_hit, avg_tokens_used=round(tokens / n, 1),
+                any_evidence_hit=any_hit, answer_in_context=ans,
+                avg_tokens_used=round(tokens / n, 1),
             )
         )
     return rows
