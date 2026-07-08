@@ -111,3 +111,19 @@ Executed 2026-07-08 14:35 by `scripts/holdout_eval.py`. Stack frozen on dev befo
 | 1000 | open-domain | 73 | 17.8% / 31.5% | 20.5% / 37.0% | 35.6% / 56.2% |
 | 1000 | single-hop | 641 | 55.4% / 59.1% | 55.5% / 59.1% | 92.2% / 93.3% |
 | 1000 | **TOTAL** | 1153 | **42.9% / 55.9%** | **43.4% / 56.9%** | **73.8% / 86.7%** |
+
+## Retrieval v2 shipped as product default (2026-07-08, regression check)
+
+The v2 stack now ships as the default search path in the SDK
+(MemoryClient, retrieval="hybrid"), the CLI (memsub search), and the MCP
+server (search_memory); the v1 dense-only path remains available via
+retrieval="dense" / --retrieval dense. Regression run before shipping
+(holdout seeds 6-10, n=150 per cell, executed 2026-07-08):
+
+- Part A clean recall with consolidation is unchanged under v2 retrieval:
+  98.0% clean / 98.7% recall / 0.0% stale at every budget 100-800, identical
+  to the previous policy+cons numbers.
+- Equivalence check: the refactored product HybridRetriever reproduces the
+  frozen benchmark stack exactly on the dev split (72.8 / 85.1 at 1000).
+- Full test suite: 111 tests passing, including audit-event logging
+  (retrieved + injected) on the new hybrid search path.
