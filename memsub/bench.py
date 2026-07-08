@@ -34,7 +34,7 @@ from typing import Protocol
 
 import numpy as np
 
-from .consolidate import consolidate
+from .consolidate import ConsolidationConfig, consolidate
 from .embed import Embedder, HashingEmbedder
 from .policy import approx_tokens
 from .store import Episode, EpisodicStore
@@ -92,7 +92,9 @@ class PolicySystem:
             store = EpisodicStore(":memory:")
             for ep in episodes:
                 store.append(ep)
-            consolidate(store, backend=None)
+            # dedup only: decay against wall-clock time is meaningless for
+            # benchmark datasets with synthetic timestamps
+            consolidate(store, backend=None, config=ConsolidationConfig(decay_value_threshold=0.0))
             episodes = store.active()
             store.close()
         self._index.add(sorted(episodes, key=lambda e: e.ts))
