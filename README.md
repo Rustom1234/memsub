@@ -23,19 +23,22 @@ their machine and repos every session.
 - **Audit**: every memory can answer "why do you exist and when were you
   used": provenance, every retrieval, every injection, every supersede or
   forget decision. `memsub audit <id>`, `memsub audit --recent`
-- **Policy under a hard token budget**: retrieval scoring (relevance x
-  bounded recency x bounded importance) and greedy packing under a hard cap,
-  benchmarked against naive baselines on held-out data. See
-  `docs/benchmark.md`; the headline: consolidation gets 98.0% clean recall
-  (right fact injected, no contradicting stale copy) where naive top-k gets
-  0.0%.
+- **Benchmarked retrieval under a hard token budget**: the default search
+  is a hybrid stack (stemmed BM25 + dense embeddings + temporal, speaker,
+  and session signals fused with reciprocal rank fusion), dependency-free
+  and measured with a dev/holdout protocol. Headlines from
+  `docs/benchmark.md`: 73.8% evidence-all / 86.7% evidence-any at a
+  1000-token budget on held-out LOCOMO conversations (vs 42.9% / 55.9% for
+  dense-only), and 98.0% clean recall with consolidation (right fact
+  injected, no contradicting stale copy) where naive top-k gets 0.0%.
+  `memsub search "<query>"`
 
 ## Install
 
 ```bash
 git clone <this repo> && cd memory-sublayer
 uv venv .venv && uv pip install -p .venv/bin/python -e .
-.venv/bin/python -m pytest   # 94 tests, all local, LLM calls mocked
+.venv/bin/python -m pytest   # 111 tests, all local, LLM calls mocked
 ```
 
 Dependencies: numpy. That is the list.
@@ -73,6 +76,7 @@ memsub extract session.jsonl --dry-run     # transcript -> candidate memories
 memsub extract session.jsonl               # ... and write them to the store
 memsub consolidate --dry-run               # propose dedup/supersede/forget
 memsub ns create shared:team --owner lead  # shared namespace with ACL
+memsub search "how do we run tests?"       # hybrid retrieval (v2, default)
 memsub audit --recent                      # what has memory been doing?
 memsub audit <memory-id>                   # why does this memory exist?
 memsub mcp                                 # the MCP stdio server
@@ -90,8 +94,10 @@ backend is swappable (`memsub/backends.py`):
 | mock | `--backend mock` | deterministic, zero cost, used by tests |
 
 Everything else (embeddings, retrieval, storage, consolidation dedup and
-decay) is local and deterministic: hashed bag-of-features embeddings + numpy
-cosine + SQLite. No embedding service, no API needed for recall.
+decay) is local and deterministic: stemmed BM25 + hashed bag-of-features
+embeddings + numpy cosine + SQLite, fused with reciprocal rank fusion. No
+embedding service, no API needed for recall. The v1 dense-only path stays
+available via `retrieval="dense"` (SDK) or `--retrieval dense` (CLI/MCP).
 
 ## Design
 

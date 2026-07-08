@@ -122,9 +122,11 @@ only claims what was measured.
    after freezing on dev): 73.8% evidence-all / 86.7% evidence-any at a
    1000-token budget vs 42.9% / 55.9% before (naive top-k: 43.4% / 56.9%),
    and 64.7% / 78.7% at 500 tokens. Every technique attempt, including the
-   two reverted ones, is logged in docs/benchmark.md. The stack lives in
-   the library (memsub.bench.HybridSystem); making it the SDK/MCP default
-   search is an open issue, not yet claimed as shipped.
+   two reverted ones, is logged in docs/benchmark.md. Shipped: the stack
+   (memsub.hybrid.HybridRetriever) is the default search path in the SDK,
+   the CLI (memsub search), and the MCP server, with the dense-only v1 path
+   behind a flag; the regression run confirmed clean recall (98.0%) and the
+   audit event trail are unchanged under the new default.
 6. **Audit and explainability.** Every memory answers "why do you exist":
    provenance from extraction (source, turn span, model, confidence), plus
    an event log of every retrieval, every injection (with query and budget),
