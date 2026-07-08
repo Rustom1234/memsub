@@ -25,8 +25,10 @@ CREATE TABLE IF NOT EXISTS episodes (
     kind TEXT NOT NULL,
     content TEXT NOT NULL,
     importance REAL NOT NULL DEFAULT 1.0,
-    provenance TEXT NOT NULL DEFAULT '{}'
+    provenance TEXT NOT NULL DEFAULT '{}',
+    namespace TEXT NOT NULL DEFAULT 'default'
 );
+CREATE INDEX IF NOT EXISTS idx_episodes_namespace ON episodes(namespace, ts);
 CREATE INDEX IF NOT EXISTS idx_episodes_run ON episodes(run_id, ts);
 CREATE INDEX IF NOT EXISTS idx_episodes_session ON episodes(session_id);
 CREATE TABLE IF NOT EXISTS memory_events (
@@ -76,6 +78,7 @@ class Episode:
     kind: str = "event"
     importance: float = 1.0
     provenance: dict[str, Any] = field(default_factory=dict)
+    namespace: str = "default"
     ts: float = 0.0
     id: str = ""
 
@@ -89,6 +92,7 @@ class Episode:
             kind=self.kind,
             importance=self.importance,
             provenance=self.provenance,
+            namespace=self.namespace,
             ts=ts,
             id=ep_id,
         )
@@ -100,14 +104,29 @@ class EpisodicStore:
     def __init__(self, path: str | Path = ":memory:") -> None:
         self.path = str(path)
         self._conn = sqlite3.connect(self.path)
+        self._migrate()
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
+
+    def _migrate(self) -> None:
+        """Add columns introduced after the first release to pre-existing DBs."""
+        row = self._conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='episodes'"
+        ).fetchone()
+        if row is None:
+            return
+        cols = {r[1] for r in self._conn.execute("PRAGMA table_info(episodes)")}
+        if "namespace" not in cols:
+            self._conn.execute(
+                "ALTER TABLE episodes ADD COLUMN namespace TEXT NOT NULL DEFAULT 'default'"
+            )
+            self._conn.commit()
 
     def append(self, episode: Episode) -> Episode:
         ep = episode.with_defaults()
         self._conn.execute(
-            "INSERT INTO episodes (id, ts, run_id, session_id, kind, content, importance, provenance)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO episodes (id, ts, run_id, session_id, kind, content, importance, provenance, namespace)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 ep.id,
                 ep.ts,
@@ -117,6 +136,7 @@ class EpisodicStore:
                 ep.content,
                 ep.importance,
                 json.dumps(ep.provenance, sort_keys=True),
+                ep.namespace,
             ),
         )
         self._conn.commit()
@@ -124,16 +144,21 @@ class EpisodicStore:
 
     def get(self, episode_id: str) -> Episode | None:
         row = self._conn.execute(
-            "SELECT id, ts, run_id, session_id, kind, content, importance, provenance"
+            "SELECT id, ts, run_id, session_id, kind, content, importance, provenance, namespace"
             " FROM episodes WHERE id = ?",
             (episode_id,),
         ).fetchone()
         return self._row_to_episode(row) if row else None
 
-    def all(self, run_id: str | None = None, kind: str | None = None) -> list[Episode]:
+    def all(
+        self,
+        run_id: str | None = None,
+        kind: str | None = None,
+        namespace: str | None = None,
+    ) -> list[Episode]:
         """Episodes in insertion (timestamp) order, oldest first."""
         query = (
-            "SELECT id, ts, run_id, session_id, kind, content, importance, provenance"
+            "SELECT id, ts, run_id, session_id, kind, content, importance, provenance, namespace"
             " FROM episodes WHERE 1=1"
         )
         params: list[Any] = []
@@ -143,6 +168,9 @@ class EpisodicStore:
         if kind is not None:
             query += " AND kind = ?"
             params.append(kind)
+        if namespace is not None:
+            query += " AND namespace = ?"
+            params.append(namespace)
         query += " ORDER BY ts ASC, id ASC"
         rows = self._conn.execute(query, params).fetchall()
         return [self._row_to_episode(r) for r in rows]
@@ -206,10 +234,15 @@ class EpisodicStore:
         ).fetchone()
         return row[0] if row else "active"
 
-    def active(self, run_id: str | None = None, kind: str | None = None) -> list[Episode]:
+    def active(
+        self,
+        run_id: str | None = None,
+        kind: str | None = None,
+        namespace: str | None = None,
+    ) -> list[Episode]:
         """Episodes with no terminal event, oldest first."""
         query = (
-            "SELECT id, ts, run_id, session_id, kind, content, importance, provenance"
+            "SELECT id, ts, run_id, session_id, kind, content, importance, provenance, namespace"
             " FROM episodes WHERE id NOT IN"
             " (SELECT episode_id FROM memory_events WHERE event IN (?, ?))"
         )
@@ -220,6 +253,9 @@ class EpisodicStore:
         if kind is not None:
             query += " AND kind = ?"
             params.append(kind)
+        if namespace is not None:
+            query += " AND namespace = ?"
+            params.append(namespace)
         query += " ORDER BY ts ASC, id ASC"
         rows = self._conn.execute(query, params).fetchall()
         return [self._row_to_episode(r) for r in rows]
@@ -241,4 +277,5 @@ class EpisodicStore:
             content=row[5],
             importance=row[6],
             provenance=json.loads(row[7]),
+            namespace=row[8] if len(row) > 8 else "default",
         )
