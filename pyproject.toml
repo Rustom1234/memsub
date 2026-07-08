@@ -5,6 +5,9 @@ description = "Local-first, zero-infrastructure memory for AI agents (SQLite + l
 requires-python = ">=3.12"
 dependencies = ["numpy"]
 
+[project.scripts]
+memsub = "memsub.cli:main"
+
 [project.optional-dependencies]
 dev = ["pytest", "matplotlib"]
 api = ["anthropic"]
