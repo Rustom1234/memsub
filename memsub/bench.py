@@ -164,6 +164,7 @@ class HybridSystem:
         bm25_weight: float = 1.0,
         temporal: bool = False,
         temporal_weight: float = 1.0,
+        speaker_boost: float = 0.0,
         name: str | None = None,
     ) -> None:
         self.name = name or ("hybrid-temporal" if temporal else "hybrid-rrf")
@@ -171,8 +172,10 @@ class HybridSystem:
         self.weights = [dense_weight, bm25_weight]
         self.temporal = temporal
         self.temporal_weight = temporal_weight
+        self.speaker_boost = speaker_boost
         self._policy = PolicySystem(**(policy_params or {}))
         self._bm25: BM25Index | None = None
+        self._speakers: set[str] = set()
 
     def ingest(self, episodes: list[Episode]) -> None:
         self._policy.ingest(episodes)
@@ -183,6 +186,10 @@ class HybridSystem:
         else:
             docs = [ep.content for ep in eps]
         self._bm25 = BM25Index(docs)
+        # speaker name = content prefix before the first ':' (LOCOMO-style turns)
+        self._speakers = {
+            ep.content.split(":", 1)[0].strip().lower() for ep in eps if ":" in ep.content[:40]
+        }
 
     def _date_match_order(self, query: str, dense_order: list[int]) -> list[int] | None:
         """Turns whose session date matches an explicit date in the query,
@@ -213,6 +220,17 @@ class HybridSystem:
             if date_order is not None:
                 rankings.append(date_order)
                 weights.append(self.temporal_weight)
+        if self.speaker_boost > 0:
+            mentioned = {s for s in self._speakers if s and s in query.lower()}
+            if len(mentioned) == 1:
+                name = next(iter(mentioned))
+                by_speaker = [
+                    i for i in bm25_order
+                    if eps[i].content.lower().startswith(name + ":")
+                ]
+                if by_speaker:
+                    rankings.append(by_speaker)
+                    weights.append(self.speaker_boost)
         return rrf_fuse(rankings, k=self.rrf_k, weights=weights)
 
     def inject(self, query: str, budget_tokens: int) -> list[Episode]:
