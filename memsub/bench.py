@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import json
 import random
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
@@ -161,17 +162,42 @@ class HybridSystem:
         rrf_k: int = 60,
         dense_weight: float = 1.0,
         bm25_weight: float = 1.0,
-        name: str = "hybrid-rrf",
+        temporal: bool = False,
+        temporal_weight: float = 1.0,
+        name: str | None = None,
     ) -> None:
-        self.name = name
+        self.name = name or ("hybrid-temporal" if temporal else "hybrid-rrf")
         self.rrf_k = rrf_k
         self.weights = [dense_weight, bm25_weight]
+        self.temporal = temporal
+        self.temporal_weight = temporal_weight
         self._policy = PolicySystem(**(policy_params or {}))
         self._bm25: BM25Index | None = None
 
     def ingest(self, episodes: list[Episode]) -> None:
         self._policy.ingest(episodes)
-        self._bm25 = BM25Index([ep.content for ep in self._policy._index.episodes])
+        eps = self._policy._index.episodes
+        if self.temporal:
+            # ranking sees session dates; packed content does not pay for them
+            docs = [f"{ep.provenance.get('session_date', '')} {ep.content}" for ep in eps]
+        else:
+            docs = [ep.content for ep in eps]
+        self._bm25 = BM25Index(docs)
+
+    def _date_match_order(self, query: str, dense_order: list[int]) -> list[int] | None:
+        """Turns whose session date matches an explicit date in the query,
+        in dense-rank order. None when the query names no date."""
+        m = _DATE_RE.search(query)
+        if not m:
+            return None
+        wanted = {p.lower() for p in m.groups() if p}
+        eps = self._policy._index.episodes
+        matching = []
+        for i in dense_order:
+            date_tokens = {t.lower() for t in eps[i].provenance.get("session_date", "").split()}
+            if wanted and wanted <= date_tokens:
+                matching.append(i)
+        return matching or None
 
     def rank(self, query: str) -> list[int]:
         eps = self._policy._index.episodes
@@ -180,7 +206,14 @@ class HybridSystem:
         dense_order = self._policy.rank(query)
         bm = self._bm25.scores(query)
         bm25_order = sorted(range(len(eps)), key=lambda i: (-bm[i], i))
-        return rrf_fuse([dense_order, bm25_order], k=self.rrf_k, weights=self.weights)
+        rankings = [dense_order, bm25_order]
+        weights = list(self.weights)
+        if self.temporal:
+            date_order = self._date_match_order(query, dense_order)
+            if date_order is not None:
+                rankings.append(date_order)
+                weights.append(self.temporal_weight)
+        return rrf_fuse(rankings, k=self.rrf_k, weights=weights)
 
     def inject(self, query: str, budget_tokens: int) -> list[Episode]:
         eps = self._policy._index.episodes
@@ -405,8 +438,29 @@ class LocomoConversation:
     qa: list[LocomoQA] = field(default_factory=list)
 
 
+_MONTHS = "january february march april may june july august september october november december".split()
+_DATE_RE = re.compile(
+    r"(?:(\d{1,2})\s+)?(" + "|".join(m.capitalize() for m in _MONTHS) + r")(?:,?\s+(\d{4}))?",
+)
+
+
+def parse_session_date(raw: str) -> str:
+    """Extract 'D Month YYYY' (as much as present) from a LOCOMO session header
+    like '1:56 pm on 8 May, 2023'. Returns '' when nothing parses."""
+    m = _DATE_RE.search(raw or "")
+    if not m:
+        return ""
+    day, month, year = m.group(1), m.group(2), m.group(3)
+    parts = [p for p in (day, month, year) if p]
+    return " ".join(parts)
+
+
 def load_locomo(path: str | Path) -> list[LocomoConversation]:
-    """Parse the LOCOMO dataset into turn-level episodes + QA with evidence ids."""
+    """Parse the LOCOMO dataset into turn-level episodes + QA with evidence ids.
+
+    The session date (e.g. '8 May 2023') is stored in each episode's
+    provenance under 'session_date'; retrieval systems may use it, the packed
+    content does not include it (the budget is not charged for metadata)."""
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     out: list[LocomoConversation] = []
     for item in data:
@@ -420,6 +474,9 @@ def load_locomo(path: str | Path) -> list[LocomoConversation]:
             turns = conversation.get(f"session_{session_idx}")
             if turns is None:
                 break
+            session_date = parse_session_date(
+                str(conversation.get(f"session_{session_idx}_date_time", ""))
+            )
             for turn in turns:
                 ts += 1.0
                 text = str(turn.get("text", "")).strip()
@@ -433,6 +490,7 @@ def load_locomo(path: str | Path) -> list[LocomoConversation]:
                         session_id=f"session_{session_idx}",
                         kind="turn",
                         importance=1.0,
+                        provenance={"session_date": session_date} if session_date else {},
                         ts=ts,
                         id=f"{cid}:{dia_id}",
                     )
