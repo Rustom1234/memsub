@@ -90,14 +90,21 @@ class PolicySystem:
         recency_weight: float = 0.995,
         recency_floor: float = 0.0,
         importance_floor: float = 0.0,
+        dedup_threshold: float = 0.92,
         consolidated: bool = False,
+        consolidation_backend=None,
         name: str | None = None,
     ) -> None:
-        self.name = name or ("policy+cons" if consolidated else "policy")
+        default_name = "policy+cons" if consolidated else "policy"
+        if consolidated and consolidation_backend is not None:
+            default_name = "policy+cons(llm)"
+        self.name = name or default_name
         self.recency_weight = recency_weight
         self.recency_floor = recency_floor
         self.importance_floor = importance_floor
+        self.dedup_threshold = dedup_threshold
         self.consolidated = consolidated
+        self.consolidation_backend = consolidation_backend
         self._index = _Index()
 
     def ingest(self, episodes: list[Episode]) -> None:
@@ -105,9 +112,16 @@ class PolicySystem:
             store = EpisodicStore(":memory:")
             for ep in episodes:
                 store.append(ep)
-            # dedup only: decay against wall-clock time is meaningless for
-            # benchmark datasets with synthetic timestamps
-            consolidate(store, backend=None, config=ConsolidationConfig(decay_value_threshold=0.0))
+            # dedup (and, with a backend, the LLM contradiction pass); decay is
+            # disabled because wall-clock age is meaningless for benchmark
+            # datasets with synthetic timestamps
+            consolidate(
+                store,
+                backend=self.consolidation_backend,
+                config=ConsolidationConfig(
+                    dedup_threshold=self.dedup_threshold, decay_value_threshold=0.0
+                ),
+            )
             episodes = store.active()
             store.close()
         self._index.add(sorted(episodes, key=lambda e: e.ts))

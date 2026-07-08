@@ -43,6 +43,7 @@ GRID = {
     "recency_weight": [0.99, 0.995, 0.999],
     "recency_floor": [0.0, 0.25, 0.5, 0.75, 0.9],
     "importance_floor": [0.0, 0.5, 0.9],
+    "dedup_threshold": [0.85, 0.88, 0.92],
 }
 
 
@@ -73,6 +74,8 @@ def main() -> int:
     parser.add_argument("--locomo", default=str(ROOT / "data" / "locomo10.json"))
     parser.add_argument("--out", default=str(ROOT / "docs" / "benchmark.md"))
     parser.add_argument("--json-out", default=str(ROOT / "results" / "benchmark.json"))
+    parser.add_argument("--no-llm-row", action="store_true",
+                        help="skip the policy+cons(llm) row (real claude CLI contradiction pass)")
     args = parser.parse_args()
 
     t0 = time.time()
@@ -85,12 +88,25 @@ def main() -> int:
     best_params, dev_score = sweep(dev_convs)
     print(f"  chosen: {best_params} (dev score {dev_score:.3f})", flush=True)
 
+    import shutil
+
+    llm_row = not args.no_llm_row and shutil.which("claude") is not None
+
     def systems_factory(consolidated_row: bool = True):
+        from memsub.backends import ClaudeCLIBackend
         from memsub.bench import NaiveTopKSystem, RecentFirstSystem
 
         systems = [PolicySystem(**best_params)]
         if consolidated_row:
             systems.append(PolicySystem(**best_params, consolidated=True))
+            if llm_row:
+                systems.append(
+                    PolicySystem(
+                        **best_params,
+                        consolidated=True,
+                        consolidation_backend=ClaudeCLIBackend(model="haiku"),
+                    )
+                )
         systems.extend([NaiveTopKSystem(), RecentFirstSystem()])
         return systems
 
@@ -121,6 +137,8 @@ def main() -> int:
     lines.append("")
     lines.append("Systems: `policy` (relevance x bounded-recency x bounded-importance scoring, greedy packing), "
                  "`policy+cons` (same, after an offline consolidation dedup pass), "
+                 "`policy+cons(llm)` (same, dedup plus the real claude-CLI haiku contradiction pass, "
+                 "i.e. the full shipping pipeline; one LLM call per seed), "
                  "`naive-topk` (store everything, rank by cosine relevance only), "
                  "`recent` (newest-first stuffing, no search). "
                  "Same local hashing embedder and same hard chars/4 token budget everywhere; "
