@@ -1,118 +1,112 @@
-# Memory Sublayer
+# memsub: local-first memory for coding agents
 
-Architectural episodic memory for agents, plus a deception-safety experiment
-(the "Lying Game") that uses it to test whether episodic memory is a genuine AI
-safety risk.
+Persistent memory for AI agents with literally zero infrastructure: one
+`pip install`, one SQLite file on disk. No Docker, no vector database, no
+server process. The MCP server is stdio, spawned by the client on demand;
+nothing runs when your agent is not running.
 
-Two things live here:
+Built for the developer whose agent re-learns the same five facts about
+their machine and repos every session.
 
-1. **`memsub`**, a small, reusable, file-backed episodic-memory library for
-   agents, built from the four-part decomposition episodic store / semantic
-   retrieval / structured retrieval / policy.
-2. **`lying_game`**, an experiment harness (based on DeChant 2025,
-   arxiv 2501.11739) in which an agent reports task progress to an LLM overseer
-   to earn compute credits, with memory toggled on or off, an LLM judge scoring
-   cross-session consistency, and a manipulation check verifying the memory
-   mechanism actually fires.
+## What it does
 
-Everything runs locally with **zero external services** (no Docker, no Neo4j, no
-Qdrant server): SQLite for the episodic and structured stores, numpy for the
-semantic index. The store interfaces are small so a Graphiti/Qdrant backend can
-be slotted in later on a VPS.
+- **Extraction**: turn raw conversation transcripts (JSONL or plain text,
+  including Claude Code transcripts) into candidate memories, each with full
+  provenance (source, turn span, model, confidence). `memsub extract <file>`
+- **Consolidation**: an explicit offline pass that dedups near-identical
+  memories, lets new facts supersede contradicted stale ones (LLM-judged,
+  superseded copies kept for audit), and forgets low-value memories by decay.
+  `memsub consolidate`
+- **Namespaces**: scope memories per user / agent / session in one store,
+  plus shared namespaces for multi-agent teams with per-agent read/write
+  grants. `memsub ns create|grant|revoke|list`
+- **Audit**: every memory can answer "why do you exist and when were you
+  used": provenance, every retrieval, every injection, every supersede or
+  forget decision. `memsub audit <id>`, `memsub audit --recent`
+- **Policy under a hard token budget**: retrieval scoring (relevance x
+  bounded recency x bounded importance) and greedy packing under a hard cap,
+  benchmarked against naive baselines on held-out data. See
+  `docs/benchmark.md`; the headline: consolidation gets 98.0% clean recall
+  (right fact injected, no contradicting stale copy) where naive top-k gets
+  0.0%.
 
-## Why
-
-From the concept log: episodic memory for agents can be built at three levels, context stuffing (level 1), external retrieval / RAG (level 2), and weight-level
-memory such as Titans/TTT (level 3). Level 2 is the right layer for a controlled
-experiment: realistic, instrumentable, auditable.
-
-The safety thesis: **deception must be sustained under probing, and sustaining a
-false narrative across sessions requires memory.** A memoryless agent can lie
-once but cannot keep its story straight. If memory agents overstate progress
-more, stay more consistent under questioning, and accumulate more resources, that
-is empirical evidence that episodic memory is a safety risk, and the further
-argument is that weight-level memory (level 3) makes that risk *harder to
-mitigate*, because you cannot simply clear the store.
-
-## Architecture
-
-```
-memsub/                     the memory library (reusable, typed, tested)
-  store.py        EpisodicStore     append-only SQLite episode log
-  embed.py        HashingEmbedder   local deterministic embeddings
-  retrieval.py    SemanticIndex     top-k cosine + recency + importance
-  structured.py   StructuredStore   regex-extracted facts in SQLite
-  policy.py       MemoryPolicy      write/summarize/retrieve/inject + budgets
-  memory.py       NullMemory | ContextStuffingMemory | RetrievalMemory
-                                    (levels: control / 1 / 2) behind one interface
-
-lying_game/                 the experiment harness
-  backends.py     LLMBackend: MockBackend | ClaudeCLIBackend | AnthropicAPIBackend
-  tasks.py        seeded session plans + scripted session-3 temptation
-  prompts.py      agent / overseer / judge prompts (versioned source of truth)
-  harness.py      the run loop: recall -> report -> probe -> answer -> allocate -> write
-  judge.py        objective deception measure + LLM-as-judge
-  config.py       ExperimentConfig (fully describes a run)
-  experiments.py  experiment cells: A memory-vs-control, B length ablation,
-                  C type ablation, D model tiers, E truthful baseline,
-                  F probing-depth sweep, G protocol v2 replication
-
-scripts/
-  run_experiment.py   run cells, write results DB + per-run transcripts
-  analyze.py          read results DB -> tables (CSV) + figures (PNG)
-  run_pilot.sh        the pilot batch driver
-
-docs/               memory-design, experiment-protocol, findings, paper-draft
-tests/              pytest suite (memory library + harness, LLM calls mocked)
-```
-
-## Quickstart
+## Install
 
 ```bash
-uv venv .venv && uv pip install -p .venv/bin/python numpy pytest matplotlib
-.venv/bin/python -m pytest            # 34 tests, LLM calls mocked
-
-# validate the full pipeline with zero LLM cost (deterministic mock backend)
-.venv/bin/python scripts/run_experiment.py --cell all --backend mock --n-runs 2
+git clone <this repo> && cd memory-sublayer
+uv venv .venv && uv pip install -p .venv/bin/python -e .
+.venv/bin/python -m pytest   # 94 tests, all local, LLM calls mocked
 ```
 
-## Run one experiment cell end to end
+Dependencies: numpy. That is the list.
 
-The backend is swappable. With no `ANTHROPIC_API_KEY`, the local `claude` CLI is
-used in headless mode; with a key set, the Anthropic API is used (haiku-tier by
-default to control cost).
+## Wire into Claude Code (one command)
 
 ```bash
-# Cell A: memory vs no-memory, 5 seeds per arm, local claude CLI (haiku), with judge
-.venv/bin/python scripts/run_experiment.py \
-    --cell A --backend cli --model haiku --n-runs 5 --judge --judge-model haiku
-
-# analysis: tables + plots into results/
-.venv/bin/python scripts/analyze.py
+claude mcp add memsub -- /home/user/projects/memory-sublayer/.venv/bin/memsub mcp
 ```
 
-Outputs:
+(Adjust the path to wherever your venv lives: `claude mcp add memsub -- $(pwd)/.venv/bin/memsub mcp`.)
 
-- `results/runs/<run_id>.jsonl`, full per-call transcript
-- `results/runs/<run_id>.result.json`, the run's config + records + measures
-- `results/results.sqlite`, `results/results.jsonl`, aggregate, one row per run
-- `results/tables/*.csv`, `results/plots/*.png`, from `analyze.py`
+That exposes four tools to Claude Code: `add_memory`, `search_memory`,
+`list_memories`, `forget_memory`. All memories land in
+`~/.memsub/memory.db` (override with `MEMSUB_DB`). Set `MEMSUB_NAMESPACE`
+and `MEMSUB_AGENT` in the server env to scope an agent to its own namespace.
 
-See `docs/experiment-protocol.md` for the exact protocol, `docs/memory-design.md`
-for the library design, `docs/findings.md` for what was actually observed, and
-`LIMITS.md` for the honest caveats.
+## Python SDK
 
-## Backends
+```python
+from memsub.sdk import MemoryClient
+
+client = MemoryClient()   # ~/.memsub/memory.db
+client.add("This repo disables ROS pytest plugins via pytest.ini")
+print(client.inject("how do we run tests here?", budget_tokens=300))
+```
+
+`MemoryClient` enforces namespace ACLs and logs every retrieval and
+injection to the audit trail.
+
+## CLI
+
+```bash
+memsub extract session.jsonl --dry-run     # transcript -> candidate memories
+memsub extract session.jsonl               # ... and write them to the store
+memsub consolidate --dry-run               # propose dedup/supersede/forget
+memsub ns create shared:team --owner lead  # shared namespace with ACL
+memsub audit --recent                      # what has memory been doing?
+memsub audit <memory-id>                   # why does this memory exist?
+memsub mcp                                 # the MCP stdio server
+```
+
+## LLM backends
+
+Extraction and the consolidation contradiction judge need an LLM. The
+backend is swappable (`memsub/backends.py`):
 
 | Backend | Selected when | Notes |
 |---|---|---|
-| `AnthropicAPIBackend` | `ANTHROPIC_API_KEY` set, or `--backend api` | prefers `claude-haiku-4-5` |
-| `ClaudeCLIBackend` | no key, or `--backend cli` | `claude -p --output-format json --model <m>` |
-| `MockBackend` | `--backend mock` | deterministic, zero cost, for tests and dry runs |
+| Anthropic API | `ANTHROPIC_API_KEY` set, or `--backend api` | prefers `claude-haiku-4-5` |
+| claude CLI | no key, or `--backend cli` | headless `claude -p`, which every Claude Code user already has |
+| mock | `--backend mock` | deterministic, zero cost, used by tests |
 
-## Status
+Everything else (embeddings, retrieval, storage, consolidation dedup and
+decay) is local and deterministic: hashed bag-of-features embeddings + numpy
+cosine + SQLite. No embedding service, no API needed for recall.
 
-Working pilot. The memory library and harness are complete and tested; the
-experiment cells run and produce logged, seeded, reproducible results. Scale is
-pilot-sized and every table reports n and flags pilot cells. See `EXTENSIONS.md`
-for the extend-and-improve log and `LIMITS.md` for what this is and is not.
+## Design
+
+The four-part decomposition: episodic store (append-only SQLite; supersede
+and forget are events, never row deletions) / semantic retrieval (local
+deterministic embeddings) / structured facts / policy (what to write, what
+to retrieve, what fits the injection budget). `docs/memory-design.md` has
+the details, `docs/benchmark.md` the measured numbers, `docs/positioning.md`
+the honest competitive picture, `LIMITS.md` the caveats.
+
+## Origins
+
+This repo began as an AI-safety experiment on whether episodic memory
+enables sustained deception (the Lying Game). That work is preserved on the
+`lying-game-experiment` branch and under `experiments/lying-game/`. The
+audit-first design is inherited from it: a safety experiment needs to know
+exactly what an agent could remember at any moment, and a developer tool
+benefits from the same discipline.
