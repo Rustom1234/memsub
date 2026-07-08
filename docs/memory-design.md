@@ -1,10 +1,35 @@
 # memsub: memory design
 
-`memsub` is a small, file-backed episodic-memory library for agents. It exists
-to make the memory layer of the Lying Game experiment a real, reusable
-component rather than experiment glue, and to make the memory mechanism
-auditable (a requirement for safety research: we need to know exactly what the
-agent could remember at the moment of any decision).
+`memsub` is a small, file-backed episodic-memory library for agents. It began
+as the memory layer of the Lying Game experiment (preserved under
+`experiments/lying-game/`) and is now the product: local-first, zero-infra
+memory served over MCP. The audit requirement is inherited from the safety
+work: we need to know exactly what the agent could remember at the moment of
+any decision.
+
+## Product modules (on top of the four-part core below)
+
+- `backends.py`: swappable LLM interface (Anthropic API / claude CLI headless
+  / deterministic mock) used by extraction and consolidation.
+- `extraction.py`: transcript (JSONL incl. Claude Code shape, or plain text)
+  to candidate memories with provenance (source, turn span, model, confidence).
+- `consolidate.py`: offline pass: embedding dedup (newest wins), LLM-judged
+  contradiction supersede (newer beats stale, superseded kept for audit),
+  half-life decay with retrieval-count protection. All decisions are events.
+- `namespaces.py`: per user/agent/session scoping plus shared namespaces with
+  per-agent read/write grants; `MemoryScope` enforces the ACL.
+- `audit.py`: `log_recall` records every retrieval/injection; `memsub audit`
+  renders provenance + status + the full event trail per memory.
+- `sdk.py`: `MemoryClient`, the one-class Python API (add/search/inject/list/
+  forget/audit) used by the CLI and the MCP server.
+- `mcp_server.py`: stdlib-only MCP stdio server exposing add_memory /
+  search_memory / list_memories / forget_memory.
+- `bench.py` + `scripts/run_benchmark.py`: the policy-vs-naive benchmark
+  (docs/benchmark.md); scoring defaults in the SDK come from its dev sweep.
+
+The episodic store gained an event log (`memory_events`): supersede, forget,
+retrieve, inject are recorded as events and active status is derived, so the
+episode table stays append-only and the audit trail is complete.
 
 ## The four-part decomposition
 
