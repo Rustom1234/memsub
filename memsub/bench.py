@@ -165,6 +165,10 @@ class HybridSystem:
         temporal: bool = False,
         temporal_weight: float = 1.0,
         speaker_boost: float = 0.0,
+        prf_weight: float = 0.0,
+        prf_docs: int = 10,
+        prf_terms: int = 8,
+        session_weight: float = 0.0,
         name: str | None = None,
     ) -> None:
         self.name = name or ("hybrid-temporal" if temporal else "hybrid-rrf")
@@ -173,6 +177,12 @@ class HybridSystem:
         self.temporal = temporal
         self.temporal_weight = temporal_weight
         self.speaker_boost = speaker_boost
+        self.prf_weight = prf_weight
+        self.prf_docs = prf_docs
+        self.prf_terms = prf_terms
+        self.session_weight = session_weight
+        self._session_bm25: BM25Index | None = None
+        self._session_ids: list[str] = []
         self._policy = PolicySystem(**(policy_params or {}))
         self._bm25: BM25Index | None = None
         self._speakers: set[str] = set()
@@ -190,6 +200,13 @@ class HybridSystem:
         self._speakers = {
             ep.content.split(":", 1)[0].strip().lower() for ep in eps if ":" in ep.content[:40]
         }
+        if self.session_weight > 0:
+            # session-as-pseudo-document index (multi-granularity, RAPTOR-lite)
+            by_session: dict[str, list[str]] = {}
+            for ep in eps:
+                by_session.setdefault(ep.session_id, []).append(ep.content)
+            self._session_ids = list(by_session)
+            self._session_bm25 = BM25Index([" ".join(v) for v in by_session.values()])
 
     def _date_match_order(self, query: str, dense_order: list[int]) -> list[int] | None:
         """Turns whose session date matches an explicit date in the query,
@@ -231,6 +248,41 @@ class HybridSystem:
                 if by_speaker:
                     rankings.append(by_speaker)
                     weights.append(self.speaker_boost)
+        if self.session_weight > 0 and self._session_bm25 is not None:
+            s_scores = self._session_bm25.scores(query)
+            session_rank = {
+                sid: r
+                for r, sid in enumerate(
+                    sorted(self._session_ids, key=lambda s: -s_scores[self._session_ids.index(s)])
+                )
+            }
+            # turns ordered by their session's relevance, ties broken by bm25 order
+            bm_pos = {i: p for p, i in enumerate(bm25_order)}
+            session_order = sorted(
+                range(len(eps)), key=lambda i: (session_rank[eps[i].session_id], bm_pos[i])
+            )
+            rankings.append(session_order)
+            weights.append(self.session_weight)
+        if self.prf_weight > 0:
+            # pseudo-relevance feedback (RM3 lineage): expand the query with
+            # the most characteristic terms of the top-ranked docs, rerank
+            base_order = rrf_fuse(rankings, k=self.rrf_k, weights=weights)
+            from collections import Counter
+
+            from .lexical import tokenize
+
+            q_terms = set(tokenize(query))
+            term_scores: Counter = Counter()
+            for i in base_order[: self.prf_docs]:
+                for t in set(tokenize(eps[i].content)):
+                    if t not in q_terms:
+                        term_scores[t] += self._bm25._idf.get(t, 0.0)
+            expansion = [t for t, _ in term_scores.most_common(self.prf_terms)]
+            if expansion:
+                exp_scores = self._bm25.scores(query + " " + " ".join(expansion))
+                exp_order = sorted(range(len(eps)), key=lambda i: (-exp_scores[i], i))
+                rankings.append(exp_order)
+                weights.append(self.prf_weight)
         return rrf_fuse(rankings, k=self.rrf_k, weights=weights)
 
     def inject(self, query: str, budget_tokens: int) -> list[Episode]:
