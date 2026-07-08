@@ -135,6 +135,14 @@ def _cmd_audit(args: argparse.Namespace) -> int:
         store.close()
 
 
+def _cmd_mcp(args: argparse.Namespace) -> int:
+    from .mcp_server import serve
+    from .sdk import MemoryClient
+
+    client = MemoryClient(db_path=args.db) if args.db else MemoryClient()
+    return serve(client)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="memsub", description="local-first memory for agents")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -193,6 +201,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_aud.add_argument("--limit", type=int, default=20, help="events to show with --recent")
     p_aud.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
     p_aud.set_defaults(func=_cmd_audit)
+
+    p_mcp = sub.add_parser("mcp", help="run the MCP stdio server (for claude mcp add)")
+    p_mcp.add_argument("--db", default=None, help="SQLite store path (default: $MEMSUB_DB or ~/.memsub/memory.db)")
+    p_mcp.set_defaults(func=_cmd_mcp)
 
     return parser
 
