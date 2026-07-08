@@ -6,3 +6,4 @@
 {"id":"int-8c3e7b65","kind":"field_change","created_at":"2026-07-07T19:27:45.230927835Z","actor":"Rustom Dubash","issue_id":"memory-sublayer-3oq","extra":{"field":"status","new_value":"in_progress","old_value":"open"}}
 {"id":"int-214482a6","kind":"field_change","created_at":"2026-07-07T19:27:45.921268655Z","actor":"Rustom Dubash","issue_id":"memory-sublayer-anm","extra":{"field":"status","new_value":"in_progress","old_value":"open"}}
 {"id":"int-d7b5a7ac","kind":"field_change","created_at":"2026-07-07T19:27:46.588448454Z","actor":"Rustom Dubash","issue_id":"memory-sublayer-drt","extra":{"field":"status","new_value":"in_progress","old_value":"open"}}
+{"id":"int-c064843b","kind":"field_change","created_at":"2026-07-08T08:00:12.36069694Z","actor":"Rustom Dubash","issue_id":"memory-sublayer-byd","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Closed"}}
