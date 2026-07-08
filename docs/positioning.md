@@ -80,6 +80,58 @@ existence. Ship the benchmark with the product; let the numbers make the
 argument. If policy-vs-naive shows no gap on realistic workloads, drop the
 crown-jewel language.
 
+UPDATE (2026-07-08, after the benchmark ran, docs/benchmark.md): the numbers
+are in and they split the claim. Retrieval SCORING is not the edge: the tuned
+policy ties naive relevance-only retrieval on LOCOMO within 1pp. The
+WRITE/UPDATE policy is: consolidation reaches 98.0% clean recall under hard
+budgets where naive top-k reaches 0.0%, because naive injects every stale
+version of a fact alongside the fresh one. Crown-jewel language is therefore
+retired for scoring and earned for consolidation + audit. The section below
+only claims what was measured.
+
+## Selling points (each backed by something built and measured here)
+
+1. **Local-first privacy.** Memories never leave the machine: one SQLite
+   file, local deterministic embeddings, numpy cosine. Recall requires no
+   API call at all. The only LLM touchpoints (extraction, the consolidation
+   contradiction judge) default to the claude CLI the user already runs, and
+   are swappable or skippable (`--no-llm`).
+2. **Zero infrastructure.** The runtime dependency list is numpy. No Docker,
+   no Postgres, no vector DB, no daemon; the MCP server is stdio, spawned on
+   demand, gone when the client exits. The nearest incumbent local offering
+   (OpenMemory) ships as a Docker compose stack with a vector store and
+   Postgres.
+3. **One-command Claude Code integration.**
+   `claude mcp add memsub -- <venv>/bin/memsub mcp` and the agent has
+   add/search/list/forget with namespaces. Verified against a real stdio
+   handshake in the test suite.
+4. **Measured freshness under a hard token budget.** On held-out data
+   (n=150 queries per cell, 5 seeds), consolidation + policy packing gets
+   98.0% clean recall (the correct, current fact injected with no
+   contradicting stale copy) at every budget from 100 to 800 tokens; a naive
+   store-everything top-k baseline gets 0.0% clean because it packs stale
+   versions alongside fresh ones. Honest flip side, same doc: on LOCOMO
+   evidence recall the scoring blend ties naive relevance-only retrieval
+   (55.9% vs 56.9% evidence-any at budget 1000, n=1153); retrieval scoring
+   is not the differentiator, the write/update policy is. All numbers from
+   executed runs with a dev/holdout split (docs/benchmark.md).
+5. **Audit and explainability.** Every memory answers "why do you exist":
+   provenance from extraction (source, turn span, model, confidence), plus
+   an event log of every retrieval, every injection (with query and budget),
+   and every supersede/forget decision (with reason and superseding id).
+   Nothing is ever deleted, so `memsub audit <id>` reconstructs the full
+   story. Inherited from this repo's safety-experiment DNA.
+6. **Shared namespaces for multi-agent teams.** One store, several agents:
+   per-user/agent/session scoping plus shared namespaces with per-agent
+   read/write grants, enforced in the SDK and MCP server. Scoped honestly:
+   accident isolation between cooperating local agents, not a security
+   boundary against a process that can open the file.
+
+Not claimed, deliberately: no "beats mem0" (the comparison could not be run
+fairly on this machine and the doc says exactly why), no latency numbers
+(unmeasured), no quality claims about the hashing embedder beyond what
+LOCOMO shows.
+
 ## What validates this
 
 Rustom wiring it into his own Claude Code as the memory backend and still

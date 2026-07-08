@@ -74,3 +74,27 @@ interpretation and should be stated wherever cell B is reported.
   sampled. Seeds fix the task plan and ground truth (so conditions are
   comparable within a seed), but the model's text varies run to run. Report
   means over seeds, not single runs.
+
+## Product (memsub) limitations, added 2026-07-08
+
+- **The hashing embedder is the recall ceiling.** On LOCOMO evidence recall
+  the best system reaches 56.9% evidence-any at a 1000-token budget; a
+  learned embedding model would likely lift every system. The `Embedder`
+  protocol is the swap point. No claim is made that absolute LOCOMO numbers
+  are competitive with API-embedding systems; the benchmark isolates the
+  selection policy, holding the embedder fixed.
+- **Token budgets are chars/4.** Same approximation as the experiment. Real
+  tokenizers differ per model; the hard cap is honest but approximate.
+- **`answer-in-ctx` is a noisy metric.** Verbatim substring match of the gold
+  answer misses paraphrases ("May 7" vs "7 May 2023"). It is reported because
+  it is computed identically for every system, not because it is precise.
+- **Namespace ACLs are not security.** Any process that can open the SQLite
+  file bypasses them. They exist to prevent accidents between cooperating
+  agents sharing one store.
+- **Consolidation contradiction detection needs an LLM.** The deterministic
+  dedup pass catches near-identical wording only; with `--no-llm` the
+  contradiction pass is skipped entirely. The LLM judge itself is only as
+  reliable as the model used (haiku in the shipped default).
+- **Extraction quality is unmeasured.** The extraction prompt and parsing are
+  tested mechanically (mocked LLM), and smoke-tested live, but there is no
+  labeled dataset measuring extraction precision/recall yet.
