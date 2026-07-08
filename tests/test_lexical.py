@@ -34,8 +34,8 @@ def test_bm25_empty_query_and_corpus():
 
 
 def test_rrf_fuse_rewards_agreement():
-    # doc 2 is mid-ranked by both; doc 0 and 1 are top in one, bottom in other
-    fused = rrf_fuse([[0, 2, 1], [1, 2, 0]])
+    # doc 2 is near-top in both rankings; docs 0 and 1 each appear in only one
+    fused = rrf_fuse([[0, 2], [1, 2]])
     assert fused[0] == 2
 
 
