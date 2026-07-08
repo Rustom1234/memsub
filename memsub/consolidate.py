@@ -101,15 +101,32 @@ def consolidate(
     config: ConsolidationConfig | None = None,
     embedder: Embedder | None = None,
     run_id: str | None = None,
+    namespace: str | None = None,
     now: float | None = None,
     dry_run: bool = False,
 ) -> list[Action]:
-    """Run the full consolidation pass. Returns the actions taken (or proposed)."""
+    """Run the full consolidation pass. Returns the actions taken (or proposed).
+
+    Consolidation never crosses namespace boundaries when namespace is given;
+    with namespace=None it treats each namespace separately.
+    """
     cfg = config or ConsolidationConfig()
     emb = embedder or HashingEmbedder()
     now = now if now is not None else time.time()
 
-    episodes = store.active(run_id=run_id)
+    if namespace is None:
+        namespaces = sorted({ep.namespace for ep in store.active(run_id=run_id)})
+        actions: list[Action] = []
+        for ns in namespaces:
+            actions.extend(
+                consolidate(
+                    store, backend=backend, config=cfg, embedder=emb,
+                    run_id=run_id, namespace=ns, now=now, dry_run=dry_run,
+                )
+            )
+        return actions
+
+    episodes = store.active(run_id=run_id, namespace=namespace)
     actions: list[Action] = []
     if not episodes:
         return actions

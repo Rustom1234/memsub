@@ -59,7 +59,7 @@ class CandidateMemory:
     confidence: float
     provenance: dict[str, Any] = field(default_factory=dict)
 
-    def to_episode(self, run_id: str, session_id: str) -> Episode:
+    def to_episode(self, run_id: str, session_id: str, namespace: str = "default") -> Episode:
         return Episode(
             content=self.content,
             run_id=run_id,
@@ -67,6 +67,7 @@ class CandidateMemory:
             kind=self.kind,
             importance=max(self.confidence, 0.05),
             provenance=self.provenance,
+            namespace=namespace,
         )
 
 
