@@ -108,6 +108,33 @@ def _cmd_ns(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_audit(args: argparse.Namespace) -> int:
+    from .audit import audit_episode, recent_activity, render_audit, render_recent
+
+    db = Path(args.db)
+    if not db.exists():
+        print(f"no store at {db}")
+        return 1
+    store = EpisodicStore(db)
+    try:
+        if args.recent or args.memory_id is None:
+            print(render_recent(recent_activity(store, limit=args.limit)))
+            return 0
+        record = audit_episode(store, args.memory_id)
+        if record is None:
+            # allow unambiguous id prefixes for convenience
+            matches = [ep for ep in store.all() if ep.id.startswith(args.memory_id)]
+            if len(matches) == 1:
+                record = audit_episode(store, matches[0].id)
+        if record is None:
+            print(f"no memory with id {args.memory_id}")
+            return 1
+        print(render_audit(record))
+        return 0
+    finally:
+        store.close()
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="memsub", description="local-first memory for agents")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -159,6 +186,13 @@ def build_parser() -> argparse.ArgumentParser:
     ns_revoke.add_argument("agent")
     ns_sub.add_parser("list", help="list registered namespaces and grants")
     p_ns.set_defaults(func=_cmd_ns)
+
+    p_aud = sub.add_parser("audit", help="why a memory exists and every time it was used")
+    p_aud.add_argument("memory_id", nargs="?", default=None, help="memory id (or unambiguous prefix)")
+    p_aud.add_argument("--recent", action="store_true", help="list recent memory activity instead")
+    p_aud.add_argument("--limit", type=int, default=20, help="events to show with --recent")
+    p_aud.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    p_aud.set_defaults(func=_cmd_audit)
 
     return parser
 

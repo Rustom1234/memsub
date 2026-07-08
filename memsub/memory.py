@@ -124,6 +124,16 @@ class RetrievalMemory:
         for s in scored:
             facts.extend(self.structured.query(subject=s.episode.session_id))
         included = [s.episode for s in scored][: text.count("[session ")] if text else []
+        # audit trail: every retrieval and injection is an event (memsub audit)
+        from memsub.audit import log_recall
+
+        log_recall(
+            self.store,
+            query,
+            [(s.episode, s.score) for s in scored],
+            included,
+            budget_tokens=self.policy.injection_budget_tokens,
+        )
         return RecallResult(text=text, episodes=included, facts=facts, scored=scored)
 
     def size(self) -> int:
