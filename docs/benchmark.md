@@ -127,3 +127,24 @@ retrieval="dense" / --retrieval dense. Regression run before shipping
   frozen benchmark stack exactly on the dev split (72.8 / 85.1 at 1000).
 - Full test suite: 111 tests passing, including audit-event logging
   (retrieved + injected) on the new hybrid search path.
+
+## Multi-hop / open-domain gap: two more techniques tried, both reverted (2026-07-08, dev split only)
+
+Holdout weakest cells were multi-hop (25.0% evidence-all @1000) and
+open-domain (35.6% evidence-all @1000). Two dependency-free additions were
+implemented as extra RRF-fused ranking signals on `HybridRetriever` (same
+default-off-flag convention as `prf_weight`), dev-measured (conversations
+1-3, n=383), then reverted since neither improved dev. Baseline: frozen v2
+stack, 72.8 / 85.1 evidence-all/any at budget 1000 (multi-hop 20.3 / 77.0,
+open-domain 31.6 / 52.6).
+
+| technique | dev result (TOTAL all/any @1000) | multi-hop @1000 | open-domain @1000 | verdict | why |
+|---|---|---|---|---|---|
+| heuristic query decomposition (split on and/or/,/; into 2+ clauses of >=2 words, RRF the sub-query rankings back in) | 72.6-72.8 / 84.9-85.1 across weights 0.5-3.0 | 20.3 / 77.0 (unchanged) | 31.6 / 52.6 (unchanged) | REVERTED | only 12/93 dev multi-hop+open-domain questions have real compound-clause structure; LOCOMO's "multi-hop" category is mostly single-topic aggregation ("What activities does Melanie partake in?"), not chainable sub-questions, so the splitter rarely fires and moves nothing when it does |
+| retrieval chaining (second BM25 hop seeded by known-speaker names co-mentioned in the top `chain_docs` first-hop results but absent from the query) | 68.1-70.5 / 79.4-82.5 across weights 0.5-3.0 (worse at every weight) | 21.6-24.3 / 74.3-77.0 (flat-to-down) | 21.1 / 36.8-47.4 (down hard from 31.6/52.6) | REVERTED | co-mentioned speakers are usually just the other participant in a two-person conversation, so the seeded second hop degenerates into a generic "boost the other person's turns" signal that drowns out the topic-specific BM25/dense signal, especially damaging open-domain (trait/inference questions where topical precision matters most) |
+
+Code reverted cleanly (`git diff` empty vs. parked baseline); no new holdout
+run needed since the shipped stack is unchanged. Holdout remains the
+73.8% / 86.7% total (evidence-all/any @1000) recorded above. Not attempted,
+with reasons unchanged from the dev-split log above: LLM query decomposition
+and HyDE (answer-time LLM call changes the product's cost profile).
