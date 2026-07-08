@@ -36,6 +36,7 @@ import numpy as np
 
 from .consolidate import ConsolidationConfig, consolidate
 from .embed import Embedder, HashingEmbedder
+from .lexical import BM25Index, rrf_fuse
 from .policy import approx_tokens
 from .store import Episode, EpisodicStore
 
@@ -126,7 +127,8 @@ class PolicySystem:
             store.close()
         self._index.add(sorted(episodes, key=lambda e: e.ts))
 
-    def inject(self, query: str, budget_tokens: int) -> list[Episode]:
+    def rank(self, query: str) -> list[int]:
+        """Indices into self._index.episodes, best first."""
         eps = self._index.episodes
         if not eps:
             return []
@@ -137,8 +139,52 @@ class PolicySystem:
         raw_imp = np.array([ep.importance for ep in eps])
         importance = self.importance_floor + (1 - self.importance_floor) * raw_imp
         scores = sims * recency * importance
-        order = np.argsort(-scores, kind="stable")
-        return pack_greedy([eps[i] for i in order], budget_tokens)
+        return [int(i) for i in np.argsort(-scores, kind="stable")]
+
+    def inject(self, query: str, budget_tokens: int) -> list[Episode]:
+        eps = self._index.episodes
+        return pack_greedy([eps[i] for i in self.rank(query)], budget_tokens)
+
+
+class HybridSystem:
+    """BM25 + dense policy ranking fused with reciprocal rank fusion.
+
+    Evidence basis: RRF (Cormack et al., SIGIR 2009), BM25-as-strong-baseline
+    (BEIR, NeurIPS D&B 2021), plus this repo's own dev probe where BM25 alone
+    beat the hashed-dense ranking by 16.9pp evidence-all (docs/error-analysis-
+    locomo.md). Zero dependencies.
+    """
+
+    def __init__(
+        self,
+        policy_params: dict | None = None,
+        rrf_k: int = 60,
+        dense_weight: float = 1.0,
+        bm25_weight: float = 1.0,
+        name: str = "hybrid-rrf",
+    ) -> None:
+        self.name = name
+        self.rrf_k = rrf_k
+        self.weights = [dense_weight, bm25_weight]
+        self._policy = PolicySystem(**(policy_params or {}))
+        self._bm25: BM25Index | None = None
+
+    def ingest(self, episodes: list[Episode]) -> None:
+        self._policy.ingest(episodes)
+        self._bm25 = BM25Index([ep.content for ep in self._policy._index.episodes])
+
+    def rank(self, query: str) -> list[int]:
+        eps = self._policy._index.episodes
+        if not eps:
+            return []
+        dense_order = self._policy.rank(query)
+        bm = self._bm25.scores(query)
+        bm25_order = sorted(range(len(eps)), key=lambda i: (-bm[i], i))
+        return rrf_fuse([dense_order, bm25_order], k=self.rrf_k, weights=self.weights)
+
+    def inject(self, query: str, budget_tokens: int) -> list[Episode]:
+        eps = self._policy._index.episodes
+        return pack_greedy([eps[i] for i in self.rank(query)], budget_tokens)
 
 
 class NaiveTopKSystem:
