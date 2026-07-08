@@ -62,3 +62,35 @@ Dataset: LOCOMO (Maharana et al. 2024, snap-research/locomo), 7 held-out convers
 
 mem0 OSS (mem0ai 2.0.11) installs cleanly in this venv and runs fully locally (ollama providers plus embedded qdrant in path mode, no server). The bounded attempt on this machine failed at the extraction stage: the only local LLM available (qwen3:8b via ollama) wraps answers in think-blocks that break mem0's JSON parsing, so `Memory.add()` returned zero memories; there is no OpenAI or Anthropic API key on this machine for mem0's intended providers, and the claude CLI is not a mem0 provider. A row measured under those conditions would benchmark qwen3's JSON compliance, not mem0's memory system, so per protocol the row is skipped rather than fought.
 
+
+## Retrieval v2: technique-by-technique log (2026-07-08, dev split only)
+
+Mission: lift LOCOMO evidence recall, which was tied with naive top-k.
+Research shortlist in docs/research-notes.md, failure diagnosis in
+docs/error-analysis-locomo.md (220/223 failures were ranking misses; oracle
+bound 99.7%). Every row below is a dev-split (conversations 1-3, n=383)
+measurement at budget 1000, evidence-all / evidence-any. Baseline: tuned
+policy, 41.8% / 51.4%.
+
+| technique | dev result (all/any) | verdict | why |
+|---|---|---|---|
+| BM25 alone (probe) | 58.7 / 70.8 | (probe) | lexical signal alone beats the hashed-dense ranking by 16.9pp |
+| hybrid RRF, equal weights | 57.2 / 70.2 | reweight | equal-weight dense drags BM25 down |
+| hybrid RRF, dense_weight 0.5 | 59.5 / 71.8 | KEEP | dense contributes at reduced weight (SIGIR 2009 RRF, BEIR) |
+| + temporal metadata (session dates in BM25 index + date-match RRF list) | 60.6 / 72.6 | KEEP | free; helps date-mentioning questions |
+| + stemming in BM25 tokenizer | 63.2 / 75.5 | KEEP | research/researching, camp/camping unified; multi-hop any 67.6 to 78.4 |
+| + speaker-match RRF list (weight 1.0) | 66.3 / 77.8 | KEEP | LOCOMO aggregation questions ask about one speaker; peak at weight 1.0, higher degrades |
+| + pseudo-relevance feedback (RM3-style) | 66.8 / 77.8 at best | REVERTED | +0.5pp plateau, degrades when pushed; dev-overfit risk exceeds gain; code kept behind default-off flag |
+| + session-granularity RRF (session as pseudo-doc, weight 3.0) | 72.8 / 85.1 | KEEP | multi-granularity (RAPTOR-lite); monotone to 3.0, degrades by 6.0 |
+| + dialog-locality neighbor boost | 72.1 / 83.8 at best | REVERTED | strictly worse at every weight tried; never landed in library code |
+
+Frozen stack after dev selection: hybrid RRF (dense 0.5, BM25 1.0, k=60) +
+stemmed BM25 + temporal metadata (weight 1.0) + speaker boost (1.0) +
+session granularity (3.0). Dev totals: 72.8 / 85.1 at budget 1000,
+64.5 / 74.7 at budget 500. Dev per category at 1000: single-hop 87.0 all,
+temporal 93.3 all, multi-hop 20.3 all / 77.0 any, open-domain 31.6 / 52.6.
+
+Not attempted, with reasons: LLM query decomposition and HyDE (answer-time
+LLM call per query changes the product's cost profile; deferred until the
+zero-cost stack stalls on holdout), full HippoRAG (engineering cost),
+cross-encoder rerank (breaks zero-infra).
