@@ -139,3 +139,45 @@ def test_mcp_stdio_roundtrip(tmp_path):
     assert by_id[1]["result"]["serverInfo"]["name"] == "memsub"
     assert "stored memory" in by_id[2]["result"]["content"][0]["text"]
     assert "stdio test memory" in by_id[3]["result"]["content"][0]["text"]
+
+
+# --------------------------------------------------------------------------- #
+# Retrieval v2 as product default
+# --------------------------------------------------------------------------- #
+def test_sdk_hybrid_is_default_and_dense_available(tmp_path):
+    c = MemoryClient(db_path=tmp_path / "m.db")
+    assert c.retrieval == "hybrid"
+    from memsub.hybrid import HybridRetriever
+
+    c.add("The deploy port of the amber-router is 8443.")
+    assert isinstance(c._get_index("default"), HybridRetriever)
+    c.close()
+    d = MemoryClient(db_path=tmp_path / "m.db", retrieval="dense")
+    assert d.search("amber-router port?")  # dense path still works
+    d.close()
+    with pytest.raises(ValueError):
+        MemoryClient(db_path=tmp_path / "m.db", retrieval="magic")
+
+
+def test_sdk_hybrid_search_logs_audit_events(tmp_path):
+    c = MemoryClient(db_path=tmp_path / "m.db")
+    ep = c.add("Rustom keeps notes in plain markdown.")
+    hits = c.search("what format for notes?")
+    assert hits and hits[0].episode.id == ep.id
+    assert c.store.events(event="retrieved")
+    assert c.store.events(event="injected")
+    c.close()
+
+
+def test_cli_search_uses_hybrid(tmp_path, capsys):
+    from memsub.cli import main as cli_main
+
+    db = tmp_path / "m.db"
+    c = MemoryClient(db_path=db)
+    c.add("The staging server lives at 10.0.0.7.")
+    c.add("Lunch was a salad bowl.")
+    c.close()
+    assert cli_main(["search", "where is the staging server?", "--db", str(db)]) == 0
+    out = capsys.readouterr().out
+    assert "10.0.0.7" in out
+    assert cli_main(["search", "x", "--db", str(tmp_path / "missing.db")]) == 1
