@@ -135,11 +135,34 @@ def _cmd_audit(args: argparse.Namespace) -> int:
         store.close()
 
 
+def _cmd_search(args: argparse.Namespace) -> int:
+    from .sdk import MemoryClient
+
+    db = Path(args.db)
+    if not db.exists():
+        print(f"no store at {db}")
+        return 1
+    client = MemoryClient(db_path=db, namespace=args.namespace, retrieval=args.retrieval)
+    try:
+        hits = client.search(args.query, k=args.k, budget_tokens=args.budget)
+        if not hits:
+            print("no matching memories")
+            return 0
+        for h in hits:
+            print(f"[{h.episode.id[:12]}] ({h.episode.kind}) {h.episode.content}")
+        return 0
+    finally:
+        client.close()
+
+
 def _cmd_mcp(args: argparse.Namespace) -> int:
     from .mcp_server import serve
     from .sdk import MemoryClient
 
-    client = MemoryClient(db_path=args.db) if args.db else MemoryClient()
+    if args.db:
+        client = MemoryClient(db_path=args.db, retrieval=args.retrieval)
+    else:
+        client = MemoryClient(retrieval=args.retrieval)
     return serve(client)
 
 
@@ -202,8 +225,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_aud.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
     p_aud.set_defaults(func=_cmd_audit)
 
+    p_srch = sub.add_parser("search", help="search memories (benchmarked hybrid retrieval by default)")
+    p_srch.add_argument("query", help="what you want to remember")
+    p_srch.add_argument("--k", type=int, default=6, help="max results (default 6)")
+    p_srch.add_argument("--budget", type=int, default=None, help="optional hard token cap on results")
+    p_srch.add_argument("--namespace", default=None, help="namespace to search (default: $MEMSUB_NAMESPACE or 'default')")
+    p_srch.add_argument("--retrieval", default="hybrid", choices=["hybrid", "dense"],
+                        help="hybrid (v2 default) or dense (v1 embedding-only)")
+    p_srch.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    p_srch.set_defaults(func=_cmd_search)
+
     p_mcp = sub.add_parser("mcp", help="run the MCP stdio server (for claude mcp add)")
     p_mcp.add_argument("--db", default=None, help="SQLite store path (default: $MEMSUB_DB or ~/.memsub/memory.db)")
+    p_mcp.add_argument("--retrieval", default="hybrid", choices=["hybrid", "dense"],
+                       help="retrieval stack for search_memory (default: hybrid v2)")
     p_mcp.set_defaults(func=_cmd_mcp)
 
     return parser

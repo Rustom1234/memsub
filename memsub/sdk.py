@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .audit import audit_episode, log_recall
+from .hybrid import HybridRetriever
 from .namespaces import NamespaceManager
 from .policy import approx_tokens
 from .retrieval import SemanticIndex
@@ -45,9 +46,15 @@ class MemoryClient:
         db_path: str | Path | None = None,
         agent: str | None = None,
         namespace: str | None = None,
+        retrieval: str = "hybrid",
         recency_weight: float = 0.999,
         recency_floor: float = 0.75,
     ) -> None:
+        """retrieval: "hybrid" (default: the benchmarked v2 stack, stemmed
+        BM25 + dense + temporal/speaker/session signals fused with RRF) or
+        "dense" (the v1 embedding-only path)."""
+        if retrieval not in ("hybrid", "dense"):
+            raise ValueError("retrieval must be 'hybrid' or 'dense'")
         path = Path(db_path) if db_path else default_db_path()
         if str(path) != ":memory:":
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -55,10 +62,11 @@ class MemoryClient:
         self.namespaces = NamespaceManager(self.store)
         self.agent = agent or os.environ.get("MEMSUB_AGENT", "default")
         self.namespace = namespace or os.environ.get("MEMSUB_NAMESPACE", "default")
+        self.retrieval = retrieval
         # scoring defaults come from the benchmark (docs/benchmark.md)
         self._recency_weight = recency_weight
         self._recency_floor = recency_floor
-        self._index: SemanticIndex | None = None
+        self._index: SemanticIndex | HybridRetriever | None = None
         self._index_ns: str | None = None
 
     # -- write ---------------------------------------------------------------- #
@@ -111,8 +119,10 @@ class MemoryClient:
         ns = namespace or self.namespace
         self.namespaces.check(self.agent, "read", ns)
         index = self._get_index(ns)
-        scored = index.search(query, k=k)
-        hits = [SearchHit(s.episode, s.score) for s in scored]
+        if isinstance(index, HybridRetriever):
+            hits = [SearchHit(ep, score) for ep, score in index.search(query, k=k)]
+        else:
+            hits = [SearchHit(s.episode, s.score) for s in index.search(query, k=k)]
         packed = hits
         if budget_tokens is not None:
             packed, used = [], 0
@@ -161,13 +171,20 @@ class MemoryClient:
         matches = [e for e in self.store.all() if e.id.startswith(memory_id)]
         return matches[0] if len(matches) == 1 else None
 
-    def _get_index(self, namespace: str) -> SemanticIndex:
+    def _get_index(self, namespace: str) -> "SemanticIndex | HybridRetriever":
         if self._index is None or self._index_ns != namespace:
-            index = SemanticIndex(
-                recency_weight=self._recency_weight, recency_floor=self._recency_floor
-            )
-            for ep in self.store.active(namespace=namespace):
-                index.add(ep)
+            active = self.store.active(namespace=namespace)
+            if self.retrieval == "hybrid":
+                index: SemanticIndex | HybridRetriever = HybridRetriever(
+                    recency_weight=self._recency_weight, recency_floor=self._recency_floor
+                )
+                index.ingest(active)
+            else:
+                index = SemanticIndex(
+                    recency_weight=self._recency_weight, recency_floor=self._recency_floor
+                )
+                for ep in active:
+                    index.add(ep)
             self._index, self._index_ns = index, namespace
         return self._index
 
