@@ -110,18 +110,28 @@ only claims what was measured.
    98.0% clean recall (the correct, current fact injected with no
    contradicting stale copy) at every budget from 100 to 800 tokens; a naive
    store-everything top-k baseline gets 0.0% clean because it packs stale
-   versions alongside fresh ones. Honest flip side, same doc: on LOCOMO
-   evidence recall the scoring blend ties naive relevance-only retrieval
-   (55.9% vs 56.9% evidence-any at budget 1000, n=1153); retrieval scoring
-   is not the differentiator, the write/update policy is. All numbers from
-   executed runs with a dev/holdout split (docs/benchmark.md).
-5. **Audit and explainability.** Every memory answers "why do you exist":
+   versions alongside fresh ones. All numbers from executed runs with a
+   dev/holdout split (docs/benchmark.md).
+5. **Measured long-conversation recall (retrieval v2, 2026-07-08).** The
+   first scoring blend merely tied naive retrieval on LOCOMO (55.9% vs 56.9%
+   evidence-any at budget 1000); that honest result drove a research-backed
+   rebuild (docs/research-notes.md, docs/error-analysis-locomo.md): stemmed
+   BM25 + dense fused with reciprocal rank fusion, session-date metadata,
+   speaker-match and session-granularity signals, all dependency-free. On
+   the one held-out run (7 LOCOMO conversations, n=1153, nothing changed
+   after freezing on dev): 73.8% evidence-all / 86.7% evidence-any at a
+   1000-token budget vs 42.9% / 55.9% before (naive top-k: 43.4% / 56.9%),
+   and 64.7% / 78.7% at 500 tokens. Every technique attempt, including the
+   two reverted ones, is logged in docs/benchmark.md. The stack lives in
+   the library (memsub.bench.HybridSystem); making it the SDK/MCP default
+   search is an open issue, not yet claimed as shipped.
+6. **Audit and explainability.** Every memory answers "why do you exist":
    provenance from extraction (source, turn span, model, confidence), plus
    an event log of every retrieval, every injection (with query and budget),
    and every supersede/forget decision (with reason and superseding id).
    Nothing is ever deleted, so `memsub audit <id>` reconstructs the full
    story. Inherited from this repo's safety-experiment DNA.
-6. **Shared namespaces for multi-agent teams.** One store, several agents:
+7. **Shared namespaces for multi-agent teams.** One store, several agents:
    per-user/agent/session scoping plus shared namespaces with per-agent
    read/write grants, enforced in the SDK and MCP server. Scoped honestly:
    accident isolation between cooperating local agents, not a security
