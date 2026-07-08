@@ -190,7 +190,7 @@ def main() -> int:
     lines.append("")
     pa_llm, pa_cons, pa_naive = _row_a("policy+cons(llm)", 200), _row_a("policy+cons", 200), _row_a("naive-topk", 200)
     if pa_cons and pa_naive:
-        llm_txt = (f"with the real haiku contradiction pass on top it reaches {fmt_pct(pa_llm.clean_recall)}. "
+        llm_txt = (f"(the real haiku contradiction pass on top scores {fmt_pct(pa_llm.clean_recall)}) "
                    if pa_llm else "")
         lines.append(f"- The retrieval-scoring blend alone is NOT the edge: on LOCOMO the tuned policy ties "
                      "naive relevance-only retrieval (see part B), and raw multiplicative recency (v1, floors at 0) "
