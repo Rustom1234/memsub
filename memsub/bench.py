@@ -79,11 +79,24 @@ class _Index:
 
 
 class PolicySystem:
-    """The policy layer: relevance x recency x importance, greedy packing."""
+    """The policy layer: relevance x bounded recency x bounded importance.
 
-    def __init__(self, recency_weight: float = 0.995, consolidated: bool = False) -> None:
-        self.name = "policy+cons" if consolidated else "policy"
+    Floors bound how far recency/importance can down-weight a relevant memory
+    (see SemanticIndex). floor=0 is the v1 raw multiplicative scoring.
+    """
+
+    def __init__(
+        self,
+        recency_weight: float = 0.995,
+        recency_floor: float = 0.0,
+        importance_floor: float = 0.0,
+        consolidated: bool = False,
+        name: str | None = None,
+    ) -> None:
+        self.name = name or ("policy+cons" if consolidated else "policy")
         self.recency_weight = recency_weight
+        self.recency_floor = recency_floor
+        self.importance_floor = importance_floor
         self.consolidated = consolidated
         self._index = _Index()
 
@@ -106,8 +119,9 @@ class PolicySystem:
         sims = self._index.scores(query)
         n = len(eps)
         ranks = np.arange(n - 1, -1, -1, dtype=np.float64)  # newest gets rank 0
-        recency = self.recency_weight**ranks
-        importance = np.array([ep.importance for ep in eps])
+        recency = self.recency_floor + (1 - self.recency_floor) * self.recency_weight**ranks
+        raw_imp = np.array([ep.importance for ep in eps])
+        importance = self.importance_floor + (1 - self.importance_floor) * raw_imp
         scores = sims * recency * importance
         order = np.argsort(-scores, kind="stable")
         return pack_greedy([eps[i] for i in order], budget_tokens)
@@ -148,10 +162,10 @@ class RecentFirstSystem:
         return pack_greedy(ordered, budget_tokens)
 
 
-def build_systems(consolidated_row: bool = True) -> list[BenchSystem]:
-    systems: list[BenchSystem] = [PolicySystem()]
+def build_systems(consolidated_row: bool = True, **policy_params) -> list[BenchSystem]:
+    systems: list[BenchSystem] = [PolicySystem(**policy_params)]
     if consolidated_row:
-        systems.append(PolicySystem(consolidated=True))
+        systems.append(PolicySystem(consolidated=True, **policy_params))
     systems.extend([NaiveTopKSystem(), RecentFirstSystem()])
     return systems
 
@@ -258,12 +272,18 @@ class RecallResultRow:
     budget: int
     n: int
     correct: int
+    clean: int  # correct AND no stale version of the same fact injected
     stale_only: int
     avg_tokens_used: float
 
     @property
     def recall(self) -> float:
         return self.correct / self.n if self.n else 0.0
+
+    @property
+    def clean_recall(self) -> float:
+        """The freshness bar: the right fact is in, no contradicting stale copy is."""
+        return self.clean / self.n if self.n else 0.0
 
     @property
     def stale_rate(self) -> float:
@@ -283,7 +303,7 @@ def run_recall_benchmark(
             system.ingest(list(ds.episodes))
             for budget in budgets:
                 key = (system.name, budget)
-                cell = acc.setdefault(key, [0, 0, 0, 0.0])  # n, correct, stale, tokens
+                cell = acc.setdefault(key, [0, 0, 0, 0, 0.0])  # n, correct, clean, stale, tokens
                 for q in ds.queries:
                     packed = system.inject(q.question, budget)
                     text = "\n".join(ep.content for ep in packed)
@@ -292,13 +312,14 @@ def run_recall_benchmark(
                     stale_in = any(s in text for s in q.stale)
                     cell[0] += 1
                     cell[1] += int(gold_in)
-                    cell[2] += int(stale_in and not gold_in)
-                    cell[3] += used
+                    cell[2] += int(gold_in and not stale_in)
+                    cell[3] += int(stale_in and not gold_in)
+                    cell[4] += used
     rows = []
-    for (name, budget), (n, correct, stale, tokens) in sorted(acc.items(), key=lambda kv: (kv[0][1], kv[0][0])):
+    for (name, budget), (n, correct, clean, stale, tokens) in sorted(acc.items(), key=lambda kv: (kv[0][1], kv[0][0])):
         rows.append(
             RecallResultRow(
-                system=name, budget=budget, n=n, correct=correct,
+                system=name, budget=budget, n=n, correct=correct, clean=clean,
                 stale_only=stale, avg_tokens_used=round(tokens / n, 1),
             )
         )

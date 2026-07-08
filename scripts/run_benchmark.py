@@ -1,16 +1,24 @@
 """Run the policy-vs-naive benchmark and write docs/benchmark.md.
 
+Protocol (to avoid tuning on the test set):
+
+1. Sweep policy-v2 scoring params (recency weight/floor, importance floor) on
+   a DEV split: part A seeds 1-5 and LOCOMO conversations 0-2.
+2. Report final numbers on a HELD-OUT split the sweep never saw: part A seeds
+   6-10 and LOCOMO conversations 3-9.
+
 Part A: synthetic recall@budget (seeded, ground truth known).
-Part B: LOCOMO evidence recall (real dataset, downloaded to data/locomo10.json).
+Part B: LOCOMO evidence recall (real dataset at data/locomo10.json).
 
 Every number in the output comes from this executed run. Usage:
 
-    .venv/bin/python scripts/run_benchmark.py [--locomo data/locomo10.json]
+    .venv/bin/python scripts/run_benchmark.py
 """
 
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 import platform
 import sys
@@ -21,18 +29,43 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from memsub.bench import (  # noqa: E402
+    PolicySystem,
     load_locomo,
     run_locomo_benchmark,
     run_recall_benchmark,
 )
 
-SEEDS = [1, 2, 3, 4, 5]
+DEV_SEEDS = [1, 2, 3, 4, 5]
+HOLDOUT_SEEDS = [6, 7, 8, 9, 10]
 BUDGETS_A = [100, 200, 400, 800]
 BUDGETS_B = [500, 1000, 2000]
+GRID = {
+    "recency_weight": [0.99, 0.995, 0.999],
+    "recency_floor": [0.0, 0.25, 0.5, 0.75, 0.9],
+    "importance_floor": [0.0, 0.5, 0.9],
+}
 
 
 def fmt_pct(x: float) -> str:
     return f"{100 * x:.1f}%"
+
+
+def sweep(dev_convs) -> tuple[dict, float]:
+    """Grid-search policy params on the dev split. Selection score: mean of
+    part A clean recall @100 and LOCOMO evidence-any @1000."""
+    best_params, best_score = {}, -1.0
+    combos = list(itertools.product(*GRID.values()))
+    for combo in combos:
+        params = dict(zip(GRID.keys(), combo))
+        factory = lambda consolidated_row=True, p=params: [PolicySystem(**p, consolidated=consolidated_row)]
+        rows_a = run_recall_benchmark(seeds=DEV_SEEDS, budgets=[100], systems_factory=lambda: factory(True))
+        rows_b = run_locomo_benchmark(dev_convs, budgets=[1000], systems_factory=lambda consolidated_row=False: factory(False))
+        clean_a = rows_a[0].clean_recall
+        any_b = rows_b[0].recall_any
+        score = (clean_a + any_b) / 2
+        if score > best_score:
+            best_score, best_params = score, params
+    return best_params, best_score
 
 
 def main() -> int:
@@ -43,19 +76,29 @@ def main() -> int:
     args = parser.parse_args()
 
     t0 = time.time()
-    print("part A: synthetic recall@budget ...", flush=True)
-    rows_a = run_recall_benchmark(seeds=SEEDS, budgets=BUDGETS_A)
-
-    print("part B: LOCOMO evidence recall ...", flush=True)
     locomo_path = Path(args.locomo)
-    rows_b = []
-    n_convs = 0
-    if locomo_path.exists():
-        convs = load_locomo(locomo_path)
-        n_convs = len(convs)
-        rows_b = run_locomo_benchmark(convs, budgets=BUDGETS_B)
-    else:
-        print(f"  LOCOMO file not found at {locomo_path}, skipping part B", flush=True)
+    convs = load_locomo(locomo_path) if locomo_path.exists() else []
+    dev_convs, holdout_convs = convs[:3], convs[3:]
+
+    print(f"sweep: {len(list(itertools.product(*GRID.values())))} combos on dev "
+          f"(part A seeds {DEV_SEEDS}, {len(dev_convs)} LOCOMO convs) ...", flush=True)
+    best_params, dev_score = sweep(dev_convs)
+    print(f"  chosen: {best_params} (dev score {dev_score:.3f})", flush=True)
+
+    def systems_factory(consolidated_row: bool = True):
+        from memsub.bench import NaiveTopKSystem, RecentFirstSystem
+
+        systems = [PolicySystem(**best_params)]
+        if consolidated_row:
+            systems.append(PolicySystem(**best_params, consolidated=True))
+        systems.extend([NaiveTopKSystem(), RecentFirstSystem()])
+        return systems
+
+    print("part A (holdout seeds): synthetic recall@budget ...", flush=True)
+    rows_a = run_recall_benchmark(seeds=HOLDOUT_SEEDS, budgets=BUDGETS_A, systems_factory=systems_factory)
+
+    print("part B (holdout conversations): LOCOMO evidence recall ...", flush=True)
+    rows_b = run_locomo_benchmark(holdout_convs, budgets=BUDGETS_B, systems_factory=systems_factory) if holdout_convs else []
 
     elapsed = time.time() - t0
 
@@ -67,36 +110,48 @@ def main() -> int:
                  f"({platform.node()}, python {platform.python_version()}), wall time {elapsed:.1f}s. "
                  "Every figure below comes from this executed run.")
     lines.append("")
-    lines.append("Systems: `policy` (relevance x recency x importance scoring, greedy packing under the budget), "
+    lines.append("## Protocol")
+    lines.append("")
+    lines.append(f"Policy scoring params were grid-searched ({len(list(itertools.product(*GRID.values())))} combos) on a dev split "
+                 f"(part A seeds {DEV_SEEDS}, LOCOMO conversations 1-{len(dev_convs)}); "
+                 f"all tables below are from held-out data the sweep never saw "
+                 f"(part A seeds {HOLDOUT_SEEDS}, LOCOMO conversations {len(dev_convs) + 1}-{len(convs)}). "
+                 f"Chosen params: `{best_params}` (dev selection score {dev_score:.3f}, "
+                 "mean of part A clean recall @100 and LOCOMO evidence-any @1000).")
+    lines.append("")
+    lines.append("Systems: `policy` (relevance x bounded-recency x bounded-importance scoring, greedy packing), "
                  "`policy+cons` (same, after an offline consolidation dedup pass), "
                  "`naive-topk` (store everything, rank by cosine relevance only), "
                  "`recent` (newest-first stuffing, no search). "
-                 "All systems use the same local hashing embedder and the same hard chars/4 token budget; "
+                 "Same local hashing embedder and same hard chars/4 token budget everywhere; "
                  "the only variable is the selection policy.")
     lines.append("")
-    lines.append("## Part A: recall@budget on synthetic ground truth")
+    lines.append("## Part A: recall@budget on synthetic ground truth (held-out seeds)")
     lines.append("")
     lines.append(f"Seeded generator: 30 fact families x 3 versions (later versions supersede earlier) "
-                 f"+ 120 low-importance distractors per run; {len(SEEDS)} seeds; "
+                 f"+ 120 low-importance distractors per run; {len(HOLDOUT_SEEDS)} seeds; "
                  f"n = {rows_a[0].n} queries per cell. "
-                 "`recall` = correct (latest) fact present in the injected context; "
+                 "`recall` = latest fact present in the injected context. "
+                 "`clean` = latest fact present AND no superseded version of it injected "
+                 "(injecting three conflicting values of one fact is not a win). "
                  "`stale` = only an outdated version made it in.")
     lines.append("")
-    lines.append("| budget | system | recall | stale rate | avg tokens used | n |")
-    lines.append("|---|---|---|---|---|---|")
+    lines.append("| budget | system | recall | clean | stale | avg tokens used | n |")
+    lines.append("|---|---|---|---|---|---|---|")
     for r in rows_a:
-        lines.append(f"| {r.budget} | {r.system} | {fmt_pct(r.recall)} | {fmt_pct(r.stale_rate)} | {r.avg_tokens_used} | {r.n} |")
+        lines.append(f"| {r.budget} | {r.system} | {fmt_pct(r.recall)} | {fmt_pct(r.clean_recall)} | "
+                     f"{fmt_pct(r.stale_rate)} | {r.avg_tokens_used} | {r.n} |")
     lines.append("")
 
     if rows_b:
-        lines.append("## Part B: LOCOMO evidence recall (real long-conversation QA)")
+        lines.append("## Part B: LOCOMO evidence recall (held-out conversations)")
         lines.append("")
-        lines.append(f"Dataset: LOCOMO (Maharana et al. 2024, snap-research/locomo), {n_convs} conversations, "
+        lines.append(f"Dataset: LOCOMO (Maharana et al. 2024, snap-research/locomo), {len(holdout_convs)} held-out conversations, "
                      "turn-level ingestion, adversarial category (5) excluded because it has no evidence to recall; "
                      f"n = {rows_b[0].n} questions per cell. "
-                     "`evidence (all)` = every annotated evidence turn present in the injected context under the budget; "
+                     "`evidence (all)` = every annotated evidence turn in the injected context under the budget; "
                      "`evidence (any)` = at least one; "
-                     "`answer-in-ctx` = the gold answer string appears verbatim (lowercased) in the injected context, "
+                     "`answer-in-ctx` = gold answer string appears verbatim (lowercased) in the injected context, "
                      "a noisier secondary metric computed identically for every system.")
         lines.append("")
         lines.append("| budget | system | evidence (all) | evidence (any) | answer-in-ctx | avg tokens used | n |")
@@ -111,8 +166,10 @@ def main() -> int:
 
     payload = {
         "generated_at": time.time(),
-        "seeds": SEEDS,
-        "part_a": [vars(r) | {"recall": r.recall, "stale_rate": r.stale_rate} for r in rows_a],
+        "protocol": {"dev_seeds": DEV_SEEDS, "holdout_seeds": HOLDOUT_SEEDS,
+                     "dev_convs": len(dev_convs), "holdout_convs": len(holdout_convs),
+                     "chosen_params": best_params, "dev_score": dev_score},
+        "part_a": [vars(r) | {"recall": r.recall, "clean_recall": r.clean_recall, "stale_rate": r.stale_rate} for r in rows_a],
         "part_b": [vars(r) | {"recall_all": r.recall_all, "recall_any": r.recall_any, "answer_rate": r.answer_rate} for r in rows_b],
     }
     json_out = Path(args.json_out)

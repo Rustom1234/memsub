@@ -35,12 +35,26 @@ class SemanticIndex:
         self,
         embedder: Embedder | None = None,
         recency_weight: float = 0.98,
+        recency_floor: float = 0.0,
+        importance_floor: float = 0.0,
     ) -> None:
-        """recency_weight in (0, 1]: 1.0 disables recency preference."""
+        """recency_weight in (0, 1]: 1.0 disables recency preference.
+
+        recency_floor / importance_floor in [0, 1): bound how much recency and
+        importance can down-weight a relevant memory. With floor f the factor
+        is f + (1 - f) * raw, so f=0 reproduces the raw multiplicative weight
+        (v1) and f close to 1 makes the factor a mild tiebreaker (v2). The
+        benchmark (docs/benchmark.md) showed raw multiplicative recency
+        collapses recall on long histories, which is why the floors exist.
+        """
         if not 0 < recency_weight <= 1:
             raise ValueError("recency_weight must be in (0, 1]")
+        if not 0 <= recency_floor < 1 or not 0 <= importance_floor < 1:
+            raise ValueError("floors must be in [0, 1)")
         self.embedder = embedder or HashingEmbedder()
         self.recency_weight = recency_weight
+        self.recency_floor = recency_floor
+        self.importance_floor = importance_floor
         self._episodes: list[Episode] = []
         self._vectors: list[np.ndarray] = []
 
@@ -60,8 +74,9 @@ class SemanticIndex:
         n = len(self._episodes)
         # age_rank: newest episode gets 0
         ranks = np.arange(n - 1, -1, -1, dtype=np.float64)
-        recency = self.recency_weight**ranks
-        importance = np.array([ep.importance for ep in self._episodes])
+        recency = self.recency_floor + (1 - self.recency_floor) * self.recency_weight**ranks
+        raw_importance = np.array([ep.importance for ep in self._episodes])
+        importance = self.importance_floor + (1 - self.importance_floor) * raw_importance
         scores = sims * recency * importance
         order = np.argsort(-scores, kind="stable")[:k]
         return [ScoredEpisode(self._episodes[i], float(scores[i])) for i in order]
