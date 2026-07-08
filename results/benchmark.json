@@ -1,5 +1,5 @@
 {
-  "generated_at": 1783531951.1964784,
+  "generated_at": 1783532205.023923,
   "protocol": {
     "dev_seeds": [
       1,
@@ -20,9 +20,10 @@
     "chosen_params": {
       "recency_weight": 0.999,
       "recency_floor": 0.75,
-      "importance_floor": 0.0
+      "importance_floor": 0.0,
+      "dedup_threshold": 0.88
     },
-    "dev_score": 0.5438468233246301
+    "dev_score": 0.75384682332463
   },
   "part_a": [
     {
@@ -53,12 +54,24 @@
       "system": "policy+cons",
       "budget": 100,
       "n": 150,
-      "correct": 150,
-      "clean": 94,
+      "correct": 148,
+      "clean": 147,
       "stale_only": 0,
-      "avg_tokens_used": 95.0,
-      "recall": 1.0,
-      "clean_recall": 0.6266666666666667,
+      "avg_tokens_used": 95.9,
+      "recall": 0.9866666666666667,
+      "clean_recall": 0.98,
+      "stale_rate": 0.0
+    },
+    {
+      "system": "policy+cons(llm)",
+      "budget": 100,
+      "n": 150,
+      "correct": 148,
+      "clean": 147,
+      "stale_only": 0,
+      "avg_tokens_used": 95.9,
+      "recall": 0.9866666666666667,
+      "clean_recall": 0.98,
       "stale_rate": 0.0
     },
     {
@@ -101,12 +114,24 @@
       "system": "policy+cons",
       "budget": 200,
       "n": 150,
-      "correct": 150,
-      "clean": 94,
+      "correct": 148,
+      "clean": 147,
       "stale_only": 0,
       "avg_tokens_used": 195.4,
-      "recall": 1.0,
-      "clean_recall": 0.6266666666666667,
+      "recall": 0.9866666666666667,
+      "clean_recall": 0.98,
+      "stale_rate": 0.0
+    },
+    {
+      "system": "policy+cons(llm)",
+      "budget": 200,
+      "n": 150,
+      "correct": 148,
+      "clean": 147,
+      "stale_only": 0,
+      "avg_tokens_used": 195.4,
+      "recall": 0.9866666666666667,
+      "clean_recall": 0.98,
       "stale_rate": 0.0
     },
     {
@@ -149,12 +174,24 @@
       "system": "policy+cons",
       "budget": 400,
       "n": 150,
-      "correct": 150,
-      "clean": 94,
+      "correct": 148,
+      "clean": 147,
       "stale_only": 0,
-      "avg_tokens_used": 394.6,
-      "recall": 1.0,
-      "clean_recall": 0.6266666666666667,
+      "avg_tokens_used": 394.4,
+      "recall": 0.9866666666666667,
+      "clean_recall": 0.98,
+      "stale_rate": 0.0
+    },
+    {
+      "system": "policy+cons(llm)",
+      "budget": 400,
+      "n": 150,
+      "correct": 148,
+      "clean": 147,
+      "stale_only": 0,
+      "avg_tokens_used": 394.4,
+      "recall": 0.9866666666666667,
+      "clean_recall": 0.98,
       "stale_rate": 0.0
     },
     {
@@ -197,12 +234,24 @@
       "system": "policy+cons",
       "budget": 800,
       "n": 150,
-      "correct": 150,
-      "clean": 94,
+      "correct": 148,
+      "clean": 147,
       "stale_only": 0,
-      "avg_tokens_used": 794.8,
-      "recall": 1.0,
-      "clean_recall": 0.6266666666666667,
+      "avg_tokens_used": 555.8,
+      "recall": 0.9866666666666667,
+      "clean_recall": 0.98,
+      "stale_rate": 0.0
+    },
+    {
+      "system": "policy+cons(llm)",
+      "budget": 800,
+      "n": 150,
+      "correct": 148,
+      "clean": 147,
+      "stale_only": 0,
+      "avg_tokens_used": 555.8,
+      "recall": 0.9866666666666667,
+      "clean_recall": 0.98,
       "stale_rate": 0.0
     },
     {

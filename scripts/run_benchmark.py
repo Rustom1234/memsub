@@ -179,6 +179,47 @@ def main() -> int:
                          f"{fmt_pct(r.answer_rate)} | {r.avg_tokens_used} | {r.n} |")
         lines.append("")
 
+    # ---- reading the numbers ------------------------------------------------ #
+    def _row_a(system: str, budget: int):
+        return next((r for r in rows_a if r.system == system and r.budget == budget), None)
+
+    def _row_b(system: str, budget: int):
+        return next((r for r in rows_b if r.system == system and r.budget == budget), None)
+
+    lines.append("## Reading the numbers")
+    lines.append("")
+    pa_llm, pa_cons, pa_naive = _row_a("policy+cons(llm)", 200), _row_a("policy+cons", 200), _row_a("naive-topk", 200)
+    if pa_cons and pa_naive:
+        llm_txt = (f"with the real haiku contradiction pass on top it reaches {fmt_pct(pa_llm.clean_recall)}. "
+                   if pa_llm else "")
+        lines.append(f"- The retrieval-scoring blend alone is NOT the edge: on LOCOMO the tuned policy ties "
+                     "naive relevance-only retrieval (see part B), and raw multiplicative recency (v1, floors at 0) "
+                     "was strictly worse, which is why the floors exist.")
+        lines.append(f"- The write/update policy IS the edge: at a 200-token budget, consolidation gets "
+                     f"{fmt_pct(pa_cons.clean_recall)} clean recall (right fact in, no contradicting stale copy) "
+                     f"{llm_txt}"
+                     f"while naive top-k gets {fmt_pct(pa_naive.clean_recall)} clean because it packs every stale "
+                     "version of a fact alongside the fresh one and leaves disambiguation to the downstream agent.")
+    pb_p, pb_n = _row_b("policy", 1000), _row_b("naive-topk", 1000)
+    if pb_p and pb_n:
+        lines.append(f"- On real long conversations (LOCOMO holdout, budget 1000) policy vs naive is "
+                     f"{fmt_pct(pb_p.recall_any)} vs {fmt_pct(pb_n.recall_any)} evidence-any: a tie within noise. "
+                     "Blind recency stuffing collapses to single digits. Semantic search is table stakes; "
+                     "selection under contradiction is where systems differ.")
+    lines.append("- Positioning consequence (docs/positioning.md): the crown-jewel claim must be consolidation "
+                 "plus auditability under a hard budget, not retrieval-scoring wizardry.")
+    lines.append("")
+    lines.append("## mem0 comparison: attempted, skipped with reasons")
+    lines.append("")
+    lines.append("mem0 OSS (mem0ai 2.0.11) installs cleanly in this venv and runs fully locally "
+                 "(ollama providers plus embedded qdrant in path mode, no server). The bounded attempt on this "
+                 "machine failed at the extraction stage: the only local LLM available (qwen3:8b via ollama) wraps "
+                 "answers in think-blocks that break mem0's JSON parsing, so `Memory.add()` returned zero memories; "
+                 "there is no OpenAI or Anthropic API key on this machine for mem0's intended providers, and the "
+                 "claude CLI is not a mem0 provider. A row measured under those conditions would benchmark qwen3's "
+                 "JSON compliance, not mem0's memory system, so per protocol the row is skipped rather than fought.")
+    lines.append("")
+
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
 
