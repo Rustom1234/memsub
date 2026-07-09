@@ -151,15 +151,24 @@ def consolidate(
                 continue
             sim = float(sims[i, j])
             if sim >= cfg.dedup_threshold:
+                # newest survives, EXCEPT when exactly one of the pair is an
+                # inference (memsub sleep output): the observed copy survives
+                # regardless of recency. Without this, a newer inference that
+                # restates a value near-identically would silently supersede
+                # the observed fact here, before the contradiction judge ever
+                # saw the pair.
+                loser, winner = a, b
+                if _is_inferred(b) and not _is_inferred(a):
+                    loser, winner = b, a
                 actions.append(
                     Action(
                         action="supersede",
-                        episode_id=a.id,
+                        episode_id=loser.id,
                         reason="duplicate",
-                        detail={"by": b.id, "similarity": round(sim, 4)},
+                        detail={"by": winner.id, "similarity": round(sim, 4)},
                     )
                 )
-                removed.add(a.id)
+                removed.add(loser.id)
             elif (
                 sim >= cfg.contradiction_min_sim
                 and (a.kind == b.kind or "inference" in (a.kind, b.kind))

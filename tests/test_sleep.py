@@ -144,6 +144,31 @@ def test_observed_beats_inferred_on_contradiction_even_if_inference_is_newer():
     store.close()
 
 
+def test_observed_beats_inferred_in_dedup_even_if_inference_is_newer():
+    # near-identical wording lands in the DEDUP band, which runs before the
+    # contradiction judge; the observed copy must survive there too.
+    store = EpisodicStore(":memory:")
+    observed = store.append(
+        Episode(content="the deploy port of the amber-gateway service is 1234",
+                run_id="r", session_id="s", kind="fact", importance=1.0, ts=100.0)
+    )
+    inferred = store.append(
+        Episode(content="the deploy port of the amber-gateway service is 1234.",
+                run_id="r", session_id="sleep:inference", kind="inference",
+                importance=0.7, ts=200.0, provenance={"inferred": True})
+    )
+    actions = consolidate(
+        store, backend=None,
+        config=ConsolidationConfig(dedup_threshold=0.8),
+        namespace="default",
+    )
+    dups = [a for a in actions if a.reason == "duplicate"]
+    assert len(dups) == 1
+    assert dups[0].episode_id == inferred.id  # the inference loses dedup, not the observed fact
+    assert dups[0].detail["by"] == observed.id
+    store.close()
+
+
 # --------------------------------------------------------------------------- #
 # sleep_store(): incremental, idempotent, real-store integration
 # --------------------------------------------------------------------------- #
