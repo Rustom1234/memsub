@@ -29,8 +29,10 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 
 from .backends import LLMBackend
-from .store import Episode
+from .store import Episode, EpisodicStore
 from .summarize import summarize_sessions
+
+SLEPT_KINDS = {"summary", "inference", "link"}  # never re-sleep on sleep's own output
 
 INFERENCE_SYSTEM = """You draw higher-order conclusions from a set of \
 conversation session summaries.
@@ -197,3 +199,29 @@ def sleep(
     inferences = generate_inferences(summaries, backend, max_inferences=max_inferences)
     links = generate_links(episodes, min_sessions=min_link_sessions, max_links=max_links)
     return SleepResult(summaries=summaries, inferences=inferences, links=links)
+
+
+def sleep_store(
+    store: EpisodicStore,
+    backend: LLMBackend,
+    run_id: str | None = None,
+    namespace: str | None = None,
+    dry_run: bool = False,
+    **sleep_kwargs,
+) -> SleepResult:
+    """Incremental, idempotent sleep over a real store: only active episodes
+    that have never been through sleep before (no "slept" event, and not
+    themselves sleep output) are replayed. Marks each source episode "slept"
+    and appends the new summary/inference/link episodes, unless dry_run."""
+    already_slept = {e.episode_id for e in store.events(event="slept")}
+    candidates = [
+        ep for ep in store.active(run_id=run_id, namespace=namespace)
+        if ep.id not in already_slept and ep.kind not in SLEPT_KINDS
+    ]
+    result = sleep(candidates, backend, **sleep_kwargs)
+    if not dry_run:
+        for ep in candidates:
+            store.log_event(ep.id, "slept", {"n_source": len(candidates)})
+        for m in result.all_memories:
+            store.append(m)
+    return result

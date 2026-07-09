@@ -156,24 +156,53 @@ to benchmark the gain with the harness this repo already has.
 
 ## What gets implemented this round
 
-Orchestrator review (2026-07-09) reprioritized ahead of this section's
-original ranking: candidate 3 (session/topic summaries, promoted to
-**multi-granularity memory: summaries stored as first-class episodes
-alongside facts, competing for token budget through the same retrieval
-path**) goes first, then candidate 4 (entity co-occurrence graph). Reasoning
-given: the weak cells (multi-hop, open-domain) are aggregation-shaped
-questions that fact/turn-level retrieval structurally misses, and a stored
-summary is the direct fix, more so than reranking or decomposing the
-existing turn-level retrieval. Candidates 1 and 2 (local LLM rerank,
-local LLM multi-hop decomposition) move to the back of the queue, picked up
-only if 3 and 4 plateau.
+Two reprioritizations from orchestrator review, in order:
 
-Implementation note on 3: a session-summary episode does not carry the
+**First pass (2026-07-09, review 1)**: candidate 3 (session/topic
+summaries) promoted ahead of candidates 1-2, reasoning that the weak cells
+(multi-hop, open-domain) are aggregation-shaped questions that fact/turn-level
+retrieval structurally misses, and a stored summary is the direct fix.
+
+**Second pass (2026-07-09, review 2, "innovation review")**: superseded the
+plain-summaries plan with its more innovative superset, **sleep
+consolidation** (`memsub/sleep.py`, `memsub sleep`-style offline pass): a
+local model (qwen3:8b) replays recent memories and produces three
+first-class memory types, each with provenance linking back to sources:
+
+  - (a) **summaries** - the multi-granularity summaries above, now one output
+    of sleep (`memsub.summarize.summarize_sessions`, unchanged)
+  - (b) **inferences** - higher-order conclusions the raw facts imply
+    (`kind="inference"`, `provenance["inferred"]=True`, carries a
+    confidence). `memsub.consolidate` was changed so an inference can never
+    silently outrank an observed memory on contradiction, regardless of
+    which is newer (`_is_inferred`, tested in `tests/test_sleep.py`).
+  - (c) **links** - a dependency-free entity co-occurrence graph
+    (`memsub.sleep.generate_links`), built once at sleep time rather than
+    per query, folding candidate 4 (entity/knowledge-graph index) into
+    sleep's third output as directed.
+
+Rationale given: this is the one candidate that composes with memsub's
+actual differentiator (the audit trail and budget-aware policy framing,
+not retrieval tricks that mem0/Zep/RAPTOR already ship) — every inference
+is traceable to the exact memories that produced it via `memsub audit`.
+Sleep precomputes aggregation at consolidation time instead of hoping
+retrieval assembles it at query time, which is a more direct fix for
+multi-hop/open-domain than reranking or decomposing turn-level retrieval.
+Candidates 1-2 (local LLM rerank, local LLM multi-hop decomposition) move to
+the back of the queue, picked up only if sleep plateaus.
+
+Implementation note: a summary/inference/link episode does not carry the
 evidence dia_id LOCOMO annotates, so the existing evidence-recall metric
 (which matches packed episode ids against annotated turn ids) will not
-credit a summary that answers a question correctly — it would look like
+credit one of these that answers a question correctly — it would look like
 evidence recall got worse even when the model's actual answer got better.
 The real metric for this extension is the end-to-end local-model
 answer-quality harness (docs/metrics-local.md), not evidence-recall; both
 are reported for transparency, but keep/revert is decided on answer
-quality.
+quality. Separately, the observed-beats-inferred consolidation rule is
+measured directly with a deterministic unit test (an inference newer than
+the observed fact it contradicts must still be the one superseded) rather
+than folded into the Part A synthetic clean-recall sweep, which has no
+notion of inferred memories in its generator; extending that generator to
+simulate sleep output was judged lower value than a precise, deterministic
+test of the exact rule that matters.

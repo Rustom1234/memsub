@@ -35,7 +35,7 @@ from memsub.bench import HybridSystem, NaiveTopKSystem, load_locomo  # noqa: E40
 from memsub.extraction import Turn, extract_memories  # noqa: E402
 from memsub.policy import approx_tokens  # noqa: E402
 from memsub.store import Episode, EpisodicStore  # noqa: E402
-from memsub.summarize import summarize_sessions  # noqa: E402
+from memsub.sleep import SleepResult, sleep  # noqa: E402
 
 FROZEN = dict(
     policy_params={"recency_weight": 0.999, "recency_floor": 0.75, "importance_floor": 0.0},
@@ -121,8 +121,8 @@ def hardware_line() -> str:
 # --------------------------------------------------------------------------- #
 # (a) answer quality: local model as both memory backend and answerer
 # --------------------------------------------------------------------------- #
-def _session_summary_cache_path() -> Path:
-    return ROOT / "results" / "_session_summaries_cache.json"
+def _sleep_cache_path() -> Path:
+    return ROOT / "results" / "_sleep_cache.json"
 
 
 def _episode_from_dict(d: dict) -> Episode:
@@ -141,16 +141,27 @@ def _episode_to_dict(ep: Episode) -> dict:
     }
 
 
-def get_session_summaries(conv, backend: OllamaBackend) -> list[Episode]:
-    """Cached to disk: session summarization is write-time cost, not repeated per run."""
-    cache_path = _session_summary_cache_path()
+def get_sleep_result(conv, backend: OllamaBackend) -> SleepResult:
+    """Cached to disk: sleep (summaries+inferences+links) is write-time /
+    offline cost, not repeated per run. The interactive latency budget does
+    not apply to sleep itself."""
+    cache_path = _sleep_cache_path()
     cache = json.loads(cache_path.read_text()) if cache_path.exists() else {}
     if conv.conversation_id in cache:
-        return [_episode_from_dict(d) for d in cache[conv.conversation_id]]
-    summaries = summarize_sessions(list(conv.episodes), backend)
-    cache[conv.conversation_id] = [_episode_to_dict(s) for s in summaries]
+        c = cache[conv.conversation_id]
+        return SleepResult(
+            summaries=[_episode_from_dict(d) for d in c["summaries"]],
+            inferences=[_episode_from_dict(d) for d in c["inferences"]],
+            links=[_episode_from_dict(d) for d in c["links"]],
+        )
+    result = sleep(list(conv.episodes), backend)
+    cache[conv.conversation_id] = {
+        "summaries": [_episode_to_dict(s) for s in result.summaries],
+        "inferences": [_episode_to_dict(s) for s in result.inferences],
+        "links": [_episode_to_dict(s) for s in result.links],
+    }
     cache_path.write_text(json.dumps(cache, indent=2))
-    return summaries
+    return result
 
 
 def sample_stratified(convs, per_category: int, seed: int = 42) -> list[tuple[int, object]]:
@@ -179,14 +190,14 @@ def _build_systems(conv, backend: OllamaBackend) -> dict:
     memsub_sys.ingest(list(conv.episodes))
     naive_sys = NaiveTopKSystem()
     naive_sys.ingest(list(conv.episodes))
-    summaries = get_session_summaries(conv, backend)
-    memsub_plus_summaries = HybridSystem(**FROZEN)
-    memsub_plus_summaries.ingest(list(conv.episodes) + summaries)
+    sleep_result = get_sleep_result(conv, backend)
+    memsub_plus_sleep = HybridSystem(**FROZEN)
+    memsub_plus_sleep.ingest(list(conv.episodes) + sleep_result.all_memories)
     return {
         "no_memory": None,
         "naive_topk": naive_sys,
         "memsub_hybrid_v2": memsub_sys,
-        "memsub_plus_summaries": memsub_plus_summaries,
+        "memsub_plus_sleep": memsub_plus_sleep,
     }
 
 
@@ -195,7 +206,7 @@ def answer_quality(backend: OllamaBackend, per_category: int = QUESTIONS_PER_CAT
     sample = sample_stratified(convs, per_category=per_category)
     systems_by_conv = {ci: _build_systems(convs[ci], backend) for ci in {ci for ci, _ in sample}}
 
-    conditions = ["no_memory", "naive_topk", "memsub_hybrid_v2", "memsub_plus_summaries"]
+    conditions = ["no_memory", "naive_topk", "memsub_hybrid_v2", "memsub_plus_sleep"]
     # acc[condition][category] = list of (f1, exact_hit, latency_s)
     acc: dict[str, dict[int, list]] = {c: {cat: [] for cat in CATS} for c in conditions}
 
@@ -382,9 +393,10 @@ def render_markdown(hw: str, aq: dict, lf: dict, wc: dict, r1: dict | None = Non
         "excluded per docs/benchmark.md convention; up to "
         f"{QUESTIONS_PER_CATEGORY} sampled per category, capped by availability). "
         "Graded with deterministic token-F1 against the gold answer (no LLM judge, "
-        "nothing to fabricate). `memsub_plus_summaries` is extension #1 "
-        "(docs/extensions.md): session summaries stored as first-class episodes "
-        "alongside facts, competing for the same token budget.",
+        "nothing to fabricate). `memsub_plus_sleep` is extension #1 (docs/extensions.md): "
+        "sleep consolidation's three outputs (session summaries, higher-order inferences, "
+        "entity co-occurrence links) stored as first-class episodes alongside facts, "
+        "competing for the same token budget through the same retrieval path.",
         "",
         "### Overall (required 3-way table: no-memory / naive-topk / memsub, plus the extension)",
         "",

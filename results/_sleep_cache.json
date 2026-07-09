@@ -1,0 +1,2744 @@
+{
+  "conv-26": {
+    "summaries": [
+      {
+        "content": "Caroline and Melanie discussed Caroline\u2019s recent attendance at an LGBTQ support group, where transgender stories inspired her and gave her courage to embrace her identity. Caroline shared her plan to pursue counseling or mental health work, while Melanie showcased her painting of a lake sunrise from last year, highlighting art as a creative outlet. They commended each other\u2019s passions\u2014Caroline\u2019s self-acceptance journey and Melanie\u2019s artistic expression\u2014and exchanged well-wishes before parting ways to research and swim with her kids.",
+        "run_id": "conv-26",
+        "session_id": "session_1",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_1",
+          "n_source_turns": 18,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573673.7221954
+        },
+        "namespace": "default",
+        "ts": 18.0,
+        "id": "summary:conv-26:session_1"
+      },
+      {
+        "content": "Melanie and Caroline discussed Melanie\u2019s charity race for mental health on June 3rd, highlighting self-care routines like running, reading, and playing violin to support her family. Caroline shared her research on adoption agencies, emphasizing her choice of an LGBTQ+-inclusive agency to support her dream of becoming a single parent. Both expressed mutual encouragement, with Melanie planning a summer camping trip and Caroline hopeful about the adoption process despite challenges.",
+        "run_id": "conv-26",
+        "session_id": "session_2",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_2",
+          "n_source_turns": 17,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573675.946968
+        },
+        "namespace": "default",
+        "ts": 35.0,
+        "id": "summary:conv-26:session_2"
+      },
+      {
+        "content": "Caroline and Melanie discussed Caroline\u2019s school event last week, where she shared her transgender journey and promoted LGBTQ inclusion, reflecting on three years of transitioning. They highlighted their support systems\u2014Caroline\u2019s friends since four years post-migration and Melanie\u2019s husband and kids, married five years. The conversation emphasized family, courage, and community impact, with Caroline sharing a photo from their recent meetup, and Melanie expressing gratitude for Caroline\u2019s advocacy.",
+        "run_id": "conv-26",
+        "session_id": "session_3",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_3",
+          "n_source_turns": 23,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573677.9026468
+        },
+        "namespace": "default",
+        "ts": 58.0,
+        "id": "summary:conv-26:session_3"
+      },
+      {
+        "content": "Caroline and Melanie discussed sentimental items, with Caroline sharing her grandmother\u2019s Swedish necklace symbolizing love, faith, and strength, and her hand-painted bowl from a friend\u2019s 18th birthday gift. Melanie recounted a family camping trip in the mountains last week, highlighting bonding moments with her kids. Caroline revealed her career shift toward counseling trans individuals, inspired by an LGBTQ+ workshop she attended last Friday, driven by her own mental health journey and desire to create safe spaces. Melanie praised Caroline\u2019s dedication, noting her passion for helping others.",
+        "run_id": "conv-26",
+        "session_id": "session_4",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_4",
+          "n_source_turns": 18,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573680.3264275
+        },
+        "namespace": "default",
+        "ts": 76.0,
+        "id": "summary:conv-26:session_4"
+      },
+      {
+        "content": "Caroline attended an LGBTQ+ pride parade last week, feeling a renewed sense of belonging and inspired to pursue counseling for mental health advocacy. Melanie shared her new pottery class, which she finds therapeutic for self-expression, and praised Caroline\u2019s piano practice. Caroline mentioned attending a transgender conference this month to network and learn about advocacy, while Melanie expressed excitement for her artistic growth. Both highlighted how their creative and community activities bring joy and purpose.",
+        "run_id": "conv-26",
+        "session_id": "session_5",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_5",
+          "n_source_turns": 16,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573682.2175908
+        },
+        "namespace": "default",
+        "ts": 92.0,
+        "id": "summary:conv-26:session_5"
+      },
+      {
+        "content": "Caroline and Melanie caught up, discussing Caroline\u2019s shift into counseling/mental health work and Melanie\u2019s recent family trip to the museum\u2019s dinosaur exhibit. Caroline shared her plans for a diverse children\u2019s library and reminisced about Melanie\u2019s childhood love for *Charlotte\u2019s Web*. Melanie praised Caroline\u2019s transition support system, including a recent picnic, while sharing a beach camping photo with her family. Both highlighted the importance of friendship, compassion, and unconditional love.",
+        "run_id": "conv-26",
+        "session_id": "session_6",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_6",
+          "n_source_turns": 16,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573683.9385557
+        },
+        "namespace": "default",
+        "ts": 108.0,
+        "id": "summary:conv-26:session_6"
+      },
+      {
+        "content": "Caroline and Melanie discussed Caroline's recent attendance at an LGBTQ conference two days prior, where she connected with trans individuals and emphasized the importance of trans rights and mental health support. Caroline shared her plans to pursue counseling and mental health careers, inspired by her own struggles and the book *Becoming Nicole*, which highlighted self-acceptance and community support. Melanie mentioned their pets, Luna and Oliver, and her running routine for mental health, while both acknowledged the role of books and self-care in their journeys.",
+        "run_id": "conv-26",
+        "session_id": "session_7",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_7",
+          "n_source_turns": 27,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573685.6632202
+        },
+        "namespace": "default",
+        "ts": 135.0,
+        "id": "summary:conv-26:session_7"
+      },
+      {
+        "content": "Caroline and Melanie discussed their kids\u2019 pottery workshop last Friday, where they made clay pots, and their recent painting projects, including a nature-inspired piece. Caroline shared her experience at an adoption council meeting and a pride parade, highlighting her pride in being accepted. Melanie recounted her wedding day and family support during her move, emphasizing creativity and family time as sources of peace. Both celebrated each other\u2019s journeys, with Caroline expressing gratitude for Melanie\u2019s friendship and Melanie acknowledging Caroline\u2019s courage in embracing her authentic self.",
+        "run_id": "conv-26",
+        "session_id": "session_8",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_8",
+          "n_source_turns": 39,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573687.717929
+        },
+        "namespace": "default",
+        "ts": 174.0,
+        "id": "summary:conv-26:session_8"
+      },
+      {
+        "content": "Melanie and Caroline discussed Caroline\u2019s mentorship of a transgender teen in an LGBTQ youth program, their shared experience at an LGBT pride event last month, and Caroline\u2019s upcoming LGBTQ art show next month. Caroline shared a painting inspired by a visit to an LGBTQ center, highlighting unity and strength, while Melanie praised the artwork and mentioned her kids\u2019 similar painting project. Both expressed appreciation for community support and advocacy efforts.",
+        "run_id": "conv-26",
+        "session_id": "session_9",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_9",
+          "n_source_turns": 17,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573690.0329778
+        },
+        "namespace": "default",
+        "ts": 191.0,
+        "id": "summary:conv-26:session_9"
+      },
+      {
+        "content": "Caroline joined the LGBTQ activist group \"Connected LGBTQ Activists\" last Tuesday, discussing their recent pride parade (last weekend) and plans for campaigns. Melanie shared family memories, including a beach trip with kids and a camping trip where they witnessed the Perseid meteor shower last year, highlighting moments like her youngest child\u2019s first steps as cherished family traditions. Both expressed gratitude for their communities and the impact of collective action and personal connections.",
+        "run_id": "conv-26",
+        "session_id": "session_10",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_10",
+          "n_source_turns": 24,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573691.5839493
+        },
+        "namespace": "default",
+        "ts": 215.0,
+        "id": "summary:conv-26:session_10"
+      },
+      {
+        "content": "Melanie and Caroline discussed Melanie\u2019s daughter\u2019s birthday celebration featuring Matt Patterson\u2019s concert, Caroline\u2019s participation in a pride parade, and Caroline\u2019s art focusing on trans experiences. Caroline shared her painting \u201cEmbracing Identity,\u201d highlighting self-acceptance and imperfection, while Melanie praised her work and its role in fostering inclusivity. They emphasized LGBTQ+ advocacy, art as a tool for self-discovery, and the importance of community support.",
+        "run_id": "conv-26",
+        "session_id": "session_11",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_11",
+          "n_source_turns": 17,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573693.5679233
+        },
+        "namespace": "default",
+        "ts": 232.0,
+        "id": "summary:conv-26:session_11"
+      },
+      {
+        "content": "Caroline shared a negative hiking experience with religious conservatives, sparking reflection on LGBTQ+ rights and the importance of supportive communities. Melanie discussed her pottery project, emphasizing art as a creative and emotional outlet. They planned a summer outing, reminiscing about last year\u2019s Pride fest, to strengthen their friendship and create new memories.",
+        "run_id": "conv-26",
+        "session_id": "session_12",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_12",
+          "n_source_turns": 21,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573696.995156
+        },
+        "namespace": "default",
+        "ts": 253.0,
+        "id": "summary:conv-26:session_12"
+      },
+      {
+        "content": "Caroline and Melanie discussed Caroline\u2019s adoption agency application, her guinea pig Oscar, and Melanie\u2019s pets (Bailey the cat, Oliver the horse). They shared art creations\u2014Melanie\u2019s horse painting and Caroline\u2019s self-portrait\u2014highlighting art\u2019s role in self-expression and authenticity. Caroline emphasized LGBTQ rights advocacy and living authentically, while Melanie praised her journey and offered support.",
+        "run_id": "conv-26",
+        "session_id": "session_13",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_13",
+          "n_source_turns": 18,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573698.7650611
+        },
+        "namespace": "default",
+        "ts": 271.0,
+        "id": "summary:conv-26:session_13"
+      },
+      {
+        "content": "Caroline and Melanie discussed Caroline\u2019s hiking incident, apology to strangers, and her art projects, including a stained glass window symbolizing transgender resilience and a rainbow flag mural. Melanie shared her pottery class creation and volunteer work at a homeless shelter, while Caroline revealed her upcoming LGBTQ art show in November. They celebrated art\u2019s role in connection, joy, and advocacy, with Melanie admiring Caroline\u2019s work and Caroline expressing gratitude for Melanie\u2019s support.",
+        "run_id": "conv-26",
+        "session_id": "session_14",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_14",
+          "n_source_turns": 35,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573700.7077632
+        },
+        "namespace": "default",
+        "ts": 306.0,
+        "id": "summary:conv-26:session_14"
+      },
+      {
+        "content": "Caroline and Melanie discussed Caroline\u2019s volunteer work at an LGBTQ+ youth center, where she connected with young people facing challenges, and her plans for a talent show at the center next month. They shared their passion for music, with Caroline playing acoustic guitar and Melanie playing clarinet, and mentioned songs like \"Brave\" by Sara Bareilles and Ed Sheeran\u2019s \"Perfect.\" Both emphasized the importance of community support and personal expression through art.",
+        "run_id": "conv-26",
+        "session_id": "session_15",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_15",
+          "n_source_turns": 28,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573702.8470008
+        },
+        "namespace": "default",
+        "ts": 334.0,
+        "id": "summary:conv-26:session_15"
+      },
+      {
+        "content": "Caroline and Melanie discussed their recent outdoor activities, with Caroline sharing a biking trip and Melanie recounting a family camping adventure. They exchanged insights on art, with Caroline describing her gender-affirming painting using red and blue to symbolize breaking gender binaries, and Melanie sharing her pottery creations. Both reflected on art\u2019s role in personal growth, with Caroline highlighting its impact on her transition and Melanie noting its therapeutic value. They also touched on community support, with Melanie mentioning a caf\u00e9 sign addressing safety concerns from their previous meetup.",
+        "run_id": "conv-26",
+        "session_id": "session_16",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_16",
+          "n_source_turns": 20,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573705.328235
+        },
+        "namespace": "default",
+        "ts": 354.0,
+        "id": "summary:conv-26:session_16"
+      },
+      {
+        "content": "Caroline and Melanie discussed adoption, with Caroline sharing her journey to adopt and offering guidance on the process, while Melanie expressed interest in adopting after learning about her friend's experience. Melanie also shared her recent setback from a pottery injury, her emotional recovery through painting, and her appreciation for Caroline's art. They bonded over creative expression, with Caroline attending a transgender poetry event and Melanie admiring her artwork, highlighting themes of self-expression and authenticity.",
+        "run_id": "conv-26",
+        "session_id": "session_17",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_17",
+          "n_source_turns": 26,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573707.3259017
+        },
+        "namespace": "default",
+        "ts": 380.0,
+        "id": "summary:conv-26:session_17"
+      },
+      {
+        "content": "Melanie and Caroline discussed a weekend road trip accident involving Melanie\u2019s son, which occurred during a trip to the Grand Canyon. The family was fortunate the son was unharmed, though the incident highlighted the importance of family support and resilience. Melanie shared how the kids handled the trauma well, and they later enjoyed a camping trip at the Grand Canyon, which helped them recharge. Both emphasized the value of family bonds and nature\u2019s calming effect.",
+        "run_id": "conv-26",
+        "session_id": "session_18",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_18",
+          "n_source_turns": 24,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573709.83084
+        },
+        "namespace": "default",
+        "ts": 404.0,
+        "id": "summary:conv-26:session_18"
+      },
+      {
+        "content": "Caroline informed Melanie she passed adoption agency interviews last Friday, marking progress toward her goal of creating a family through adoption. Melanie praised her passion for giving underprivileged children stable homes, while Caroline shared her journey of self-acceptance and how support from friends and mentors helped her embrace her true self. They discussed the importance of love, acceptance, and authenticity in building families, with Melanie highlighting the emotional strength in Caroline\u2019s commitment to helping others. Both expressed gratitude for their supportive relationship and the impact of living authentically.",
+        "run_id": "conv-26",
+        "session_id": "session_19",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_19",
+          "n_source_turns": 15,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573712.2869828
+        },
+        "namespace": "default",
+        "ts": 419.0,
+        "id": "summary:conv-26:session_19"
+      }
+    ],
+    "inferences": [
+      {
+        "content": "Caroline and Melanie consistently prioritize mutual encouragement and shared creative expression as central to their relationship.",
+        "run_id": "conv-26",
+        "session_id": "sleep:inference",
+        "kind": "inference",
+        "importance": 0.95,
+        "provenance": {
+          "origin": "sleep_inference",
+          "inferred": true,
+          "confidence": 0.95,
+          "derived_from": [
+            "session_1",
+            "session_4",
+            "session_6",
+            "session_11",
+            "session_14",
+            "session_16"
+          ],
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "generated_at": 1783573718.2720633
+        },
+        "namespace": "default",
+        "ts": 419.0,
+        "id": "inference:conv-26:0:1783573718"
+      },
+      {
+        "content": "Both individuals integrate LGBTQ advocacy and mental health support into their personal and professional lives.",
+        "run_id": "conv-26",
+        "session_id": "sleep:inference",
+        "kind": "inference",
+        "importance": 0.92,
+        "provenance": {
+          "origin": "sleep_inference",
+          "inferred": true,
+          "confidence": 0.92,
+          "derived_from": [
+            "session_1",
+            "session_2",
+            "session_7",
+            "session_9",
+            "session_11",
+            "session_19"
+          ],
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "generated_at": 1783573718.2720633
+        },
+        "namespace": "default",
+        "ts": 419.0,
+        "id": "inference:conv-26:1:1783573718"
+      },
+      {
+        "content": "Art and nature are recurring themes in their emotional resilience and connection to community.",
+        "run_id": "conv-26",
+        "session_id": "sleep:inference",
+        "kind": "inference",
+        "importance": 0.89,
+        "provenance": {
+          "origin": "sleep_inference",
+          "inferred": true,
+          "confidence": 0.89,
+          "derived_from": [
+            "session_3",
+            "session_4",
+            "session_5",
+            "session_12",
+            "session_14",
+            "session_16"
+          ],
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "generated_at": 1783573718.2720633
+        },
+        "namespace": "default",
+        "ts": 419.0,
+        "id": "inference:conv-26:2:1783573718"
+      },
+      {
+        "content": "Their friendship is sustained through a blend of personal growth, creative collaboration, and family-centric values.",
+        "run_id": "conv-26",
+        "session_id": "sleep:inference",
+        "kind": "inference",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "sleep_inference",
+          "inferred": true,
+          "confidence": 0.9,
+          "derived_from": [
+            "session_6",
+            "session_8",
+            "session_13",
+            "session_15",
+            "session_17",
+            "session_18"
+          ],
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "generated_at": 1783573718.2720633
+        },
+        "namespace": "default",
+        "ts": 419.0,
+        "id": "inference:conv-26:3:1783573718"
+      },
+      {
+        "content": "Caroline\u2019s journey toward self-acceptance is deeply intertwined with Melanie\u2019s support and shared advocacy efforts.",
+        "run_id": "conv-26",
+        "session_id": "sleep:inference",
+        "kind": "inference",
+        "importance": 0.88,
+        "provenance": {
+          "origin": "sleep_inference",
+          "inferred": true,
+          "confidence": 0.88,
+          "derived_from": [
+            "session_1",
+            "session_3",
+            "session_7",
+            "session_9",
+            "session_11",
+            "session_19"
+          ],
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "generated_at": 1783573718.2720633
+        },
+        "namespace": "default",
+        "ts": 419.0,
+        "id": "inference:conv-26:4:1783573718"
+      }
+    ],
+    "links": [
+      {
+        "content": "Caroline comes up across sessions: session_1, session_10, session_11, session_12, session_13, session_14, session_15, session_16, session_17, session_18, session_19, session_2, session_3, session_4, session_5, session_6, session_7, session_8, session_9.",
+        "run_id": "conv-26",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Caroline",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_11",
+            "session_12",
+            "session_13",
+            "session_14",
+            "session_15",
+            "session_16",
+            "session_17",
+            "session_18",
+            "session_19",
+            "session_2",
+            "session_3",
+            "session_4",
+            "session_5",
+            "session_6",
+            "session_7",
+            "session_8",
+            "session_9"
+          ],
+          "generated_at": 1783573718.2729774
+        },
+        "namespace": "default",
+        "ts": 419.0,
+        "id": "link:conv-26:Caroline"
+      },
+      {
+        "content": "Melanie comes up across sessions: session_1, session_10, session_11, session_12, session_13, session_14, session_15, session_16, session_17, session_18, session_19, session_2, session_3, session_4, session_5, session_6, session_7, session_8, session_9.",
+        "run_id": "conv-26",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Melanie",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_11",
+            "session_12",
+            "session_13",
+            "session_14",
+            "session_15",
+            "session_16",
+            "session_17",
+            "session_18",
+            "session_19",
+            "session_2",
+            "session_3",
+            "session_4",
+            "session_5",
+            "session_6",
+            "session_7",
+            "session_8",
+            "session_9"
+          ],
+          "generated_at": 1783573718.2729774
+        },
+        "namespace": "default",
+        "ts": 419.0,
+        "id": "link:conv-26:Melanie"
+      },
+      {
+        "content": "Thanks comes up across sessions: session_1, session_10, session_11, session_12, session_13, session_14, session_15, session_16, session_17, session_18, session_19, session_2, session_3, session_4, session_5, session_6, session_7, session_8, session_9.",
+        "run_id": "conv-26",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Thanks",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_11",
+            "session_12",
+            "session_13",
+            "session_14",
+            "session_15",
+            "session_16",
+            "session_17",
+            "session_18",
+            "session_19",
+            "session_2",
+            "session_3",
+            "session_4",
+            "session_5",
+            "session_6",
+            "session_7",
+            "session_8",
+            "session_9"
+          ],
+          "generated_at": 1783573718.2729774
+        },
+        "namespace": "default",
+        "ts": 419.0,
+        "id": "link:conv-26:Thanks"
+      },
+      {
+        "content": "Wow comes up across sessions: session_1, session_10, session_11, session_13, session_14, session_15, session_16, session_17, session_18, session_19, session_2, session_3, session_4, session_5, session_6, session_7, session_8, session_9.",
+        "run_id": "conv-26",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Wow",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_11",
+            "session_13",
+            "session_14",
+            "session_15",
+            "session_16",
+            "session_17",
+            "session_18",
+            "session_19",
+            "session_2",
+            "session_3",
+            "session_4",
+            "session_5",
+            "session_6",
+            "session_7",
+            "session_8",
+            "session_9"
+          ],
+          "generated_at": 1783573718.2729774
+        },
+        "namespace": "default",
+        "ts": 419.0,
+        "id": "link:conv-26:Wow"
+      },
+      {
+        "content": "Mel comes up across sessions: session_1, session_10, session_11, session_12, session_13, session_14, session_16, session_17, session_18, session_19, session_2, session_3, session_4, session_5, session_6, session_7, session_8.",
+        "run_id": "conv-26",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Mel",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_11",
+            "session_12",
+            "session_13",
+            "session_14",
+            "session_16",
+            "session_17",
+            "session_18",
+            "session_19",
+            "session_2",
+            "session_3",
+            "session_4",
+            "session_5",
+            "session_6",
+            "session_7",
+            "session_8"
+          ],
+          "generated_at": 1783573718.2729774
+        },
+        "namespace": "default",
+        "ts": 419.0,
+        "id": "link:conv-26:Mel"
+      },
+      {
+        "content": "Hey comes up across sessions: session_1, session_10, session_11, session_12, session_14, session_15, session_16, session_17, session_18, session_2, session_3, session_4, session_6, session_7, session_8, session_9.",
+        "run_id": "conv-26",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Hey",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_11",
+            "session_12",
+            "session_14",
+            "session_15",
+            "session_16",
+            "session_17",
+            "session_18",
+            "session_2",
+            "session_3",
+            "session_4",
+            "session_6",
+            "session_7",
+            "session_8",
+            "session_9"
+          ],
+          "generated_at": 1783573718.2729774
+        },
+        "namespace": "default",
+        "ts": 404.0,
+        "id": "link:conv-26:Hey"
+      },
+      {
+        "content": "Yeah comes up across sessions: session_1, session_10, session_12, session_13, session_14, session_15, session_16, session_17, session_18, session_19, session_2, session_3, session_5, session_7, session_8.",
+        "run_id": "conv-26",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Yeah",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_12",
+            "session_13",
+            "session_14",
+            "session_15",
+            "session_16",
+            "session_17",
+            "session_18",
+            "session_19",
+            "session_2",
+            "session_3",
+            "session_5",
+            "session_7",
+            "session_8"
+          ],
+          "generated_at": 1783573718.2729774
+        },
+        "namespace": "default",
+        "ts": 419.0,
+        "id": "link:conv-26:Yeah"
+      },
+      {
+        "content": "LGBTQ comes up across sessions: session_1, session_10, session_11, session_12, session_13, session_14, session_15, session_16, session_2, session_3, session_4, session_5, session_7, session_9.",
+        "run_id": "conv-26",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "LGBTQ",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_11",
+            "session_12",
+            "session_13",
+            "session_14",
+            "session_15",
+            "session_16",
+            "session_2",
+            "session_3",
+            "session_4",
+            "session_5",
+            "session_7",
+            "session_9"
+          ],
+          "generated_at": 1783573718.2729774
+        },
+        "namespace": "default",
+        "ts": 354.0,
+        "id": "link:conv-26:LGBTQ"
+      },
+      {
+        "content": "Glad comes up across sessions: session_10, session_12, session_13, session_14, session_16, session_17, session_18, session_19, session_3, session_4, session_6, session_7, session_8.",
+        "run_id": "conv-26",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Glad",
+          "derived_from": [
+            "session_10",
+            "session_12",
+            "session_13",
+            "session_14",
+            "session_16",
+            "session_17",
+            "session_18",
+            "session_19",
+            "session_3",
+            "session_4",
+            "session_6",
+            "session_7",
+            "session_8"
+          ],
+          "generated_at": 1783573718.2729774
+        },
+        "namespace": "default",
+        "ts": 419.0,
+        "id": "link:conv-26:Glad"
+      },
+      {
+        "content": "Anything comes up across sessions: session_1, session_10, session_11, session_15, session_17, session_2, session_4, session_5, session_6, session_9.",
+        "run_id": "conv-26",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Anything",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_11",
+            "session_15",
+            "session_17",
+            "session_2",
+            "session_4",
+            "session_5",
+            "session_6",
+            "session_9"
+          ],
+          "generated_at": 1783573718.2729774
+        },
+        "namespace": "default",
+        "ts": 380.0,
+        "id": "link:conv-26:Anything"
+      }
+    ]
+  },
+  "conv-30": {
+    "summaries": [
+      {
+        "content": "Jon and Gina discussed their recent job losses (Jon as a banker, Gina at DoorDash) and shared passion for dance, with Jon launching a dance studio and Gina planning to rehearse for a festival performance. They bonded over contemporary dance, Jon\u2019s local competition win, and Gina\u2019s regional contest victory, while agreeing to attend a class and collaborate on projects. Jon\u2019s studio near the water and Gina\u2019s choreography for the festival were highlighted as key details.",
+        "run_id": "conv-30",
+        "session_id": "session_1",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_1",
+          "n_source_turns": 28,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573720.5796907
+        },
+        "namespace": "default",
+        "ts": 28.0,
+        "id": "summary:conv-30:session_1"
+      },
+      {
+        "content": "Gina launched an ad campaign for her clothing store, while Jon is searching for a downtown dance studio with natural light and plans to use Marley flooring. They discussed the importance of proper flooring for safety, Jon\u2019s recent trip to Paris, and mutual support for their ventures. Gina\u2019s store launch and Jon\u2019s studio search were highlighted as both risky and rewarding endeavors.",
+        "run_id": "conv-30",
+        "session_id": "session_2",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_2",
+          "n_source_turns": 16,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573723.5738935
+        },
+        "namespace": "default",
+        "ts": 44.0,
+        "id": "summary:conv-30:session_2"
+      },
+      {
+        "content": "Jon and Gina discussed their respective ventures\u2014Jon's search for a dance studio and Gina's clothing store expansion. Gina secured a space with a custom-designed layout, including a chandelier and cozy furniture, to create a trendy, customer-friendly environment. Jon expressed admiration for her progress and shared his determination to overcome challenges in opening his studio. They mutualized support, emphasizing hard work and creating unique experiences for customers and students.",
+        "run_id": "conv-30",
+        "session_id": "session_3",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_3",
+          "n_source_turns": 14,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573725.992297
+        },
+        "namespace": "default",
+        "ts": 58.0,
+        "id": "summary:conv-30:session_3"
+      },
+      {
+        "content": "Jon and Gina discussed Jon's business challenges and his search for a dance studio location, with Jon expressing determination to secure a spot for his dance studio. Gina encouraged him, noting his passion and talent, while Jon shared plans for a dance competition next month, highlighting his dedication to rehearsals and showcasing his skills. Gina offered her full support, emphasizing that setbacks are opportunities for growth, and Jon reiterated his commitment to pursuing his dreams despite obstacles.",
+        "run_id": "conv-30",
+        "session_id": "session_4",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_4",
+          "n_source_turns": 19,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573728.326675
+        },
+        "namespace": "default",
+        "ts": 77.0,
+        "id": "summary:conv-30:session_4"
+      },
+      {
+        "content": "Gina and Jon discussed Gina's new fashion line collaboration with a local artist for unique designs, inspired by a fashion magazine, and Jon's recent dance performance at a festival, where he shared his passion for teaching dancers. They exchanged support for each other's ventures, with Gina praising Jon's studio growth and Jon admiring Gina's business risks. Gina mentioned her tattoo symbolizing freedom through dance, while Jon highlighted balancing his dance studio and business goals.",
+        "run_id": "conv-30",
+        "session_id": "session_5",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_5",
+          "n_source_turns": 23,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573730.5723217
+        },
+        "namespace": "default",
+        "ts": 100.0,
+        "id": "summary:conv-30:session_5"
+      },
+      {
+        "content": "Jon and Gina discussed their respective ventures: Gina shared her new online clothes store blending fashion and dance, inspired by her passion for trends and dance, while Jon mentioned his gym routine to balance his startup. Both acknowledged recent job losses and challenges, offering mutual support and encouragement. They highlighted their determination to succeed despite obstacles, expressing hope for future collaboration and shared achievements.",
+        "run_id": "conv-30",
+        "session_id": "session_6",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_6",
+          "n_source_turns": 19,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573732.1739876
+        },
+        "namespace": "default",
+        "ts": 119.0,
+        "id": "summary:conv-30:session_6"
+      },
+      {
+        "content": "Jon and Gina discussed their respective businesses\u2014Jon's dance studio and Gina's online clothing store\u2014exchanging advice on branding, customer relationships, and staying positive. Gina sought tips for her store, while Jon emphasized brand identity and student success motivating him, referencing a photo from a dance class. They mutually supported each other's journeys, acknowledging the challenges and gratitude for collaboration.",
+        "run_id": "conv-30",
+        "session_id": "session_7",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_7",
+          "n_source_turns": 17,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573734.3703206
+        },
+        "namespace": "default",
+        "ts": 136.0,
+        "id": "summary:conv-30:session_7"
+      },
+      {
+        "content": "Jon closed his bank account to revamp his business, citing growth potential, while Gina shared her online store's success with dance-fashion fusion and plans to collaborate with influencers. They discussed strategies for customer growth, Jon's dance studio expansion including a monthly competition, and mutual support for each other's ventures. Gina expressed excitement about attending Jon's event, and both acknowledged the challenges and progress in their entrepreneurial journeys.",
+        "run_id": "conv-30",
+        "session_id": "session_8",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_8",
+          "n_source_turns": 26,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573736.4573166
+        },
+        "namespace": "default",
+        "ts": 162.0,
+        "id": "summary:conv-30:session_8"
+      },
+      {
+        "content": "Jon and Gina discussed Jon's transition from a job loss to launching a dance studio, where he teaches students and shares his passion. Gina praised his courage and shared her own dance memories, including a contest trophy, while Jon emphasized dance as his happy place and a means of self-expression. They celebrated mutual love for dance, with Jon expressing gratitude for Gina's support and commitment to his studio's success.",
+        "run_id": "conv-30",
+        "session_id": "session_9",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_9",
+          "n_source_turns": 14,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573738.0268066
+        },
+        "namespace": "default",
+        "ts": 176.0,
+        "id": "summary:conv-30:session_9"
+      },
+      {
+        "content": "Jon and Gina discussed their business journeys: Jon shared his experience at a fair yesterday, highlighting both stress and success from potential leads, while Gina mentioned her recent launch of an online clothing store after losing her job. They exchanged advice on maintaining confidence and motivation amid challenges, with Gina emphasizing focusing on goals and support systems. Jon expressed struggles with self-doubt, and Gina encouraged him to trust his passion and abilities, reaffirming their mutual support for each other's goals.",
+        "run_id": "conv-30",
+        "session_id": "session_10",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_10",
+          "n_source_turns": 14,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573740.3156898
+        },
+        "namespace": "default",
+        "ts": 190.0,
+        "id": "summary:conv-30:session_10"
+      },
+      {
+        "content": "Jon and Gina discussed Jon's new dance studio, launched after losing his job, with Gina expressing admiration for his determination. Gina shared her own passion for dance as a stress reliever, and they bonded over their shared love for the art form. Gina mentioned her recent design internship interview, while Jon offered to share a dance routine video. Both expressed mutual support for each other's dreams and progress.",
+        "run_id": "conv-30",
+        "session_id": "session_11",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_11",
+          "n_source_turns": 22,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573742.0820165
+        },
+        "namespace": "default",
+        "ts": 212.0,
+        "id": "summary:conv-30:session_11"
+      },
+      {
+        "content": "Gina and Jon discussed Gina's acceptance into a part-time fashion internship at an international company's fashion department, her mix of excitement and nerves, and Jon's progress on his dance studio business, including reading \"The Lean Startup\" and using a whiteboard to track ideas and milestones. Jon shared his efforts to finalize a business plan, seek investors, and adapt based on feedback, while Gina praised his determination and offered encouragement. They highlighted mutual support, with Jon expressing confidence in overcoming challenges and Gina affirming her belief in his success.",
+        "run_id": "conv-30",
+        "session_id": "session_12",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_12",
+          "n_source_turns": 19,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573744.1969469
+        },
+        "namespace": "default",
+        "ts": 231.0,
+        "id": "summary:conv-30:session_12"
+      },
+      {
+        "content": "Jon and Gina discussed Jon's preparation for his dance studio, including mentoring programs for dancers and his use of a color-coded whiteboard system to track progress. Gina shared her video presentation on fashion styling, while Jon emphasized creating a supportive environment for dancers. They highlighted the importance of organization, motivation, and mentorship in achieving goals, with Gina praising Jon's methods and encouraging him to stay positive.",
+        "run_id": "conv-30",
+        "session_id": "session_13",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_13",
+          "n_source_turns": 23,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573746.477593
+        },
+        "namespace": "default",
+        "ts": 254.0,
+        "id": "summary:conv-30:session_13"
+      },
+      {
+        "content": "Jon and Gina discussed Jon\u2019s mentorship by a business professional, inspiring him to pursue his dance career, while Gina shared her experience launching an online clothing store after losing her job. They exchanged marketing advice, with Gina recommending social media and influencer collaboration, which Jon began applying by posting dance videos. Gina emphasized resilience and passion as key to entrepreneurship, while Jon expressed gratitude for her support, acknowledging her encouragement as pivotal to his determination. Gina shared a photo of her dancing, reigniting Jon\u2019s passion and reinforcing their mutual encouragement.",
+        "run_id": "conv-30",
+        "session_id": "session_14",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_14",
+          "n_source_turns": 20,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573748.5195584
+        },
+        "namespace": "default",
+        "ts": 274.0,
+        "id": "summary:conv-30:session_14"
+      },
+      {
+        "content": "Jon and Gina discussed Jon's upcoming dance studio grand opening, scheduled for tomorrow, following his recent trip to Rome. Gina congratulated him on the progress, expressing excitement for the event and offering support. They confirmed plans to attend the opening together, celebrating Jon's dedication and the culmination of his efforts. The conversation highlighted their friendship and anticipation for the celebration.",
+        "run_id": "conv-30",
+        "session_id": "session_15",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_15",
+          "n_source_turns": 22,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573750.7988813
+        },
+        "namespace": "default",
+        "ts": 296.0,
+        "id": "summary:conv-30:session_15"
+      },
+      {
+        "content": "Gina and Jon discussed Gina's new store and her limited edition hoodie collection, which she made to showcase her style. Jon shared his struggles post-job loss, emphasizing networking events and writing down plans to stay focused. They mutualized support, highlighting perseverance, goal-setting, and resilience as key to overcoming challenges. Gina encouraged Jon to keep going, while Jon thanked Gina for her motivation and support.",
+        "run_id": "conv-30",
+        "session_id": "session_16",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_16",
+          "n_source_turns": 16,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573752.330504
+        },
+        "namespace": "default",
+        "ts": 312.0,
+        "id": "summary:conv-30:session_16"
+      },
+      {
+        "content": "Gina and Jon discussed Gina's recent recognition by fashion editors and Jon's transition to a full-time business venture after losing his job, highlighting his efforts to learn marketing tools and mentor dancers. They exchanged mutual encouragement, with Gina praising Jon's determination and Jon expressing gratitude for her support, emphasizing their shared commitment to pursuing dreams despite challenges. Jon also mentioned his dance studio's potential to unite people and create meaningful moments. Both acknowledged the importance of community support in overcoming obstacles.",
+        "run_id": "conv-30",
+        "session_id": "session_17",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_17",
+          "n_source_turns": 21,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573755.03759
+        },
+        "namespace": "default",
+        "ts": 333.0,
+        "id": "summary:conv-30:session_17"
+      },
+      {
+        "content": "Gina and Jon discussed Gina's new customer-order website and Jon's struggling dance studio, where he's working a temp job and seeking investors. Jon shared he met potential investors at a networking event, while Gina advised leveraging Instagram/TikTok for marketing and collaborating with influencers. They plan to collaborate on creating social media content and managing accounts to promote the dance studio.",
+        "run_id": "conv-30",
+        "session_id": "session_18",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_18",
+          "n_source_turns": 22,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573757.1448822
+        },
+        "namespace": "default",
+        "ts": 355.0,
+        "id": "summary:conv-30:session_18"
+      },
+      {
+        "content": "Jon and Gina discussed Jon's dance rehearsals and business plan stress, with Gina encouraging him to persist, referencing Shia Labeouf's \"Just do it\" mantra. Gina emphasized the importance of creative spaces for dancers, noting her recent dance class experience last Friday. Jon expressed excitement about his studio becoming a hub for diverse dancers, while Gina reiterated her support, urging him not to quit. Their conversation ended with both reaffirming commitment to action and passion.",
+        "run_id": "conv-30",
+        "session_id": "session_19",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_19",
+          "n_source_turns": 14,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573759.2490234
+        },
+        "namespace": "default",
+        "ts": 369.0,
+        "id": "summary:conv-30:session_19"
+      }
+    ],
+    "inferences": [
+      {
+        "content": "Both Jon and Gina view their entrepreneurial ventures as a means to rebuild their lives after job losses.",
+        "run_id": "conv-30",
+        "session_id": "sleep:inference",
+        "kind": "inference",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "sleep_inference",
+          "inferred": true,
+          "confidence": 0.9,
+          "derived_from": [
+            "session_1",
+            "session_6",
+            "session_10",
+            "session_16",
+            "session_17"
+          ],
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "generated_at": 1783573768.2747586
+        },
+        "namespace": "default",
+        "ts": 369.0,
+        "id": "inference:conv-30:0:1783573768"
+      },
+      {
+        "content": "Jon and Gina rely on each other's encouragement and advice to navigate the challenges of starting their businesses.",
+        "run_id": "conv-30",
+        "session_id": "sleep:inference",
+        "kind": "inference",
+        "importance": 0.85,
+        "provenance": {
+          "origin": "sleep_inference",
+          "inferred": true,
+          "confidence": 0.85,
+          "derived_from": [
+            "session_2",
+            "session_3",
+            "session_4",
+            "session_5",
+            "session_7",
+            "session_12",
+            "session_14",
+            "session_17"
+          ],
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "generated_at": 1783573768.2747586
+        },
+        "namespace": "default",
+        "ts": 369.0,
+        "id": "inference:conv-30:1:1783573768"
+      },
+      {
+        "content": "Both Jon and Gina are utilizing social media and influencer collaborations to promote their respective ventures.",
+        "run_id": "conv-30",
+        "session_id": "sleep:inference",
+        "kind": "inference",
+        "importance": 0.8,
+        "provenance": {
+          "origin": "sleep_inference",
+          "inferred": true,
+          "confidence": 0.8,
+          "derived_from": [
+            "session_5",
+            "session_14",
+            "session_18"
+          ],
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "generated_at": 1783573768.2747586
+        },
+        "namespace": "default",
+        "ts": 369.0,
+        "id": "inference:conv-30:2:1783573768"
+      },
+      {
+        "content": "Jon and Gina emphasize the importance of resilience and perseverance in overcoming the challenges of entrepreneurship.",
+        "run_id": "conv-30",
+        "session_id": "sleep:inference",
+        "kind": "inference",
+        "importance": 0.85,
+        "provenance": {
+          "origin": "sleep_inference",
+          "inferred": true,
+          "confidence": 0.85,
+          "derived_from": [
+            "session_10",
+            "session_12",
+            "session_17"
+          ],
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "generated_at": 1783573768.2747586
+        },
+        "namespace": "default",
+        "ts": 369.0,
+        "id": "inference:conv-30:3:1783573768"
+      },
+      {
+        "content": "Jon's dance studio and Gina's fashion brand reflect their personal passions, integrating dance and fashion into their business identities.",
+        "run_id": "conv-30",
+        "session_id": "sleep:inference",
+        "kind": "inference",
+        "importance": 0.8,
+        "provenance": {
+          "origin": "sleep_inference",
+          "inferred": true,
+          "confidence": 0.8,
+          "derived_from": [
+            "session_1",
+            "session_5",
+            "session_11",
+            "session_14"
+          ],
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "generated_at": 1783573768.2747586
+        },
+        "namespace": "default",
+        "ts": 369.0,
+        "id": "inference:conv-30:4:1783573768"
+      }
+    ],
+    "links": [
+      {
+        "content": "Gina comes up across sessions: session_1, session_10, session_11, session_12, session_13, session_14, session_15, session_16, session_17, session_18, session_19, session_2, session_3, session_4, session_5, session_6, session_7, session_8, session_9.",
+        "run_id": "conv-30",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Gina",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_11",
+            "session_12",
+            "session_13",
+            "session_14",
+            "session_15",
+            "session_16",
+            "session_17",
+            "session_18",
+            "session_19",
+            "session_2",
+            "session_3",
+            "session_4",
+            "session_5",
+            "session_6",
+            "session_7",
+            "session_8",
+            "session_9"
+          ],
+          "generated_at": 1783573768.2755249
+        },
+        "namespace": "default",
+        "ts": 369.0,
+        "id": "link:conv-30:Gina"
+      },
+      {
+        "content": "Jon comes up across sessions: session_1, session_10, session_11, session_12, session_13, session_14, session_15, session_16, session_17, session_18, session_19, session_2, session_3, session_4, session_5, session_6, session_7, session_8, session_9.",
+        "run_id": "conv-30",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Jon",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_11",
+            "session_12",
+            "session_13",
+            "session_14",
+            "session_15",
+            "session_16",
+            "session_17",
+            "session_18",
+            "session_19",
+            "session_2",
+            "session_3",
+            "session_4",
+            "session_5",
+            "session_6",
+            "session_7",
+            "session_8",
+            "session_9"
+          ],
+          "generated_at": 1783573768.2755249
+        },
+        "namespace": "default",
+        "ts": 369.0,
+        "id": "link:conv-30:Jon"
+      },
+      {
+        "content": "Thanks comes up across sessions: session_1, session_10, session_11, session_12, session_13, session_14, session_15, session_16, session_17, session_18, session_19, session_2, session_3, session_4, session_5, session_6, session_7, session_8, session_9.",
+        "run_id": "conv-30",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Thanks",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_11",
+            "session_12",
+            "session_13",
+            "session_14",
+            "session_15",
+            "session_16",
+            "session_17",
+            "session_18",
+            "session_19",
+            "session_2",
+            "session_3",
+            "session_4",
+            "session_5",
+            "session_6",
+            "session_7",
+            "session_8",
+            "session_9"
+          ],
+          "generated_at": 1783573768.2755249
+        },
+        "namespace": "default",
+        "ts": 369.0,
+        "id": "link:conv-30:Thanks"
+      },
+      {
+        "content": "Hey comes up across sessions: session_1, session_10, session_12, session_13, session_14, session_15, session_16, session_17, session_18, session_19, session_2, session_3, session_4, session_5, session_6, session_7, session_8, session_9.",
+        "run_id": "conv-30",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Hey",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_12",
+            "session_13",
+            "session_14",
+            "session_15",
+            "session_16",
+            "session_17",
+            "session_18",
+            "session_19",
+            "session_2",
+            "session_3",
+            "session_4",
+            "session_5",
+            "session_6",
+            "session_7",
+            "session_8",
+            "session_9"
+          ],
+          "generated_at": 1783573768.2755249
+        },
+        "namespace": "default",
+        "ts": 369.0,
+        "id": "link:conv-30:Hey"
+      },
+      {
+        "content": "Wow comes up across sessions: session_1, session_10, session_11, session_12, session_13, session_14, session_15, session_17, session_18, session_2, session_3, session_4, session_5, session_6, session_8, session_9.",
+        "run_id": "conv-30",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Wow",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_11",
+            "session_12",
+            "session_13",
+            "session_14",
+            "session_15",
+            "session_17",
+            "session_18",
+            "session_2",
+            "session_3",
+            "session_4",
+            "session_5",
+            "session_6",
+            "session_8",
+            "session_9"
+          ],
+          "generated_at": 1783573768.2755249
+        },
+        "namespace": "default",
+        "ts": 355.0,
+        "id": "link:conv-30:Wow"
+      },
+      {
+        "content": "Your comes up across sessions: session_10, session_11, session_12, session_13, session_14, session_15, session_16, session_17, session_19, session_3, session_4, session_5, session_6, session_7, session_8.",
+        "run_id": "conv-30",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Your",
+          "derived_from": [
+            "session_10",
+            "session_11",
+            "session_12",
+            "session_13",
+            "session_14",
+            "session_15",
+            "session_16",
+            "session_17",
+            "session_19",
+            "session_3",
+            "session_4",
+            "session_5",
+            "session_6",
+            "session_7",
+            "session_8"
+          ],
+          "generated_at": 1783573768.2755249
+        },
+        "namespace": "default",
+        "ts": 369.0,
+        "id": "link:conv-30:Your"
+      },
+      {
+        "content": "Yeah comes up across sessions: session_1, session_10, session_11, session_12, session_13, session_15, session_18, session_2, session_3, session_5, session_6, session_7, session_8, session_9.",
+        "run_id": "conv-30",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Yeah",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_11",
+            "session_12",
+            "session_13",
+            "session_15",
+            "session_18",
+            "session_2",
+            "session_3",
+            "session_5",
+            "session_6",
+            "session_7",
+            "session_8",
+            "session_9"
+          ],
+          "generated_at": 1783573768.2755249
+        },
+        "namespace": "default",
+        "ts": 355.0,
+        "id": "link:conv-30:Yeah"
+      },
+      {
+        "content": "Keep comes up across sessions: session_10, session_11, session_12, session_13, session_14, session_16, session_17, session_19, session_3, session_4, session_7, session_9.",
+        "run_id": "conv-30",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Keep",
+          "derived_from": [
+            "session_10",
+            "session_11",
+            "session_12",
+            "session_13",
+            "session_14",
+            "session_16",
+            "session_17",
+            "session_19",
+            "session_3",
+            "session_4",
+            "session_7",
+            "session_9"
+          ],
+          "generated_at": 1783573768.2755249
+        },
+        "namespace": "default",
+        "ts": 369.0,
+        "id": "link:conv-30:Keep"
+      },
+      {
+        "content": "Can comes up across sessions: session_1, session_11, session_15, session_18, session_19, session_2, session_5, session_6, session_8.",
+        "run_id": "conv-30",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Can",
+          "derived_from": [
+            "session_1",
+            "session_11",
+            "session_15",
+            "session_18",
+            "session_19",
+            "session_2",
+            "session_5",
+            "session_6",
+            "session_8"
+          ],
+          "generated_at": 1783573768.2755249
+        },
+        "namespace": "default",
+        "ts": 369.0,
+        "id": "link:conv-30:Can"
+      },
+      {
+        "content": "Don comes up across sessions: session_10, session_12, session_14, session_15, session_16, session_17, session_18, session_2, session_4.",
+        "run_id": "conv-30",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Don",
+          "derived_from": [
+            "session_10",
+            "session_12",
+            "session_14",
+            "session_15",
+            "session_16",
+            "session_17",
+            "session_18",
+            "session_2",
+            "session_4"
+          ],
+          "generated_at": 1783573768.2755249
+        },
+        "namespace": "default",
+        "ts": 355.0,
+        "id": "link:conv-30:Don"
+      }
+    ]
+  },
+  "conv-41": {
+    "summaries": [
+      {
+        "content": "Maria and John caught up about their activities, with Maria sharing her volunteer work at a homeless shelter and new aerial yoga routine, while John discussed his kickboxing workouts. John revealed his goal to enter local politics, focusing on improving education and infrastructure, citing his childhood experiences with underfunded schools and poor infrastructure. He shared a photo of a recently renovated school funded by community efforts, explaining how the funding enabled repairs and modernized the learning environment. They agreed to collaborate with local leaders to advance John\u2019s political initiatives.",
+        "run_id": "conv-41",
+        "session_id": "session_1",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_1",
+          "n_source_turns": 16,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573785.7927647
+        },
+        "namespace": "default",
+        "ts": 16.0,
+        "id": "summary:conv-41:session_1"
+      },
+      {
+        "content": "Maria donated her old car to a homeless shelter she volunteers at, while John discussed his education campaign progress and networking efforts. They highlighted family support as a key motivator, with John sharing family photos and activities like taekwondo, and Maria mentioning her family\u2019s movie nights and game nights. Both emphasized the importance of community, creativity, and shared meals in strengthening bonds.",
+        "run_id": "conv-41",
+        "session_id": "session_2",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_2",
+          "n_source_turns": 28,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573787.3097064
+        },
+        "namespace": "default",
+        "ts": 44.0,
+        "id": "summary:conv-41:session_2"
+      },
+      {
+        "content": "John and Maria discussed John\u2019s new service-focused online group, which he joined last week, leading to in-person events like a homeless shelter food drive and a toy drive for kids. They brainstormed future projects to provide education, mentorship, and job training for underserved communities. John shared his recent military aptitude test failure and stress, while Maria offered support and shared a beach sunset photo from last month, reflecting on nature\u2019s calming impact.",
+        "run_id": "conv-41",
+        "session_id": "session_3",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_3",
+          "n_source_turns": 17,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573789.194109
+        },
+        "namespace": "default",
+        "ts": 61.0,
+        "id": "summary:conv-41:session_3"
+      },
+      {
+        "content": "Maria and John discussed their recent experiences: John shared he had an unexpected incident last week, which he managed by staying calm and seeking help, leading to his safe return. Maria praised his resilience and asked about his political goals, to which John revealed his focus on local politics, community meetings, and infrastructure projects. They expressed mutual support for each other\u2019s community efforts, planning to collaborate on neighborhood initiatives. Maria mentioned her own political notes, and both emphasized teamwork to drive positive change.",
+        "run_id": "conv-41",
+        "session_id": "session_4",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_4",
+          "n_source_turns": 26,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573791.025156
+        },
+        "namespace": "default",
+        "ts": 87.0,
+        "id": "summary:conv-41:session_4"
+      },
+      {
+        "content": "John and Maria discussed the state of education in their community, agreeing on the need for more resources and funding for schools. Maria shared her experience volunteering at a shelter, highlighting a touching moment with an 8-year-old girl who had no family, which inspired her to volunteer. John reflected on his childhood doll, linking it to the importance of kindness and support. Both emphasized the urgency of addressing educational disparities and the impact of compassion.",
+        "run_id": "conv-41",
+        "session_id": "session_5",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_5",
+          "n_source_turns": 16,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573792.6219702
+        },
+        "namespace": "default",
+        "ts": 103.0,
+        "id": "summary:conv-41:session_5"
+      },
+      {
+        "content": "Maria and John discussed Maria\u2019s charity event last Friday, where she served meals and connected David, a homeless man, with a local housing support organization. John shared his food drive for unemployed neighbors, highlighting community response and a photo of volunteers. They reflected on personal struggles with financial hardship and mutual support, reaffirming their friendship and commitment to helping others.",
+        "run_id": "conv-41",
+        "session_id": "session_6",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_6",
+          "n_source_turns": 22,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573795.2119534
+        },
+        "namespace": "default",
+        "ts": 125.0,
+        "id": "summary:conv-41:session_6"
+      },
+      {
+        "content": "Maria and John discussed Maria\u2019s volunteer work at a homeless shelter and John\u2019s re-election campaign. Maria shared her encounter with Jean, a resilient woman who overcame divorce, unemployment, and homelessness while maintaining optimism. John expressed admiration for Jean\u2019s resilience and emphasized the importance of kindness and positivity. They agreed to continue collaborating on community efforts, with John mentioning a planned beginner\u2019s yoga class with colleague Rob.",
+        "run_id": "conv-41",
+        "session_id": "session_7",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_7",
+          "n_source_turns": 17,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573797.773828
+        },
+        "namespace": "default",
+        "ts": 142.0,
+        "id": "summary:conv-41:session_7"
+      },
+      {
+        "content": "Maria shared her grief over her grandmother's recent passing and discussed coping strategies with John, who recounted family life with his one-year-old son Kyle, their park outings, and a recent violin concert. John revealed plans to volunteer for his country after retaking an aptitude test, while Maria detailed her efforts at a homeless shelter, emphasizing relationship-building through compassion. Both acknowledged the importance of creating meaningful connections and shared experiences, like Maria\u2019s London-inspired art, to foster lasting impact.",
+        "run_id": "conv-41",
+        "session_id": "session_8",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_8",
+          "n_source_turns": 26,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573799.9444268
+        },
+        "namespace": "default",
+        "ts": 168.0,
+        "id": "summary:conv-41:session_8"
+      },
+      {
+        "content": "Maria and John caught up after a long time, with John sharing his recent graduation from university last week and his plans to pursue policymaking focused on education and infrastructure improvements. Maria expressed support, noting his community involvement and past volunteering experiences, while John highlighted how local meetings shaped his understanding of systemic challenges. Both emphasized their commitment to actionable change and mutual encouragement.",
+        "run_id": "conv-41",
+        "session_id": "session_9",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_9",
+          "n_source_turns": 18,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573801.736415
+        },
+        "namespace": "default",
+        "ts": 186.0,
+        "id": "summary:conv-41:session_9"
+      },
+      {
+        "content": "John and Maria discussed their recent wellness and community activities: John started a beginner yoga class with a colleague, highlighting the instructor\u2019s focus on proper form and mindfulness, and shared a photo from their session. Maria mentioned her participation in a 5K charity run for a homeless shelter and later volunteered at a local school career fair, noting the impact of resource gaps on students. They exchanged photos and reflected on how their efforts foster community connection and personal wellbeing.",
+        "run_id": "conv-41",
+        "session_id": "session_10",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_10",
+          "n_source_turns": 18,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573804.2226164
+        },
+        "namespace": "default",
+        "ts": 204.0,
+        "id": "summary:conv-41:session_10"
+      },
+      {
+        "content": "John's car broke down last Friday, straining his finances, while Maria praised his positivity and shared memories of their 2023 road trip to the Pacific Northwest and national parks. Maria volunteered at a homeless shelter, organizing meals and reflecting on her cross necklace as a faith symbol, while John acknowledged her impact and community efforts. Both emphasized resilience, gratitude, and the importance of connection amid challenges.",
+        "run_id": "conv-41",
+        "session_id": "session_11",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_11",
+          "n_source_turns": 21,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573806.1953454
+        },
+        "namespace": "default",
+        "ts": 225.0,
+        "id": "summary:conv-41:session_11"
+      },
+      {
+        "content": "John and Maria discussed their efforts to drive community change, with John blogging about education reform and infrastructure, and Maria volunteering at a homeless shelter. John shared insights from a tech-for-good convention last month, highlighting collaborative brainstorming and renewed motivation. Maria praised John\u2019s dedication, while John acknowledged Maria\u2019s impact through her volunteer work. Both expressed plans to continue their initiatives, with John set to travel to the East Coast.",
+        "run_id": "conv-41",
+        "session_id": "session_12",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_12",
+          "n_source_turns": 23,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573808.2067475
+        },
+        "namespace": "default",
+        "ts": 248.0,
+        "id": "summary:conv-41:session_12"
+      },
+      {
+        "content": "John and Maria discussed their family fitness routines, with John sharing his recent boot camp sessions with his family three times a week, noting improved strength, energy, and bonding. Maria mentioned her dinner with her mom, including a banana split sundae after volunteering, while reflecting on her solo trip to Spain last year, which inspired her to value solitude and new experiences like surfing. They emphasized the importance of support systems, personal growth, and balancing physical, emotional, and mental well-being to navigate life\u2019s challenges.",
+        "run_id": "conv-41",
+        "session_id": "session_13",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_13",
+          "n_source_turns": 37,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573810.9758852
+        },
+        "namespace": "default",
+        "ts": 285.0,
+        "id": "summary:conv-41:session_13"
+      },
+      {
+        "content": "John and Maria discussed John's re-election bid and his plans to address infrastructure issues in West County, including road repairs and stable utilities after a recent power outage. Maria shared her involvement in charity work and joining a local church, emphasizing community connection. They agreed to collaborate on a neighborhood improvement project, focusing on affordable housing and safer roads, with Maria offering support for John's community initiatives.",
+        "run_id": "conv-41",
+        "session_id": "session_14",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_14",
+          "n_source_turns": 23,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573812.6227534
+        },
+        "namespace": "default",
+        "ts": 308.0,
+        "id": "summary:conv-41:session_14"
+      },
+      {
+        "content": "John and Maria discussed John\u2019s project supporting military veterans, including a petition and a party where veterans shared stories (last Friday), which Maria praised. Maria mentioned her own ring-toss tournament for a homeless shelter\u2019s fundraiser later this month. Both expressed commitment to community support, with John highlighting veterans\u2019 gratitude and Maria offering collaboration. The conversation emphasized their joint efforts to make a difference through tangible events and advocacy.",
+        "run_id": "conv-41",
+        "session_id": "session_15",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_15",
+          "n_source_turns": 19,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573814.3694077
+        },
+        "namespace": "default",
+        "ts": 327.0,
+        "id": "summary:conv-41:session_15"
+      },
+      {
+        "content": "John and Maria discussed John's petition and hiking trip with workmates, while Maria prepared for a shelter fundraiser featuring a chili cook-off next week. John offered to promote the event and recruit volunteers, and they exchanged photos of their families, reflecting on appreciating life's moments.",
+        "run_id": "conv-41",
+        "session_id": "session_16",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_16",
+          "n_source_turns": 19,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573816.410887
+        },
+        "namespace": "default",
+        "ts": 346.0,
+        "id": "summary:conv-41:session_16"
+      },
+      {
+        "content": "John and Maria discussed the loss of their dog Max, who was a cherished family member for 10 years. They shared memories of Max's joyful presence and acknowledged the difficulty of his passing, finding comfort in cherished moments. John mentioned considering adopting a rescue dog to teach his children responsibility and compassion, while Maria offered assistance with her volunteer work at a local dog shelter. Both expressed gratitude for their bond with Max and the lessons of love and loyalty he imparted.",
+        "run_id": "conv-41",
+        "session_id": "session_17",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_17",
+          "n_source_turns": 16,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573818.4504812
+        },
+        "namespace": "default",
+        "ts": 362.0,
+        "id": "summary:conv-41:session_17"
+      },
+      {
+        "content": "Maria and John discussed coping with Max's loss through outdoor adventures, sharing Maria's church camping trip and John's mountaineering summit in Oregon. They reflected on nature's calming effects, with Maria describing a magical waterfall experience and John recalling family time at a park. Both acknowledged the therapeutic value of nature and activities like aerial yoga, emphasizing mindfulness and simplicity.",
+        "run_id": "conv-41",
+        "session_id": "session_18",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_18",
+          "n_source_turns": 23,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573821.547862
+        },
+        "namespace": "default",
+        "ts": 385.0,
+        "id": "summary:conv-41:session_18"
+      },
+      {
+        "content": "Maria and John celebrated each other's achievements: Maria joined a gym, focusing on strength, endurance, and kundalini yoga, while John received a promotion to assistant manager after overcoming self-doubt and workplace challenges. They discussed balancing work and family life, sharing vacation memories from California and Florida, emphasizing the importance of support systems and creating meaningful experiences. Both highlighted perseverance, gratitude, and the role of loved ones in their success.",
+        "run_id": "conv-41",
+        "session_id": "session_19",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_19",
+          "n_source_turns": 26,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573823.1847832
+        },
+        "namespace": "default",
+        "ts": 411.0,
+        "id": "summary:conv-41:session_19"
+      },
+      {
+        "content": "Maria and John discussed Maria's struggles and her reliance on family support, with John recalling their recent lively live music event last week. Maria shared her volunteer work at a shelter, highlighting a memorable moment when a grieving individual laughed while playing with children, bringing her joy. Both acknowledged the positive impact of their actions, with John praising Maria's kindness and Maria thanking John for his encouragement. They concluded with mutual appreciation and well-wishes.",
+        "run_id": "conv-41",
+        "session_id": "session_20",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_20",
+          "n_source_turns": 18,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573825.3952284
+        },
+        "namespace": "default",
+        "ts": 429.0,
+        "id": "summary:conv-41:session_20"
+      },
+      {
+        "content": "Maria and John discussed a car accident Maria survived yesterday, her cousin's housing struggles, and her efforts to help her find a new place. They also shared experiences volunteering at a shelter, where Laura's gratitude letter inspired Maria, and John's participation in a veterans' rights march. Maria appreciated John's offer to assist with resources, while both emphasized the importance of kindness and activism in making a difference.",
+        "run_id": "conv-41",
+        "session_id": "session_21",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_21",
+          "n_source_turns": 29,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573827.1011431
+        },
+        "namespace": "default",
+        "ts": 458.0,
+        "id": "summary:conv-41:session_21"
+      },
+      {
+        "content": "John and Maria discussed the impact of education and infrastructure on communities, sharing how these factors shape neighborhoods and drive personal motivation. John mentioned his family\u2019s support, including a trip last year for his daughter Sara\u2019s birthday, and weekly sunset walks by the ocean for reflection. Maria highlighted her inspiration from volunteering, music, and park walks, while both acknowledged the importance of small, meaningful activities in maintaining motivation. They exchanged personal photos and expressed mutual encouragement to stay committed to their goals.",
+        "run_id": "conv-41",
+        "session_id": "session_22",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_22",
+          "n_source_turns": 21,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573829.0062566
+        },
+        "namespace": "default",
+        "ts": 479.0,
+        "id": "summary:conv-41:session_22"
+      },
+      {
+        "content": "John and Maria discussed the recent flood in John's area, which damaged infrastructure and homes, prompting plans to address community rebuilding. Maria offered assistance, and they agreed to meet to discuss solutions. They expressed commitment to collaborative efforts, with Maria mentioning a later dinner with gym friends. The conversation focused on flood aftermath, infrastructure repair, and community-driven initiatives.",
+        "run_id": "conv-41",
+        "session_id": "session_23",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_23",
+          "n_source_turns": 14,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573830.7751992
+        },
+        "namespace": "default",
+        "ts": 493.0,
+        "id": "summary:conv-41:session_23"
+      },
+      {
+        "content": "John and Maria discussed John\u2019s visit to a veteran\u2019s hospital last week, where he met Samuel, an elderly veteran, inspiring him to join the military. Maria shared her church picnic last weekend with friends, featuring charades and a scavenger hunt. John plans to adapt community event arts-and-crafts activities for his family, emphasizing connection and joy. They agreed on spreading positivity through small acts of kindness and making life enjoyable.",
+        "run_id": "conv-41",
+        "session_id": "session_24",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_24",
+          "n_source_turns": 17,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573833.914751
+        },
+        "namespace": "default",
+        "ts": 510.0,
+        "id": "summary:conv-41:session_24"
+      },
+      {
+        "content": "John and Maria discussed their recent activities, with Maria sharing her uplifting hiking experience with church friends last weekend, highlighting the breathtaking view from the summit and the sense of peace it brought. John mentioned his new job and a yoga studio he frequents, noting classes like yoga, kickboxing, and circuit training, while Maria expressed interest in trying new workouts and volunteering at shelters next month. They also briefly touched on baking cakes and the benefits of diverse exercise routines.",
+        "run_id": "conv-41",
+        "session_id": "session_25",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_25",
+          "n_source_turns": 20,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573836.305322
+        },
+        "namespace": "default",
+        "ts": 530.0,
+        "id": "summary:conv-41:session_25"
+      },
+      {
+        "content": "Maria and John discussed their community service efforts; Maria delivered baked goods to a homeless shelter last week, while John joined a fire-fighting brigade and responded to a rescue mission last Sunday, saving a family from a burning building. They shared experiences of teamwork, with John noting the brigade's bond resembled military camaraderie, and Maria expressed admiration for his courage. Both emphasized the importance of small acts of kindness, with Maria sharing a photo of her volunteer work.",
+        "run_id": "conv-41",
+        "session_id": "session_26",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_26",
+          "n_source_turns": 17,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573838.3633895
+        },
+        "namespace": "default",
+        "ts": 547.0,
+        "id": "summary:conv-41:session_26"
+      },
+      {
+        "content": "John and Maria discussed their respective volunteer efforts: John leads a virtual support group advocating for military personnel, while Maria volunteers at a homeless shelter she joined a year ago after witnessing a family struggling on the streets. Maria shared a heartfelt note from shelter resident Cindy, expressing gratitude for their support, and both praised each other\u2019s impact. They also reflected on a recent military memorial visit that deeply moved John\u2019s children, emphasizing the importance of teaching younger generations to honor veterans.",
+        "run_id": "conv-41",
+        "session_id": "session_27",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_27",
+          "n_source_turns": 16,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573840.699959
+        },
+        "namespace": "default",
+        "ts": 563.0,
+        "id": "summary:conv-41:session_27"
+      },
+      {
+        "content": "John lost his job at a mechanical engineering company after it closed, prompting him to seek opportunities in tech, where Maria encouraged him. Maria shared her recent community work with church friends, while John mentioned renovating a community center in his hometown last year. Both expressed mutual support, with Maria praising John's adaptability and impact, and John thanking her for her encouragement.",
+        "run_id": "conv-41",
+        "session_id": "session_28",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_28",
+          "n_source_turns": 19,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573842.785231
+        },
+        "namespace": "default",
+        "ts": 582.0,
+        "id": "summary:conv-41:session_28"
+      },
+      {
+        "content": "Maria and John discussed their community efforts: Maria volunteered at a homeless shelter and received a medal, while John organized a 5K charity run in their neighborhood to support veterans and their families, overcoming challenges like securing sponsors. They also collaborated on a domestic abuse awareness event, raising funds and awareness for victims. Both highlighted the importance of community initiatives and mutual support.",
+        "run_id": "conv-41",
+        "session_id": "session_29",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_29",
+          "n_source_turns": 18,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573844.837922
+        },
+        "namespace": "default",
+        "ts": 600.0,
+        "id": "summary:conv-41:session_29"
+      },
+      {
+        "content": "Maria and John discussed their pets, Coco (Maria\u2019s 2-week-old puppy) and Max (John\u2019s late dog), with John sharing memories of their summer camping trip. John expressed feeling stuck in his goals and questioning his impact, prompting Maria to suggest volunteering locally. They agreed he should research organizations aligning with his values to channel his passion.",
+        "run_id": "conv-41",
+        "session_id": "session_30",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_30",
+          "n_source_turns": 23,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573846.632981
+        },
+        "namespace": "default",
+        "ts": 623.0,
+        "id": "summary:conv-41:session_30"
+      },
+      {
+        "content": "John and Maria discussed John's mentoring at a local school and Maria's adoption of Shadow, an energetic dog. They shared how pets and family bring joy, with John planning to visit shelters and Maria highlighting Shadow's learning progress. Both emphasized the emotional support animals and family provide.",
+        "run_id": "conv-41",
+        "session_id": "session_31",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_31",
+          "n_source_turns": 23,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573849.3928797
+        },
+        "namespace": "default",
+        "ts": 646.0,
+        "id": "summary:conv-41:session_31"
+      },
+      {
+        "content": "John and Maria discussed John\u2019s recent involvement with the fire-fighting brigade, where they raised donations including canned food, toiletries, and clothes, contributing to a new fire truck. Maria shared her volunteer work at a shelter on Last Friday, emphasizing community support and the impact of kindness. Both expressed fulfillment from their efforts, with John feeling his true calling and Maria appreciating the collective impact of their actions. They resolved to continue collaborating on community initiatives.",
+        "run_id": "conv-41",
+        "session_id": "session_32",
+        "kind": "summary",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "session_summary",
+          "source_session": "session_32",
+          "n_source_turns": 17,
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "summarized_at": 1783573852.3348606
+        },
+        "namespace": "default",
+        "ts": 663.0,
+        "id": "summary:conv-41:session_32"
+      }
+    ],
+    "inferences": [
+      {
+        "content": "Maria and John prioritize collaborative community initiatives focused on education and infrastructure improvements, often aligning their efforts with local leaders and grassroots projects.",
+        "run_id": "conv-41",
+        "session_id": "sleep:inference",
+        "kind": "inference",
+        "importance": 0.85,
+        "provenance": {
+          "origin": "sleep_inference",
+          "inferred": true,
+          "confidence": 0.85,
+          "derived_from": [
+            "session_1",
+            "session_9",
+            "session_12",
+            "session_14",
+            "session_29"
+          ],
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "generated_at": 1783573860.6741576
+        },
+        "namespace": "default",
+        "ts": 663.0,
+        "id": "inference:conv-41:0:1783573861"
+      },
+      {
+        "content": "Their mutual support system is critical to sustaining long-term community engagement, with both emphasizing resilience, shared struggles, and emotional encouragement.",
+        "run_id": "conv-41",
+        "session_id": "sleep:inference",
+        "kind": "inference",
+        "importance": 0.9,
+        "provenance": {
+          "origin": "sleep_inference",
+          "inferred": true,
+          "confidence": 0.9,
+          "derived_from": [
+            "session_2",
+            "session_4",
+            "session_6",
+            "session_11",
+            "session_20",
+            "session_28"
+          ],
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "generated_at": 1783573860.6741576
+        },
+        "namespace": "default",
+        "ts": 663.0,
+        "id": "inference:conv-41:1:1783573861"
+      },
+      {
+        "content": "Both Maria and John consistently highlight the transformative power of small acts of kindness, such as volunteer work and personal sacrifices, in driving systemic change.",
+        "run_id": "conv-41",
+        "session_id": "sleep:inference",
+        "kind": "inference",
+        "importance": 0.8,
+        "provenance": {
+          "origin": "sleep_inference",
+          "inferred": true,
+          "confidence": 0.8,
+          "derived_from": [
+            "session_5",
+            "session_15",
+            "session_18",
+            "session_21",
+            "session_24",
+            "session_26",
+            "session_27",
+            "session_32"
+          ],
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "generated_at": 1783573860.6741576
+        },
+        "namespace": "default",
+        "ts": 663.0,
+        "id": "inference:conv-41:2:1783573861"
+      },
+      {
+        "content": "Personal connections\u2014whether through family, pets, or shared experiences\u2014serve as a recurring motivator for their community service and emotional well-being.",
+        "run_id": "conv-41",
+        "session_id": "sleep:inference",
+        "kind": "inference",
+        "importance": 0.75,
+        "provenance": {
+          "origin": "sleep_inference",
+          "inferred": true,
+          "confidence": 0.75,
+          "derived_from": [
+            "session_13",
+            "session_17",
+            "session_19",
+            "session_25",
+            "session_30",
+            "session_31"
+          ],
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "generated_at": 1783573860.6741576
+        },
+        "namespace": "default",
+        "ts": 663.0,
+        "id": "inference:conv-41:3:1783573861"
+      },
+      {
+        "content": "They view collective action and storytelling (e.g., heartfelt notes, shared memories) as essential to sustaining motivation and fostering a sense of purpose.",
+        "run_id": "conv-41",
+        "session_id": "sleep:inference",
+        "kind": "inference",
+        "importance": 0.7,
+        "provenance": {
+          "origin": "sleep_inference",
+          "inferred": true,
+          "confidence": 0.7,
+          "derived_from": [
+            "session_7",
+            "session_27",
+            "session_32"
+          ],
+          "backend": "ollama",
+          "model": "qwen3:8b",
+          "generated_at": 1783573860.6741576
+        },
+        "namespace": "default",
+        "ts": 663.0,
+        "id": "inference:conv-41:4:1783573861"
+      }
+    ],
+    "links": [
+      {
+        "content": "John comes up across sessions: session_1, session_10, session_11, session_12, session_13, session_14, session_15, session_16, session_17, session_18, session_19, session_2, session_20, session_21, session_22, session_23, session_24, session_25, session_26, session_27, session_28, session_29, session_3, session_30, session_31, session_32, session_4, session_5, session_6, session_7, session_8, session_9.",
+        "run_id": "conv-41",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "John",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_11",
+            "session_12",
+            "session_13",
+            "session_14",
+            "session_15",
+            "session_16",
+            "session_17",
+            "session_18",
+            "session_19",
+            "session_2",
+            "session_20",
+            "session_21",
+            "session_22",
+            "session_23",
+            "session_24",
+            "session_25",
+            "session_26",
+            "session_27",
+            "session_28",
+            "session_29",
+            "session_3",
+            "session_30",
+            "session_31",
+            "session_32",
+            "session_4",
+            "session_5",
+            "session_6",
+            "session_7",
+            "session_8",
+            "session_9"
+          ],
+          "generated_at": 1783573860.6757135
+        },
+        "namespace": "default",
+        "ts": 663.0,
+        "id": "link:conv-41:John"
+      },
+      {
+        "content": "Maria comes up across sessions: session_1, session_10, session_11, session_12, session_13, session_14, session_15, session_16, session_17, session_18, session_19, session_2, session_20, session_21, session_22, session_23, session_24, session_25, session_26, session_27, session_28, session_29, session_3, session_30, session_31, session_32, session_4, session_5, session_6, session_7, session_8, session_9.",
+        "run_id": "conv-41",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Maria",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_11",
+            "session_12",
+            "session_13",
+            "session_14",
+            "session_15",
+            "session_16",
+            "session_17",
+            "session_18",
+            "session_19",
+            "session_2",
+            "session_20",
+            "session_21",
+            "session_22",
+            "session_23",
+            "session_24",
+            "session_25",
+            "session_26",
+            "session_27",
+            "session_28",
+            "session_29",
+            "session_3",
+            "session_30",
+            "session_31",
+            "session_32",
+            "session_4",
+            "session_5",
+            "session_6",
+            "session_7",
+            "session_8",
+            "session_9"
+          ],
+          "generated_at": 1783573860.6757135
+        },
+        "namespace": "default",
+        "ts": 663.0,
+        "id": "link:conv-41:Maria"
+      },
+      {
+        "content": "Thanks comes up across sessions: session_1, session_10, session_11, session_12, session_13, session_14, session_15, session_16, session_17, session_18, session_19, session_2, session_20, session_21, session_22, session_23, session_24, session_25, session_26, session_27, session_28, session_29, session_3, session_30, session_31, session_32, session_4, session_5, session_6, session_7, session_8, session_9.",
+        "run_id": "conv-41",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Thanks",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_11",
+            "session_12",
+            "session_13",
+            "session_14",
+            "session_15",
+            "session_16",
+            "session_17",
+            "session_18",
+            "session_19",
+            "session_2",
+            "session_20",
+            "session_21",
+            "session_22",
+            "session_23",
+            "session_24",
+            "session_25",
+            "session_26",
+            "session_27",
+            "session_28",
+            "session_29",
+            "session_3",
+            "session_30",
+            "session_31",
+            "session_32",
+            "session_4",
+            "session_5",
+            "session_6",
+            "session_7",
+            "session_8",
+            "session_9"
+          ],
+          "generated_at": 1783573860.6757135
+        },
+        "namespace": "default",
+        "ts": 663.0,
+        "id": "link:conv-41:Thanks"
+      },
+      {
+        "content": "Hey comes up across sessions: session_1, session_10, session_11, session_12, session_13, session_14, session_15, session_16, session_17, session_18, session_19, session_2, session_20, session_21, session_22, session_23, session_24, session_25, session_26, session_27, session_28, session_29, session_3, session_30, session_32, session_4, session_5, session_6, session_7, session_8, session_9.",
+        "run_id": "conv-41",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Hey",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_11",
+            "session_12",
+            "session_13",
+            "session_14",
+            "session_15",
+            "session_16",
+            "session_17",
+            "session_18",
+            "session_19",
+            "session_2",
+            "session_20",
+            "session_21",
+            "session_22",
+            "session_23",
+            "session_24",
+            "session_25",
+            "session_26",
+            "session_27",
+            "session_28",
+            "session_29",
+            "session_3",
+            "session_30",
+            "session_32",
+            "session_4",
+            "session_5",
+            "session_6",
+            "session_7",
+            "session_8",
+            "session_9"
+          ],
+          "generated_at": 1783573860.6757135
+        },
+        "namespace": "default",
+        "ts": 663.0,
+        "id": "link:conv-41:Hey"
+      },
+      {
+        "content": "Yeah comes up across sessions: session_1, session_10, session_11, session_13, session_14, session_15, session_16, session_17, session_18, session_19, session_2, session_21, session_22, session_23, session_24, session_25, session_26, session_27, session_28, session_29, session_3, session_30, session_31, session_32, session_4, session_5, session_6, session_7, session_8, session_9.",
+        "run_id": "conv-41",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Yeah",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_11",
+            "session_13",
+            "session_14",
+            "session_15",
+            "session_16",
+            "session_17",
+            "session_18",
+            "session_19",
+            "session_2",
+            "session_21",
+            "session_22",
+            "session_23",
+            "session_24",
+            "session_25",
+            "session_26",
+            "session_27",
+            "session_28",
+            "session_29",
+            "session_3",
+            "session_30",
+            "session_31",
+            "session_32",
+            "session_4",
+            "session_5",
+            "session_6",
+            "session_7",
+            "session_8",
+            "session_9"
+          ],
+          "generated_at": 1783573860.6757135
+        },
+        "namespace": "default",
+        "ts": 663.0,
+        "id": "link:conv-41:Yeah"
+      },
+      {
+        "content": "Wow comes up across sessions: session_1, session_10, session_11, session_12, session_13, session_14, session_15, session_16, session_18, session_19, session_2, session_20, session_21, session_24, session_25, session_26, session_27, session_28, session_29, session_3, session_30, session_31, session_32, session_4, session_5, session_6, session_7, session_8.",
+        "run_id": "conv-41",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Wow",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_11",
+            "session_12",
+            "session_13",
+            "session_14",
+            "session_15",
+            "session_16",
+            "session_18",
+            "session_19",
+            "session_2",
+            "session_20",
+            "session_21",
+            "session_24",
+            "session_25",
+            "session_26",
+            "session_27",
+            "session_28",
+            "session_29",
+            "session_3",
+            "session_30",
+            "session_31",
+            "session_32",
+            "session_4",
+            "session_5",
+            "session_6",
+            "session_7",
+            "session_8"
+          ],
+          "generated_at": 1783573860.6757135
+        },
+        "namespace": "default",
+        "ts": 663.0,
+        "id": "link:conv-41:Wow"
+      },
+      {
+        "content": "Your comes up across sessions: session_11, session_12, session_14, session_15, session_16, session_18, session_19, session_2, session_20, session_22, session_23, session_26, session_28, session_29, session_30, session_31, session_32, session_4, session_6, session_7, session_9.",
+        "run_id": "conv-41",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Your",
+          "derived_from": [
+            "session_11",
+            "session_12",
+            "session_14",
+            "session_15",
+            "session_16",
+            "session_18",
+            "session_19",
+            "session_2",
+            "session_20",
+            "session_22",
+            "session_23",
+            "session_26",
+            "session_28",
+            "session_29",
+            "session_30",
+            "session_31",
+            "session_32",
+            "session_4",
+            "session_6",
+            "session_7",
+            "session_9"
+          ],
+          "generated_at": 1783573860.6757135
+        },
+        "namespace": "default",
+        "ts": 663.0,
+        "id": "link:conv-41:Your"
+      },
+      {
+        "content": "Keep comes up across sessions: session_1, session_10, session_11, session_12, session_13, session_14, session_15, session_18, session_2, session_20, session_21, session_25, session_26, session_28, session_3, session_30, session_4, session_7, session_9.",
+        "run_id": "conv-41",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Keep",
+          "derived_from": [
+            "session_1",
+            "session_10",
+            "session_11",
+            "session_12",
+            "session_13",
+            "session_14",
+            "session_15",
+            "session_18",
+            "session_2",
+            "session_20",
+            "session_21",
+            "session_25",
+            "session_26",
+            "session_28",
+            "session_3",
+            "session_30",
+            "session_4",
+            "session_7",
+            "session_9"
+          ],
+          "generated_at": 1783573860.6757135
+        },
+        "namespace": "default",
+        "ts": 623.0,
+        "id": "link:conv-41:Keep"
+      },
+      {
+        "content": "Let comes up across sessions: session_1, session_12, session_14, session_15, session_16, session_17, session_19, session_2, session_21, session_23, session_24, session_25, session_29, session_30, session_32, session_4, session_7, session_9.",
+        "run_id": "conv-41",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Let",
+          "derived_from": [
+            "session_1",
+            "session_12",
+            "session_14",
+            "session_15",
+            "session_16",
+            "session_17",
+            "session_19",
+            "session_2",
+            "session_21",
+            "session_23",
+            "session_24",
+            "session_25",
+            "session_29",
+            "session_30",
+            "session_32",
+            "session_4",
+            "session_7",
+            "session_9"
+          ],
+          "generated_at": 1783573860.6757135
+        },
+        "namespace": "default",
+        "ts": 663.0,
+        "id": "link:conv-41:Let"
+      },
+      {
+        "content": "Sounds comes up across sessions: session_1, session_13, session_14, session_18, session_19, session_2, session_24, session_25, session_26, session_30, session_31, session_7, session_8, session_9.",
+        "run_id": "conv-41",
+        "session_id": "sleep:link",
+        "kind": "link",
+        "importance": 0.5,
+        "provenance": {
+          "origin": "sleep_link",
+          "entity": "Sounds",
+          "derived_from": [
+            "session_1",
+            "session_13",
+            "session_14",
+            "session_18",
+            "session_19",
+            "session_2",
+            "session_24",
+            "session_25",
+            "session_26",
+            "session_30",
+            "session_31",
+            "session_7",
+            "session_8",
+            "session_9"
+          ],
+          "generated_at": 1783573860.6757135
+        },
+        "namespace": "default",
+        "ts": 646.0,
+        "id": "link:conv-41:Sounds"
+      }
+    ]
+  }
+}

@@ -5,7 +5,7 @@ import json
 
 from memsub.backends import MockBackend
 from memsub.consolidate import ConsolidationConfig, consolidate
-from memsub.sleep import generate_inferences, generate_links, sleep
+from memsub.sleep import generate_inferences, generate_links, sleep, sleep_store
 from memsub.store import Episode, EpisodicStore
 
 
@@ -141,4 +141,59 @@ def test_observed_beats_inferred_on_contradiction_even_if_inference_is_newer():
     assert len(superseded) == 1
     assert superseded[0].episode_id == inferred.id  # the inference loses, not the observed fact
     assert superseded[0].detail["by"] == observed.id
+    store.close()
+
+
+# --------------------------------------------------------------------------- #
+# sleep_store(): incremental, idempotent, real-store integration
+# --------------------------------------------------------------------------- #
+def _mock_sleep_backend():
+    def responder(system, messages):
+        if "inferences" in system.lower():
+            return "[]"
+        return "a session summary"
+
+    return MockBackend(responder=responder)
+
+
+def test_sleep_store_appends_summaries_and_marks_source_slept():
+    store = EpisodicStore(":memory:")
+    for i in range(3):
+        store.append(_ep(f"a: turn {i}", "s1", float(i)))
+    backend = _mock_sleep_backend()
+    result = sleep_store(store, backend, min_session_turns=3)
+    assert len(result.summaries) == 1
+    active = store.active()
+    assert any(ep.kind == "summary" for ep in active)
+    source_ids = [ep.id for ep in active if ep.kind == "turn"]
+    for sid in source_ids:
+        assert len(store.events(episode_id=sid, event="slept")) == 1
+    store.close()
+
+
+def test_sleep_store_is_incremental_second_run_sees_only_new_episodes():
+    store = EpisodicStore(":memory:")
+    for i in range(3):
+        store.append(_ep(f"a: turn {i}", "s1", float(i)))
+    backend = _mock_sleep_backend()
+    sleep_store(store, backend, min_session_turns=3)
+
+    calls = []
+    backend2 = MockBackend(responder=lambda s, m: calls.append(m[0]["content"]) or "[]")
+    result2 = sleep_store(store, backend2, min_session_turns=3)
+    # nothing new to sleep on: no session summary call should happen
+    assert result2.summaries == []
+    assert calls == []
+    store.close()
+
+
+def test_sleep_store_dry_run_appends_nothing():
+    store = EpisodicStore(":memory:")
+    for i in range(3):
+        store.append(_ep(f"a: turn {i}", "s1", float(i)))
+    backend = _mock_sleep_backend()
+    result = sleep_store(store, backend, min_session_turns=3, dry_run=True)
+    assert len(result.summaries) == 1
+    assert not any(ep.kind == "summary" for ep in store.active())
+    assert store.events(event="slept") == []
     store.close()

@@ -75,6 +75,29 @@ def _cmd_consolidate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_sleep(args: argparse.Namespace) -> int:
+    from .sleep import sleep_store
+
+    db = Path(args.db)
+    if not db.exists():
+        print(f"no store at {db}")
+        return 1
+    backend = build_backend(prefer=args.backend, model=args.model)
+    store = EpisodicStore(db)
+    result = sleep_store(
+        store, backend, run_id=args.run_id, namespace=args.namespace, dry_run=args.dry_run,
+    )
+    print(f"summaries: {len(result.summaries)}, inferences: {len(result.inferences)}, "
+          f"links: {len(result.links)}")
+    for ep in result.inferences:
+        conf = ep.provenance.get("confidence", ep.importance)
+        print(f"  [inference conf={conf:.2f}] {ep.content}")
+    label = "proposed (dry run)" if args.dry_run else "written"
+    print(f"{len(result.all_memories)} memor{'y' if len(result.all_memories) == 1 else 'ies'} {label}")
+    store.close()
+    return 0
+
+
 def _cmd_ns(args: argparse.Namespace) -> int:
     from .namespaces import NamespaceManager
 
@@ -202,6 +225,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_con.add_argument("--min-age-days", type=float, default=14.0)
     p_con.add_argument("--dry-run", action="store_true", help="print actions, apply nothing")
     p_con.set_defaults(func=_cmd_consolidate)
+
+    p_sleep = sub.add_parser(
+        "sleep", help="offline consolidation: session summaries, inferences, entity links"
+    )
+    p_sleep.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    p_sleep.add_argument("--backend", default="auto", choices=["auto", "api", "ollama", "cli", "mock"])
+    p_sleep.add_argument("--model", default=None, help="model override for the backend")
+    p_sleep.add_argument("--namespace", default=None, help="restrict to one namespace")
+    p_sleep.add_argument("--run-id", default=None, help="restrict to one run id")
+    p_sleep.add_argument("--dry-run", action="store_true", help="print what would be written, write nothing")
+    p_sleep.set_defaults(func=_cmd_sleep)
 
     p_ns = sub.add_parser("ns", help="manage namespaces and per-agent permissions")
     p_ns.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
