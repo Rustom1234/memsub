@@ -98,3 +98,26 @@ interpretation and should be stated wherever cell B is reported.
 - **Extraction quality is unmeasured.** The extraction prompt and parsing are
   tested mechanically (mocked LLM), and smoke-tested live, but there is no
   labeled dataset measuring extraction precision/recall yet.
+
+## Local-model metrics limitations, added 2026-07-09
+
+- **Token-F1 is a lexical grade.** The end-to-end answer-quality numbers in
+  docs/metrics-local.md use SQuAD-style token F1 against short gold answers.
+  It undercounts correct paraphrases and overcounts lucky word overlap. It
+  is deterministic and identical across conditions, so comparisons are fair,
+  but absolute F1 values are not comparable to LLM-judged scores elsewhere.
+- **Holdout n is small.** The final holdout answer-quality run is n=80 (20
+  per category). Differences of a point or two of F1 (for example memsub
+  0.152 vs memsub+sleep 0.143) are within noise at this n; the sleep verdict
+  is "no measured win", not "measured harm".
+- **Absolute answer quality is low (~0.15 F1).** An 8B model reading
+  1000-token injected contexts about months-long conversations is hard mode.
+  The claim is the relative lift over naive retrieval and no memory, not
+  that the answers are good in absolute terms.
+- **Sleep inference quality is not directly measured.** Inferences are
+  benchmarked for safety (they cannot displace observed memories) and for
+  their effect on answer quality (none measurable), but there is no labeled
+  set grading whether individual inferences are true.
+- **Latency numbers are one machine.** 2.8ms p95 retrieval and ~7s/session
+  extraction were measured on a 20-core box with an RTX 5090; docs state the
+  hardware, and slower machines will differ, especially for extraction.

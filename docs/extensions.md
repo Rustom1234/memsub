@@ -206,3 +206,26 @@ than folded into the Part A synthetic clean-recall sweep, which has no
 notion of inferred memories in its generator; extending that generator to
 simulate sleep output was judged lower value than a precise, deterministic
 test of the exact rule that matters.
+
+## Outcome (2026-07-09, after measurement)
+
+Sleep consolidation was implemented (`memsub/sleep.py`, `memsub sleep`),
+measured on dev, safety-checked, and given the one holdout run:
+
+- Dev answer quality (n=171): +0.002 F1 overall, multi-hop 0.204 to 0.213.
+- Holdout answer quality (n=80, one run): 0.143 vs 0.152 for plain hybrid
+  v2; the dev multi-hop edge reversed. Full tables in docs/metrics-local.md,
+  verdict logged in docs/benchmark.md.
+- Safety: observed-beats-inferred (enforced in both the dedup phase and the
+  contradiction pass of `memsub/consolidate.py`) preserves 98.0% clean
+  recall under adversarial stale-value inferences; disabling the rule
+  collapses clean recall to 0.0% (docs/benchmark.md safety check).
+
+Decision per the keep/revert protocol: `memsub sleep` ships as an OPT-IN
+command, no answer-quality claim, no change to the default retrieval stack.
+Its shipping merits are auditability (every inference carries provenance to
+its source sessions) and the measured safety rule. Candidates 1-2 (local
+LLM rerank, LLM multi-hop decomposition) remain the next queue if this
+direction is revisited; the local-model repositioning headline that DID
+survive holdout is memsub hybrid v2 at 0.152 F1 vs naive 0.117 vs no-memory
+0.022, with 2.8ms p95 retrieval latency.

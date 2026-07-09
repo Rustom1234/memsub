@@ -139,10 +139,35 @@ only claims what was measured.
    accident isolation between cooperating local agents, not a security
    boundary against a process that can open the file.
 
+8. **Local models as the first-class stack (2026-07-09 repositioning).**
+   The wedge sharpened from "zero-infra memory for coding agents" to the
+   memory layer for open-source models running on your own machine. With
+   ollama present, extraction, consolidation, sleep, and (optionally)
+   embeddings all run locally: zero cloud calls, zero API key, transcripts
+   never leave the box. Backed by measured end-to-end numbers with a local
+   8B model as BOTH memory backend and answerer (docs/metrics-local.md,
+   held-out LOCOMO, n=80): memsub 0.152 mean answer F1 vs naive top-k 0.117
+   vs no memory 0.022. Local-first performance envelope, measured on real
+   hardware (stated in the doc): 2.8ms p95 retrieval (no LLM in the search
+   path), ~350 bytes/memory on disk, ~7s extraction per 28-turn session on
+   qwen3:8b. mem0's local story needs a Docker compose stack and assumes
+   provider APIs; memsub's needs `ollama pull qwen3:8b`.
+9. **Sleep consolidation, scoped honestly (2026-07-09).** `memsub sleep`
+   replays recent memories into summaries, inferences, and entity links,
+   every one carrying provenance to its sources. It ships opt-in because the
+   holdout run showed no answer-quality win (0.143 vs 0.152, logged in
+   docs/benchmark.md). What it does claim, measured: inferences are
+   structurally prevented from silently superseding observed memories (in
+   both the dedup and contradiction phases of consolidation), and that rule
+   is worth 98.0 points of clean recall under adversarial stale inferences.
+   Distinguishing observed from inferred memory at the consolidation-rule
+   level, with an audit trail, is this repo's safety DNA showing.
+
 Not claimed, deliberately: no "beats mem0" (the comparison could not be run
-fairly on this machine and the doc says exactly why), no latency numbers
-(unmeasured), no quality claims about the hashing embedder beyond what
-LOCOMO shows.
+fairly on this machine and the doc says exactly why), no quality claims
+about the hashing embedder beyond what LOCOMO shows, and no claim that
+sleep improves recall or answer quality (it measured a holdout
+tie-to-slight-loss and the docs say so).
 
 ## What validates this
 

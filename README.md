@@ -1,12 +1,22 @@
-# memsub: local-first memory for coding agents
+# memsub: local-first memory for local models
 
-Persistent memory for AI agents with literally zero infrastructure: one
-`pip install`, one SQLite file on disk. No Docker, no vector database, no
-server process. The MCP server is stdio, spawned by the client on demand;
-nothing runs when your agent is not running.
+Persistent memory for AI agents that runs entirely on your own computer:
+one `pip install`, one SQLite file on disk, and (with ollama) a fully local
+model stack, so memories and transcripts never leave your machine. No
+Docker, no vector database, no server process, no API key required. The MCP
+server is stdio, spawned by the client on demand; nothing runs when your
+agent is not running.
 
 Built for the developer whose agent re-learns the same five facts about
-their machine and repos every session.
+their machine and repos every session, and who wants that memory private.
+
+Measured, not claimed (docs/metrics-local.md, all numbers from executed
+runs on real hardware, stated n): with qwen3:8b as both memory backend and
+answerer on held-out LOCOMO long conversations, memsub lifts mean answer F1
+to 0.152 vs 0.117 for naive top-k retrieval and 0.022 with no memory
+(n=80, budget 1000). Retrieval itself is 2.8ms p95 warm over ~1450 memories
+(no LLM in the search path), the store costs ~350 bytes per memory on disk,
+and extraction runs at roughly 7s per 28-turn session on a local 8B model.
 
 ## What it does
 
@@ -17,6 +27,14 @@ their machine and repos every session.
   memories, lets new facts supersede contradicted stale ones (LLM-judged,
   superseded copies kept for audit), and forgets low-value memories by decay.
   `memsub consolidate`
+- **Sleep (opt-in)**: an offline pass that replays recent memories and
+  writes session summaries, higher-order inferences, and entity links as
+  first-class, fully audited memories. Inferences are marked as inferred and
+  can never silently supersede an observed memory (measured: this rule holds
+  98.0% clean recall under adversarial stale inferences where disabling it
+  collapses to 0.0%, docs/benchmark.md). Honest caveat: sleep did not
+  improve answer quality on the holdout benchmark, so it ships opt-in with
+  no performance claim. `memsub sleep`
 - **Namespaces**: scope memories per user / agent / session in one store,
   plus shared namespaces for multi-agent teams with per-agent read/write
   grants. `memsub ns create|grant|revoke|list`
