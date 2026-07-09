@@ -167,22 +167,3 @@ Holdout seeds 6-10, n=150 queries per cell per budget. Adversarial setup: one sl
 | policy+cons + adversarial inferences, rule OFF | 200 | 0.0% | 0.0% | 98.7% | 150 |
 | policy+cons + adversarial inferences, rule OFF | 400 | 0.0% | 0.0% | 98.7% | 150 |
 | policy+cons + adversarial inferences, rule OFF | 800 | 0.0% | 0.0% | 98.7% | 150 |
-
-## Sleep-inference safety check on Part A clean recall (executed 2026-07-09 02:16, `scripts/verify_sleep_cleanrecall.py`)
-
-Holdout seeds 6-10, n=150 queries per cell per budget. Adversarial setup: one sleep-style inference per fact family restating a STALE value with a timestamp newer than every observed version (worst case: sleep hallucinated an outdated value after the fact). Contradictions judged deterministically (same subject+attribute, different value), so this measures the supersede-direction rule (observed beats inferred, in dedup and in the contradiction pass), not any LLM's judgment. Rule OFF = `_is_inferred` monkeypatched to always-False, the counterfactual.
-
-| cell | budget | recall | clean | stale | n |
-|---|---|---|---|---|---|
-| policy+cons (regression, no inferences) | 100 | 98.7% | 98.0% | 0.0% | 150 |
-| policy+cons (regression, no inferences) | 200 | 98.7% | 98.0% | 0.0% | 150 |
-| policy+cons (regression, no inferences) | 400 | 98.7% | 98.0% | 0.0% | 150 |
-| policy+cons (regression, no inferences) | 800 | 98.7% | 98.0% | 0.0% | 150 |
-| policy+cons + adversarial inferences, rule ON | 100 | 98.7% | 98.0% | 0.0% | 150 |
-| policy+cons + adversarial inferences, rule ON | 200 | 98.7% | 98.0% | 0.0% | 150 |
-| policy+cons + adversarial inferences, rule ON | 400 | 98.7% | 98.0% | 0.0% | 150 |
-| policy+cons + adversarial inferences, rule ON | 800 | 98.7% | 98.0% | 0.0% | 150 |
-| policy+cons + adversarial inferences, rule OFF | 100 | 0.0% | 0.0% | 98.7% | 150 |
-| policy+cons + adversarial inferences, rule OFF | 200 | 0.0% | 0.0% | 98.7% | 150 |
-| policy+cons + adversarial inferences, rule OFF | 400 | 0.0% | 0.0% | 98.7% | 150 |
-| policy+cons + adversarial inferences, rule OFF | 800 | 0.0% | 0.0% | 98.7% | 150 |
