@@ -167,3 +167,28 @@ Holdout seeds 6-10, n=150 queries per cell per budget. Adversarial setup: one sl
 | policy+cons + adversarial inferences, rule OFF | 200 | 0.0% | 0.0% | 98.7% | 150 |
 | policy+cons + adversarial inferences, rule OFF | 400 | 0.0% | 0.0% | 98.7% | 150 |
 | policy+cons + adversarial inferences, rule OFF | 800 | 0.0% | 0.0% | 98.7% | 150 |
+
+## Sleep extension: kept/reverted verdict (2026-07-09)
+
+Extension #1 (sleep consolidation: session summaries + inferences + entity
+links as first-class episodes, docs/extensions.md) was measured on the
+end-to-end local-model answer-quality harness (its honest metric; evidence
+recall cannot credit summary episodes, see extensions.md):
+
+- Dev (n=171, qwen3:8b, budget 1000): memsub+sleep 0.159 F1 vs memsub 0.157,
+  a near-tie with a multi-hop gain (0.213 vs 0.204).
+- HOLDOUT (n=80, one run, frozen before execution): memsub+sleep 0.143 vs
+  memsub 0.152. The dev multi-hop gain reversed (0.137 vs 0.161);
+  exact-substring tied (0.1625).
+
+VERDICT: sleep artifacts are NOT enabled by default and earn no
+answer-quality claim; the dev edge did not survive holdout. `memsub sleep`
+ships as an opt-in feature on its safety and auditability merits: the
+observed-beats-inferred rule holds 98.0% clean recall under adversarial
+stale-value inferences where disabling it collapses to 0.0% (safety check
+above), and every inference is traceable to its source sessions via
+provenance. The shipped default retrieval stack is unchanged (hybrid v2).
+
+Headline that DID survive holdout (end-to-end, local model as both memory
+backend and answerer): memsub hybrid v2 0.152 mean token-F1 vs naive top-k
+0.117 vs no memory 0.022 (n=80, qwen3:8b, budget 1000, conversations 4-10).

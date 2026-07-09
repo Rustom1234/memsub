@@ -74,3 +74,23 @@ One real transcript chunk (LOCOMO `conv-30` session 1, 28 turns, ~685 input toke
 | extraction wall time | 7.21s |
 | approx input tokens/s | 94.9 |
 | candidate memories extracted | 8 |
+
+## FINAL HOLDOUT: end-to-end local-model answer quality (executed 2026-07-09 02:37, `scripts/holdout_answer_quality.py`)
+
+One run on held-out LOCOMO conversations 4-10 (never used in any selection decision; stack and sampling seed frozen before this run). qwen3:8b as both memory backend and answerer, budget 1000, up to 20 questions per category, deterministic token-F1. Hardware: Linux 6.17.0-35-generic, 20 CPUs (x86_64), GPU: NVIDIA GeForce RTX 5090, 32607 MiB, Python 3.12.3.
+
+| condition | n | mean token-F1 | exact-substring rate |
+|---|---|---|---|
+| no_memory | 80 | 0.0217 | 0.0000 |
+| naive_topk | 80 | 0.1170 | 0.1250 |
+| memsub_hybrid_v2 | 80 | 0.1515 | 0.1625 |
+| memsub_plus_sleep | 80 | 0.1431 | 0.1625 |
+
+Per category (mean token-F1):
+
+| condition | multi-hop | temporal | open-domain | single-hop |
+|---|---|---|---|---|
+| no_memory | 0.0192 (n=20) | 0.0000 (n=20) | 0.0205 (n=20) | 0.0471 (n=20) |
+| naive_topk | 0.1572 (n=20) | 0.0826 (n=20) | 0.0365 (n=20) | 0.1918 (n=20) |
+| memsub_hybrid_v2 | 0.1614 (n=20) | 0.0722 (n=20) | 0.1019 (n=20) | 0.2707 (n=20) |
+| memsub_plus_sleep | 0.1365 (n=20) | 0.0672 (n=20) | 0.0841 (n=20) | 0.2846 (n=20) |
