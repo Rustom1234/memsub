@@ -59,6 +59,13 @@ class Action:
     detail: dict = field(default_factory=dict)
 
 
+def _is_inferred(ep: Episode) -> bool:
+    """True for memsub-sleep-generated inferences (memsub.sleep): conclusions
+    the model drew, not things directly observed. Never allowed to silently
+    outrank an observed memory during consolidation."""
+    return ep.kind == "inference" or bool(ep.provenance.get("inferred", False))
+
+
 def _decay_value(ep: Episode, retrieved_count: int, now: float, cfg: ConsolidationConfig) -> float:
     age_days = max(now - ep.ts, 0.0) / 86400.0
     value = ep.importance * 0.5 ** (age_days / cfg.decay_half_life_days)
@@ -155,9 +162,12 @@ def consolidate(
                 removed.add(a.id)
             elif (
                 sim >= cfg.contradiction_min_sim
-                and a.kind == b.kind
+                and (a.kind == b.kind or "inference" in (a.kind, b.kind))
                 and len(contradiction_pairs) < cfg.max_llm_pairs
             ):
+                # same-kind pairs, or a sleep-generated inference vs anything it
+                # might conflict with: inferences must be checkable against the
+                # observed facts they were drawn from, not just other inferences.
                 contradiction_pairs.append((a, b))
 
     # -- phase 2: contradictions (needs an LLM backend) ---------------------- #
@@ -169,15 +179,22 @@ def consolidate(
         for (old, new), contradicts in zip(contradiction_pairs, verdicts):
             if not contradicts or old.id in removed or new.id in removed:
                 continue
+            # newer wins by default, EXCEPT: an inference (memsub sleep,
+            # provenance.inferred=True or kind="inference") never overwrites an
+            # observed memory, regardless of which one is newer. Sleep proposes,
+            # it never silently supersedes what was actually seen.
+            loser, winner = old, new
+            if _is_inferred(new) and not _is_inferred(old):
+                loser, winner = new, old
             actions.append(
                 Action(
                     action="supersede",
-                    episode_id=old.id,
+                    episode_id=loser.id,
                     reason="contradiction",
-                    detail={"by": new.id, "judge_model": backend.model},
+                    detail={"by": winner.id, "judge_model": backend.model},
                 )
             )
-            removed.add(old.id)
+            removed.add(loser.id)
 
     # -- phase 3: decay ------------------------------------------------------ #
     for ep in episodes:

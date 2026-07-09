@@ -34,7 +34,8 @@ from memsub.backends import OllamaBackend, ollama_available  # noqa: E402
 from memsub.bench import HybridSystem, NaiveTopKSystem, load_locomo  # noqa: E402
 from memsub.extraction import Turn, extract_memories  # noqa: E402
 from memsub.policy import approx_tokens  # noqa: E402
-from memsub.store import EpisodicStore  # noqa: E402
+from memsub.store import Episode, EpisodicStore  # noqa: E402
+from memsub.summarize import summarize_sessions  # noqa: E402
 
 FROZEN = dict(
     policy_params={"recency_weight": 0.999, "recency_floor": 0.75, "importance_floor": 0.0},
@@ -42,7 +43,13 @@ FROZEN = dict(
     temporal=True, temporal_weight=1.0, speaker_boost=1.0, session_weight=3.0,
 )
 ANSWERER_MODEL = "qwen3:8b"
+JUDGE_MODEL = "deepseek-r1:32b"  # occasional quality-comparison row only, time-boxed
 BUDGET = 1000
+CATS = {1: "multi-hop", 2: "temporal", 3: "open-domain", 4: "single-hop"}
+QUESTIONS_PER_CATEGORY = 50  # caps total near 150-300 (open-domain is scarcer, ~21 in dev)
+SEARCH_LATENCY_BUDGET_MS = 300.0  # local-first selling point: warm search, excluding LLM calls
+R1_TIME_BUDGET_S = 480.0  # hard wall-clock cap for the r1:32b comparison row
+R1_MAX_N = 15
 
 ANSWER_SYSTEM = (
     "Answer the question in one short sentence using ONLY the information in "
@@ -114,64 +121,166 @@ def hardware_line() -> str:
 # --------------------------------------------------------------------------- #
 # (a) answer quality: local model as both memory backend and answerer
 # --------------------------------------------------------------------------- #
-def sample_questions(conv, per_category: int, seed: int = 42):
+def _session_summary_cache_path() -> Path:
+    return ROOT / "results" / "_session_summaries_cache.json"
+
+
+def _episode_from_dict(d: dict) -> Episode:
+    return Episode(
+        content=d["content"], run_id=d["run_id"], session_id=d["session_id"],
+        kind=d["kind"], importance=d["importance"], provenance=d["provenance"],
+        namespace=d["namespace"], ts=d["ts"], id=d["id"],
+    )
+
+
+def _episode_to_dict(ep: Episode) -> dict:
+    return {
+        "content": ep.content, "run_id": ep.run_id, "session_id": ep.session_id,
+        "kind": ep.kind, "importance": ep.importance, "provenance": ep.provenance,
+        "namespace": ep.namespace, "ts": ep.ts, "id": ep.id,
+    }
+
+
+def get_session_summaries(conv, backend: OllamaBackend) -> list[Episode]:
+    """Cached to disk: session summarization is write-time cost, not repeated per run."""
+    cache_path = _session_summary_cache_path()
+    cache = json.loads(cache_path.read_text()) if cache_path.exists() else {}
+    if conv.conversation_id in cache:
+        return [_episode_from_dict(d) for d in cache[conv.conversation_id]]
+    summaries = summarize_sessions(list(conv.episodes), backend)
+    cache[conv.conversation_id] = [_episode_to_dict(s) for s in summaries]
+    cache_path.write_text(json.dumps(cache, indent=2))
+    return summaries
+
+
+def sample_stratified(convs, per_category: int, seed: int = 42) -> list[tuple[int, object]]:
+    """Pool questions (excluding category 5 / adversarial, per docs/benchmark.md
+    convention) across dev conversations, stratified by category, capped per
+    category. Returns (conv_index, question) pairs."""
     import random
 
-    by_cat: dict[int, list] = {}
-    for q in conv.qa:
-        if q.category == 5 or not q.answer:  # adversarial: no evidence, excluded per docs/benchmark.md
-            continue
-        by_cat.setdefault(q.category, []).append(q)
+    by_cat: dict[int, list[tuple[int, object]]] = {}
+    for ci, conv in enumerate(convs):
+        for q in conv.qa:
+            if q.category not in CATS or not q.answer:
+                continue
+            by_cat.setdefault(q.category, []).append((ci, q))
     rng = random.Random(seed)
-    picked = []
-    for cat, qs in sorted(by_cat.items()):
+    picked: list[tuple[int, object]] = []
+    for cat in sorted(by_cat):
+        qs = by_cat[cat]
         rng.shuffle(qs)
         picked.extend(qs[:per_category])
     return picked
 
 
-def answer_quality(backend: OllamaBackend, per_category: int = 10) -> dict:
-    convs = load_locomo(ROOT / "data" / "locomo10.json")
-    conv = convs[0]  # dev conversation, conv-26
-    questions = sample_questions(conv, per_category=per_category)
-
+def _build_systems(conv, backend: OllamaBackend) -> dict:
     memsub_sys = HybridSystem(**FROZEN)
     memsub_sys.ingest(list(conv.episodes))
     naive_sys = NaiveTopKSystem()
     naive_sys.ingest(list(conv.episodes))
-
-    conditions = {
-        "no_memory": lambda q: "",
-        "naive_topk": lambda q: "\n".join(e.content for e in naive_sys.inject(q.question, BUDGET)),
-        "memsub_hybrid_v2": lambda q: "\n".join(e.content for e in memsub_sys.inject(q.question, BUDGET)),
+    summaries = get_session_summaries(conv, backend)
+    memsub_plus_summaries = HybridSystem(**FROZEN)
+    memsub_plus_summaries.ingest(list(conv.episodes) + summaries)
+    return {
+        "no_memory": None,
+        "naive_topk": naive_sys,
+        "memsub_hybrid_v2": memsub_sys,
+        "memsub_plus_summaries": memsub_plus_summaries,
     }
 
-    results: dict[str, dict] = {}
+
+def answer_quality(backend: OllamaBackend, per_category: int = QUESTIONS_PER_CATEGORY) -> dict:
+    convs = load_locomo(ROOT / "data" / "locomo10.json")[:3]  # DEV split only
+    sample = sample_stratified(convs, per_category=per_category)
+    systems_by_conv = {ci: _build_systems(convs[ci], backend) for ci in {ci for ci, _ in sample}}
+
+    conditions = ["no_memory", "naive_topk", "memsub_hybrid_v2", "memsub_plus_summaries"]
+    # acc[condition][category] = list of (f1, exact_hit, latency_s)
+    acc: dict[str, dict[int, list]] = {c: {cat: [] for cat in CATS} for c in conditions}
+
     t_start = time.time()
-    for cond_name, build_ctx in conditions.items():
-        f1s, exact_hits, latencies = [], [], []
-        for q in questions:
-            ctx = build_ctx(q)
+    for ci, q in sample:
+        systems = systems_by_conv[ci]
+        for cond in conditions:
+            system = systems[cond]
+            ctx = "" if system is None else "\n".join(e.content for e in system.inject(q.question, BUDGET))
             prompt = f"CONTEXT:\n{ctx}\n\nQUESTION: {q.question}"
             t0 = time.perf_counter()
             answer = backend.complete(ANSWER_SYSTEM, [{"role": "user", "content": prompt}])
-            latencies.append(time.perf_counter() - t0)
+            latency = time.perf_counter() - t0
             f1 = token_f1(answer, q.answer)
-            f1s.append(f1)
-            exact_hits.append(int(q.answer.lower() in answer.lower()))
-        results[cond_name] = {
-            "n": len(questions),
-            "mean_f1": round(mean(f1s), 4) if f1s else 0.0,
-            "exact_substring_rate": round(mean(exact_hits), 4) if exact_hits else 0.0,
-            "mean_answer_latency_s": round(mean(latencies), 3) if latencies else 0.0,
-        }
+            exact = int(q.answer.lower() in answer.lower())
+            acc[cond][q.category].append((f1, exact, latency))
     wall = round(time.time() - t_start, 1)
+
+    by_condition: dict[str, dict] = {}
+    for cond in conditions:
+        per_cat = {}
+        all_rows = []
+        for cat, rows in acc[cond].items():
+            all_rows.extend(rows)
+            if rows:
+                per_cat[CATS[cat]] = {
+                    "n": len(rows),
+                    "mean_f1": round(mean(r[0] for r in rows), 4),
+                    "exact_substring_rate": round(mean(r[1] for r in rows), 4),
+                }
+        by_condition[cond] = {
+            "n": len(all_rows),
+            "mean_f1": round(mean(r[0] for r in all_rows), 4) if all_rows else 0.0,
+            "exact_substring_rate": round(mean(r[1] for r in all_rows), 4) if all_rows else 0.0,
+            "mean_answer_latency_s": round(mean(r[2] for r in all_rows), 3) if all_rows else 0.0,
+            "by_category": per_cat,
+        }
+
     return {
-        "conversation": conv.conversation_id,
+        "conversations": [convs[ci].conversation_id for ci in sorted({ci for ci, _ in sample})],
+        "n_total_per_condition": len(sample),
         "budget_tokens": BUDGET,
         "answerer_model": backend.model,
         "wall_time_s": wall,
-        "by_condition": results,
+        "by_condition": by_condition,
+    }
+
+
+def r1_comparison_row(backend_r1: OllamaBackend, backend_qwen: OllamaBackend, n_max: int = R1_MAX_N,
+                       time_budget_s: float = R1_TIME_BUDGET_S) -> dict:
+    """One time-boxed quality-comparison row: r1:32b vs qwen3:8b as answerer,
+    memsub condition only, same small question subset, paired. Not used for
+    volume (orchestrator model-budget guardrail: r1:32b is 19GB and slow on
+    this box)."""
+    convs = load_locomo(ROOT / "data" / "locomo10.json")[:3]
+    sample = sample_stratified(convs, per_category=max(1, n_max // len(CATS)), seed=7)[:n_max]
+    systems_by_conv = {ci: _build_systems(convs[ci], backend_qwen) for ci in {ci for ci, _ in sample}}
+
+    rows = {"deepseek-r1:32b": [], "qwen3:8b": []}
+    t_start = time.time()
+    n_done = 0
+    for ci, q in sample:
+        if time.time() - t_start > time_budget_s:
+            break
+        system = systems_by_conv[ci]["memsub_hybrid_v2"]
+        ctx = "\n".join(e.content for e in system.inject(q.question, BUDGET))
+        prompt = f"CONTEXT:\n{ctx}\n\nQUESTION: {q.question}"
+        for name, backend in (("deepseek-r1:32b", backend_r1), ("qwen3:8b", backend_qwen)):
+            t0 = time.perf_counter()
+            answer = backend.complete(ANSWER_SYSTEM, [{"role": "user", "content": prompt}])
+            latency = time.perf_counter() - t0
+            rows[name].append((token_f1(answer, q.answer), latency))
+        n_done += 1
+    wall = round(time.time() - t_start, 1)
+    return {
+        "n": n_done,
+        "time_budget_s": time_budget_s,
+        "wall_time_s": wall,
+        "by_model": {
+            name: {
+                "mean_f1": round(mean(r[0] for r in vals), 4) if vals else 0.0,
+                "mean_latency_s": round(mean(r[1] for r in vals), 3) if vals else 0.0,
+            }
+            for name, vals in rows.items()
+        },
     }
 
 
@@ -254,7 +363,7 @@ def write_time_cost(backend: OllamaBackend) -> dict:
 # --------------------------------------------------------------------------- #
 # report
 # --------------------------------------------------------------------------- #
-def render_markdown(hw: str, aq: dict, lf: dict, wc: dict) -> str:
+def render_markdown(hw: str, aq: dict, lf: dict, wc: dict, r1: dict | None = None) -> str:
     lines = [
         "# Local-model metrics",
         "",
@@ -266,11 +375,18 @@ def render_markdown(hw: str, aq: dict, lf: dict, wc: dict) -> str:
         "## (a) Answer quality: does memsub help a local model answer questions?",
         "",
         f"Local model `{aq['answerer_model']}` is both the memory backend (embeds and "
-        f"retrieves via memsub) and the answerer. LOCOMO conversation `{aq['conversation']}`, "
-        f"budget {aq['budget_tokens']} tokens, n={aq['by_condition']['no_memory']['n']} "
-        "questions per condition (stratified across LOCOMO categories 1-4; category 5 "
-        "adversarial excluded per docs/benchmark.md convention). Graded with deterministic "
-        "token-F1 against the gold answer (no LLM judge).",
+        f"retrieves via memsub) and the answerer. LOCOMO dev conversations "
+        f"`{', '.join(aq['conversations'])}` (never the holdout split), budget "
+        f"{aq['budget_tokens']} tokens, n={aq['n_total_per_condition']} questions per "
+        f"condition, stratified across LOCOMO categories 1-4 (category 5 adversarial "
+        "excluded per docs/benchmark.md convention; up to "
+        f"{QUESTIONS_PER_CATEGORY} sampled per category, capped by availability). "
+        "Graded with deterministic token-F1 against the gold answer (no LLM judge, "
+        "nothing to fabricate). `memsub_plus_summaries` is extension #1 "
+        "(docs/extensions.md): session summaries stored as first-class episodes "
+        "alongside facts, competing for the same token budget.",
+        "",
+        "### Overall (required 3-way table: no-memory / naive-topk / memsub, plus the extension)",
         "",
         "| condition | n | mean token-F1 | exact-substring rate | mean answer latency (s) |",
         "|---|---|---|---|---|",
@@ -280,9 +396,35 @@ def render_markdown(hw: str, aq: dict, lf: dict, wc: dict) -> str:
             f"| {cond} | {row['n']} | {row['mean_f1']} | {row['exact_substring_rate']} | "
             f"{row['mean_answer_latency_s']} |"
         )
+    lines += ["", "### Per question-type (category) breakdown", "",
+              "| condition | category | n | mean token-F1 | exact-substring rate |",
+              "|---|---|---|---|---|"]
+    for cond, row in aq["by_condition"].items():
+        for cat_name, cat_row in row["by_category"].items():
+            lines.append(
+                f"| {cond} | {cat_name} | {cat_row['n']} | {cat_row['mean_f1']} | "
+                f"{cat_row['exact_substring_rate']} |"
+            )
     lines += [
         f"\nTotal wall time for this cell: {aq['wall_time_s']}s.",
         "",
+    ]
+    if r1 is not None:
+        lines += [
+            "### Time-boxed quality-comparison row: deepseek-r1:32b vs qwen3:8b",
+            "",
+            "One-off comparison only, not used for volume metrics above (orchestrator "
+            f"model-budget guardrail: r1:32b is 19GB and slow on this box). "
+            f"n={r1['n']} questions (memsub condition only), hard wall-clock cap "
+            f"{r1['time_budget_s']}s, actual {r1['wall_time_s']}s.",
+            "",
+            "| model | mean token-F1 | mean answer latency (s) |",
+            "|---|---|---|",
+        ]
+        for name, row in r1["by_model"].items():
+            lines.append(f"| {name} | {row['mean_f1']} | {row['mean_latency_s']} |")
+        lines.append("")
+    lines += [
         "## (b) Retrieval latency and memory footprint",
         "",
         f"Hybrid v2 retrieval, {lf['n_episodes_indexed']} episodes indexed (3 LOCOMO "
@@ -296,6 +438,12 @@ def render_markdown(hw: str, aq: dict, lf: dict, wc: dict) -> str:
         f"| query latency mean | {lf['query_latency_ms']['mean']} ms |",
         f"| SQLite store size | {lf['sqlite_store_bytes']:,} bytes ({lf['sqlite_store_bytes_per_episode']} bytes/episode) |",
         f"| retrieval index RSS delta | {lf['retrieval_index_rss_delta_kb']:,} KB |",
+        "",
+        f"**Latency guardrail**: search (retrieval only, excluding any LLM call) is "
+        f"budgeted at {SEARCH_LATENCY_BUDGET_MS:.0f}ms warm on this box. Measured p95 "
+        f"is {lf['query_latency_ms']['p95']}ms — "
+        + ("PASS" if lf['query_latency_ms']['p95'] < SEARCH_LATENCY_BUDGET_MS else "FAIL")
+        + f", {round(SEARCH_LATENCY_BUDGET_MS / max(lf['query_latency_ms']['p95'], 0.001), 1)}x headroom.",
         "",
         "Retrieval here uses the local hashed embedder (zero-dependency default), not "
         "ollama embeddings; hashed-embedder latency is retrieval-side CPU cost only, no "
@@ -320,19 +468,28 @@ def main() -> int:
     if not ollama_available():
         print("ollama not reachable; this script needs a running local ollama daemon.", file=sys.stderr)
         return 1
+    run_r1 = "--no-r1" not in sys.argv
     backend = OllamaBackend(model=ANSWERER_MODEL)
     hw = hardware_line()
 
-    print("running (a) answer quality...")
+    print("running (a) answer quality (stratified, multi-condition)...")
     aq = answer_quality(backend)
+    r1 = None
+    if run_r1:
+        print(f"running time-boxed r1:32b comparison row (cap {R1_TIME_BUDGET_S}s)...")
+        backend_r1 = OllamaBackend(model=JUDGE_MODEL, timeout=300.0)
+        r1 = r1_comparison_row(backend_r1, backend)
     print("running (b) latency + footprint...")
     lf = latency_and_footprint()
     print("running (c) write-time cost...")
     wc = write_time_cost(backend)
 
-    payload = {"hardware": hw, "answer_quality": aq, "latency_footprint": lf, "write_time_cost": wc}
+    payload = {
+        "hardware": hw, "answer_quality": aq, "r1_comparison": r1,
+        "latency_footprint": lf, "write_time_cost": wc,
+    }
     (ROOT / "results" / "metrics-local.json").write_text(json.dumps(payload, indent=2))
-    md = render_markdown(hw, aq, lf, wc)
+    md = render_markdown(hw, aq, lf, wc, r1=r1)
     (ROOT / "docs" / "metrics-local.md").write_text(md)
     print(md)
     return 0

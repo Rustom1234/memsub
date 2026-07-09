@@ -79,6 +79,7 @@ def summarize_sessions(
                 },
                 ts=last.ts,
                 namespace=first.namespace,
+                id=f"summary:{first.run_id}:{session_id}",
             )
         )
     return summaries
