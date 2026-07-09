@@ -1,0 +1,165 @@
+{
+  "hardware": "Linux 6.17.0-35-generic, 20 CPUs (x86_64), GPU: NVIDIA GeForce RTX 5090, 32607 MiB, Python 3.12.3",
+  "answer_quality": {
+    "conversations": [
+      "conv-26",
+      "conv-30",
+      "conv-41"
+    ],
+    "n_total_per_condition": 171,
+    "budget_tokens": 1000,
+    "answerer_model": "qwen3:8b",
+    "wall_time_s": 949.0,
+    "by_condition": {
+      "no_memory": {
+        "n": 171,
+        "mean_f1": 0.0186,
+        "exact_substring_rate": 0,
+        "mean_answer_latency_s": 0.651,
+        "by_category": {
+          "multi-hop": {
+            "n": 50,
+            "mean_f1": 0.0256,
+            "exact_substring_rate": 0
+          },
+          "temporal": {
+            "n": 50,
+            "mean_f1": 0.0088,
+            "exact_substring_rate": 0
+          },
+          "open-domain": {
+            "n": 21,
+            "mean_f1": 0.0043,
+            "exact_substring_rate": 0
+          },
+          "single-hop": {
+            "n": 50,
+            "mean_f1": 0.0275,
+            "exact_substring_rate": 0
+          }
+        }
+      },
+      "naive_topk": {
+        "n": 171,
+        "mean_f1": 0.1136,
+        "exact_substring_rate": 0.0819,
+        "mean_answer_latency_s": 1.639,
+        "by_category": {
+          "multi-hop": {
+            "n": 50,
+            "mean_f1": 0.124,
+            "exact_substring_rate": 0.04
+          },
+          "temporal": {
+            "n": 50,
+            "mean_f1": 0.038,
+            "exact_substring_rate": 0
+          },
+          "open-domain": {
+            "n": 21,
+            "mean_f1": 0.0666,
+            "exact_substring_rate": 0.0476
+          },
+          "single-hop": {
+            "n": 50,
+            "mean_f1": 0.1985,
+            "exact_substring_rate": 0.22
+          }
+        }
+      },
+      "memsub_hybrid_v2": {
+        "n": 171,
+        "mean_f1": 0.157,
+        "exact_substring_rate": 0.1228,
+        "mean_answer_latency_s": 1.532,
+        "by_category": {
+          "multi-hop": {
+            "n": 50,
+            "mean_f1": 0.2037,
+            "exact_substring_rate": 0.08
+          },
+          "temporal": {
+            "n": 50,
+            "mean_f1": 0.0473,
+            "exact_substring_rate": 0.02
+          },
+          "open-domain": {
+            "n": 21,
+            "mean_f1": 0.0422,
+            "exact_substring_rate": 0
+          },
+          "single-hop": {
+            "n": 50,
+            "mean_f1": 0.2682,
+            "exact_substring_rate": 0.32
+          }
+        }
+      },
+      "memsub_plus_sleep": {
+        "n": 171,
+        "mean_f1": 0.1593,
+        "exact_substring_rate": 0.1287,
+        "mean_answer_latency_s": 1.724,
+        "by_category": {
+          "multi-hop": {
+            "n": 50,
+            "mean_f1": 0.2131,
+            "exact_substring_rate": 0.08
+          },
+          "temporal": {
+            "n": 50,
+            "mean_f1": 0.049,
+            "exact_substring_rate": 0.02
+          },
+          "open-domain": {
+            "n": 21,
+            "mean_f1": 0.033,
+            "exact_substring_rate": 0
+          },
+          "single-hop": {
+            "n": 50,
+            "mean_f1": 0.2689,
+            "exact_substring_rate": 0.34
+          }
+        }
+      }
+    }
+  },
+  "r1_comparison": {
+    "n": 12,
+    "time_budget_s": 480.0,
+    "wall_time_s": 91.6,
+    "by_model": {
+      "deepseek-r1:32b": {
+        "mean_f1": 0.2036,
+        "mean_latency_s": 5.743
+      },
+      "qwen3:8b": {
+        "mean_f1": 0.1386,
+        "mean_latency_s": 1.89
+      }
+    }
+  },
+  "latency_footprint": {
+    "n_episodes_indexed": 1451,
+    "n_queries": 45,
+    "ingest_time_s": 0.127,
+    "query_latency_ms": {
+      "p50": 2.27,
+      "p95": 2.84,
+      "mean": 2.32
+    },
+    "sqlite_store_bytes": 512000,
+    "sqlite_store_bytes_per_episode": 352.9,
+    "retrieval_index_rss_delta_kb": 0
+  },
+  "write_time_cost": {
+    "conversation": "conv-30",
+    "n_turns": 28,
+    "input_approx_tokens": 685,
+    "n_candidates_extracted": 8,
+    "extraction_wall_time_s": 7.21,
+    "approx_tokens_per_second": 94.9,
+    "model": "qwen3:8b"
+  }
+}
