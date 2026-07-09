@@ -9,13 +9,24 @@ any decision.
 
 ## Product modules (on top of the four-part core below)
 
-- `backends.py`: swappable LLM interface (Anthropic API / claude CLI headless
-  / deterministic mock) used by extraction and consolidation.
+- `backends.py`: swappable LLM interface (Anthropic API / local ollama /
+  claude CLI headless / deterministic mock) used by extraction, consolidation,
+  and sleep. `embed.py` mirrors this for embeddings (hashed default / ollama
+  nomic-embed-text via `build_embedder`).
 - `extraction.py`: transcript (JSONL incl. Claude Code shape, or plain text)
   to candidate memories with provenance (source, turn span, model, confidence).
 - `consolidate.py`: offline pass: embedding dedup (newest wins), LLM-judged
-  contradiction supersede (newer beats stale, superseded kept for audit),
+  contradiction supersede (newer beats stale, superseded kept for audit,
+  except an inference never outranks an observed memory regardless of age),
   half-life decay with retrieval-count protection. All decisions are events.
+- `sleep.py`: offline consolidation pass (`memsub sleep`) that replays
+  memories since the last sleep and produces three first-class memory types
+  with provenance links back to their sources: session summaries
+  (multi-granularity), inferences (higher-order conclusions, marked
+  `kind="inference"`, never silently beats an observed fact — enforced in
+  `consolidate.py`), and links (a dependency-free entity co-occurrence graph
+  built once at sleep time). Incremental and idempotent via a `"slept"` event
+  per source episode. See docs/extensions.md and docs/metrics-local.md.
 - `namespaces.py`: per user/agent/session scoping plus shared namespaces with
   per-agent read/write grants; `MemoryScope` enforces the ACL.
 - `audit.py`: `log_recall` records every retrieval/injection; `memsub audit`
