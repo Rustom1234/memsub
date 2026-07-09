@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .audit import audit_episode, log_recall
+from .embed import Embedder, build_embedder
 from .hybrid import HybridRetriever
 from .namespaces import NamespaceManager
 from .policy import approx_tokens
@@ -49,12 +50,23 @@ class MemoryClient:
         retrieval: str = "hybrid",
         recency_weight: float = 0.999,
         recency_floor: float = 0.75,
+        embedder: Embedder | str | None = None,
     ) -> None:
         """retrieval: "hybrid" (default: the benchmarked v2 stack, stemmed
         BM25 + dense + temporal/speaker/session signals fused with RRF) or
-        "dense" (the v1 embedding-only path)."""
+        "dense" (the v1 embedding-only path).
+
+        embedder: an Embedder instance, or one of "hashing" (default: the
+        zero-dependency local embedder every benchmark in docs/ uses),
+        "ollama" (real embeddings via a local ollama daemon, nomic-embed-text
+        by default), or "auto" (ollama if reachable, else hashing). Defaults
+        to "hashing" so behavior is unchanged unless a caller opts in."""
         if retrieval not in ("hybrid", "dense"):
             raise ValueError("retrieval must be 'hybrid' or 'dense'")
+        if embedder is None or isinstance(embedder, str):
+            self.embedder = build_embedder(prefer=embedder or "hashing")
+        else:
+            self.embedder = embedder
         path = Path(db_path) if db_path else default_db_path()
         if str(path) != ":memory:":
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -176,12 +188,14 @@ class MemoryClient:
             active = self.store.active(namespace=namespace)
             if self.retrieval == "hybrid":
                 index: SemanticIndex | HybridRetriever = HybridRetriever(
-                    recency_weight=self._recency_weight, recency_floor=self._recency_floor
+                    recency_weight=self._recency_weight, recency_floor=self._recency_floor,
+                    embedder=self.embedder,
                 )
                 index.ingest(active)
             else:
                 index = SemanticIndex(
-                    recency_weight=self._recency_weight, recency_floor=self._recency_floor
+                    recency_weight=self._recency_weight, recency_floor=self._recency_floor,
+                    embedder=self.embedder,
                 )
                 for ep in active:
                     index.add(ep)

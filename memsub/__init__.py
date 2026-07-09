@@ -17,7 +17,8 @@ in later without touching the experiment harness.
 """
 
 from memsub.store import Episode, EpisodicStore
-from memsub.embed import Embedder, HashingEmbedder
+from memsub.embed import Embedder, HashingEmbedder, OllamaEmbedder, build_embedder
+from memsub.backends import OllamaBackend, build_backend
 from memsub.retrieval import SemanticIndex, ScoredEpisode
 from memsub.structured import Fact, StructuredStore
 from memsub.policy import MemoryPolicy
@@ -28,6 +29,10 @@ __all__ = [
     "EpisodicStore",
     "Embedder",
     "HashingEmbedder",
+    "OllamaEmbedder",
+    "build_embedder",
+    "OllamaBackend",
+    "build_backend",
     "SemanticIndex",
     "ScoredEpisode",
     "Fact",

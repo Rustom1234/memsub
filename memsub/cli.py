@@ -142,7 +142,9 @@ def _cmd_search(args: argparse.Namespace) -> int:
     if not db.exists():
         print(f"no store at {db}")
         return 1
-    client = MemoryClient(db_path=db, namespace=args.namespace, retrieval=args.retrieval)
+    client = MemoryClient(
+        db_path=db, namespace=args.namespace, retrieval=args.retrieval, embedder=args.embedder
+    )
     try:
         hits = client.search(args.query, k=args.k, budget_tokens=args.budget)
         if not hits:
@@ -159,10 +161,10 @@ def _cmd_mcp(args: argparse.Namespace) -> int:
     from .mcp_server import serve
     from .sdk import MemoryClient
 
+    kwargs = {"retrieval": args.retrieval, "embedder": args.embedder}
     if args.db:
-        client = MemoryClient(db_path=args.db, retrieval=args.retrieval)
-    else:
-        client = MemoryClient(retrieval=args.retrieval)
+        kwargs["db_path"] = args.db
+    client = MemoryClient(**kwargs)
     return serve(client)
 
 
@@ -176,8 +178,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_ext.add_argument(
         "--backend",
         default="auto",
-        choices=["auto", "api", "cli", "mock"],
-        help="LLM backend (auto: API if ANTHROPIC_API_KEY else claude CLI)",
+        choices=["auto", "api", "ollama", "cli", "mock"],
+        help="LLM backend (auto: API key, else local ollama, else claude CLI)",
     )
     p_ext.add_argument("--model", default=None, help="model override for the backend")
     p_ext.add_argument("--namespace", default="default", help="namespace to file memories under")
@@ -189,7 +191,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_con = sub.add_parser("consolidate", help="dedup, resolve contradictions, decay low-value memories")
     p_con.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
-    p_con.add_argument("--backend", default="auto", choices=["auto", "api", "cli", "mock"])
+    p_con.add_argument("--backend", default="auto", choices=["auto", "api", "ollama", "cli", "mock"])
     p_con.add_argument("--model", default=None, help="model override for the backend")
     p_con.add_argument("--namespace", default=None, help="restrict to one namespace (default: each separately)")
     p_con.add_argument("--run-id", default=None, help="restrict to one run id")
@@ -232,6 +234,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_srch.add_argument("--namespace", default=None, help="namespace to search (default: $MEMSUB_NAMESPACE or 'default')")
     p_srch.add_argument("--retrieval", default="hybrid", choices=["hybrid", "dense"],
                         help="hybrid (v2 default) or dense (v1 embedding-only)")
+    p_srch.add_argument("--embedder", default="hashing", choices=["hashing", "ollama", "auto"],
+                        help="hashing (default, zero-dependency) or ollama (real local embeddings)")
     p_srch.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
     p_srch.set_defaults(func=_cmd_search)
 
@@ -239,6 +243,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_mcp.add_argument("--db", default=None, help="SQLite store path (default: $MEMSUB_DB or ~/.memsub/memory.db)")
     p_mcp.add_argument("--retrieval", default="hybrid", choices=["hybrid", "dense"],
                        help="retrieval stack for search_memory (default: hybrid v2)")
+    p_mcp.add_argument("--embedder", default="hashing", choices=["hashing", "ollama", "auto"],
+                       help="hashing (default, zero-dependency) or ollama (real local embeddings)")
     p_mcp.set_defaults(func=_cmd_mcp)
 
     return parser
