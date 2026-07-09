@@ -38,7 +38,7 @@ their machine and repos every session.
 ```bash
 git clone <this repo> && cd memory-sublayer
 uv venv .venv && uv pip install -p .venv/bin/python -e .
-.venv/bin/python -m pytest   # 111 tests, all local, LLM calls mocked
+.venv/bin/python -m pytest   # all tests local, LLM/embedding calls mocked
 ```
 
 Dependencies: numpy. That is the list.
@@ -82,6 +82,31 @@ memsub audit <memory-id>                   # why does this memory exist?
 memsub mcp                                 # the MCP stdio server
 ```
 
+## Local models (ollama)
+
+memsub runs entirely on your machine, including the model. With
+[ollama](https://ollama.com) running locally it needs zero cloud calls and
+zero API key:
+
+```bash
+ollama pull qwen3:8b            # extraction / consolidation (fast)
+ollama pull deepseek-r1:32b     # optional: higher-quality judgment calls
+ollama pull nomic-embed-text    # real local embeddings (optional; the
+                                 # default hashed embedder needs no model)
+
+memsub extract session.jsonl --backend ollama              # qwen3:8b
+memsub extract session.jsonl --backend ollama --model deepseek-r1:32b
+memsub search "how do we run tests?" --embedder ollama     # nomic-embed-text
+```
+
+`--backend auto` (the default) picks ollama automatically whenever a daemon
+answers at `localhost:11434` (override with `$OLLAMA_HOST`) and no
+`ANTHROPIC_API_KEY` is set. qwen3's `<think>...</think>` reasoning blocks are
+stripped before JSON parsing, so extraction and consolidation see clean
+output. Embeddings stay on the zero-dependency hashed embedder by default
+(`--embedder hashing`); `--embedder ollama` opts into real embeddings, and
+`--embedder auto` uses ollama when available.
+
 ## LLM backends
 
 Extraction and the consolidation contradiction judge need an LLM. The
@@ -90,14 +115,16 @@ backend is swappable (`memsub/backends.py`):
 | Backend | Selected when | Notes |
 |---|---|---|
 | Anthropic API | `ANTHROPIC_API_KEY` set, or `--backend api` | prefers `claude-haiku-4-5` |
-| claude CLI | no key, or `--backend cli` | headless `claude -p`, which every Claude Code user already has |
+| ollama | a local daemon answers, no API key, or `--backend ollama` | `qwen3:8b` by default, zero cloud calls |
+| claude CLI | no key, no ollama, or `--backend cli` | headless `claude -p`, which every Claude Code user already has |
 | mock | `--backend mock` | deterministic, zero cost, used by tests |
 
-Everything else (embeddings, retrieval, storage, consolidation dedup and
-decay) is local and deterministic: stemmed BM25 + hashed bag-of-features
-embeddings + numpy cosine + SQLite, fused with reciprocal rank fusion. No
-embedding service, no API needed for recall. The v1 dense-only path stays
-available via `retrieval="dense"` (SDK) or `--retrieval dense` (CLI/MCP).
+Everything else (retrieval, storage, consolidation dedup and decay) is
+local: stemmed BM25 + embeddings (hashed bag-of-features by default, or real
+ollama embeddings) + numpy cosine + SQLite, fused with reciprocal rank
+fusion. No embedding service, no API required for recall. The v1 dense-only
+path stays available via `retrieval="dense"` (SDK) or `--retrieval dense`
+(CLI/MCP).
 
 ## Design
 
