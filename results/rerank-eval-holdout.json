@@ -1,0 +1,594 @@
+{
+  "mode": "holdout",
+  "n": 80,
+  "budget": 1000,
+  "rerank_k": 25,
+  "mean_f1": 0.1544,
+  "exact_substring_rate": 0.175,
+  "mean_latency_s": 9.072,
+  "rerank_status_counts": {
+    "reranked": 25,
+    "reranked_partial": 55
+  },
+  "by_category": {
+    "multi-hop": {
+      "n": 20,
+      "mean_f1": 0.1368
+    },
+    "temporal": {
+      "n": 20,
+      "mean_f1": 0.0672
+    },
+    "open-domain": {
+      "n": 20,
+      "mean_f1": 0.1033
+    },
+    "single-hop": {
+      "n": 20,
+      "mean_f1": 0.3105
+    }
+  },
+  "wall_time_s": 726.3,
+  "rows": [
+    {
+      "category": 1,
+      "f1": 0.22222222222222224,
+      "exact": 0,
+      "latency_s": 7.999979258980602,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 1,
+      "f1": 0.10526315789473684,
+      "exact": 1,
+      "latency_s": 11.040589770011138,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 1,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 12.739812746003736,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 1,
+      "f1": 0.5,
+      "exact": 0,
+      "latency_s": 4.332434410986025,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 1,
+      "f1": 0.2857142857142857,
+      "exact": 0,
+      "latency_s": 20.373723102005897,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 1,
+      "f1": 0.2857142857142857,
+      "exact": 1,
+      "latency_s": 5.830734210001538,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 1,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 8.391136478021508,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 1,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 10.350513544981368,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 1,
+      "f1": 0.1081081081081081,
+      "exact": 0,
+      "latency_s": 11.041385779011762,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 1,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 9.74289462598972,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 1,
+      "f1": 0.2222222222222222,
+      "exact": 0,
+      "latency_s": 12.75371581199579,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 1,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 3.7207263019809034,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 1,
+      "f1": 0.10526315789473685,
+      "exact": 0,
+      "latency_s": 8.374863461998757,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 1,
+      "f1": 0.23529411764705882,
+      "exact": 0,
+      "latency_s": 6.538226200995268,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 1,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 7.378394682978978,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 1,
+      "f1": 0.25,
+      "exact": 0,
+      "latency_s": 11.660777984012384,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 1,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 2.6955748950131238,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 1,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 14.61502538001514,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 1,
+      "f1": 0.1212121212121212,
+      "exact": 0,
+      "latency_s": 5.939345279010013,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 1,
+      "f1": 0.29411764705882354,
+      "exact": 0,
+      "latency_s": 5.487745380989509,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 2,
+      "f1": 0.25,
+      "exact": 0,
+      "latency_s": 9.753209758986486,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 2,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 7.887947887007613,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 2,
+      "f1": 0.14285714285714285,
+      "exact": 0,
+      "latency_s": 3.529770061984891,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 2,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 9.193162145005772,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 2,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 12.35835440599476,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 2,
+      "f1": 0.14285714285714285,
+      "exact": 0,
+      "latency_s": 3.7382322589983232,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 2,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 3.295400097995298,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 2,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 11.576728668995202,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 2,
+      "f1": 0.3636363636363636,
+      "exact": 1,
+      "latency_s": 2.703981819009641,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 2,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 15.970195410976885,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 2,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 5.863846200023545,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 2,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 8.04793533499469,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 2,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 3.4351293929794338,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 2,
+      "f1": 0.4444444444444445,
+      "exact": 1,
+      "latency_s": 13.512531045009382,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 2,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 2.7863951089966577,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 2,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 4.990926525002578,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 2,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 17.881896959996084,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 2,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 8.183042582008056,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 2,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 2.2225762130110525,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 2,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 4.308967450022465,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 3,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 9.991855873988243,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 3,
+      "f1": 0.2857142857142857,
+      "exact": 1,
+      "latency_s": 3.9114822300034575,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 3,
+      "f1": 0.25,
+      "exact": 0,
+      "latency_s": 8.077266325999517,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 3,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 9.905389193998417,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 3,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 7.643526786996517,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 3,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 7.45535954501247,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 3,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 3.2345371990231797,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 3,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 12.691653839021455,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 3,
+      "f1": 0.15789473684210525,
+      "exact": 0,
+      "latency_s": 18.129397107986733,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 3,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 5.414533755014418,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 3,
+      "f1": 0.7027027027027027,
+      "exact": 0,
+      "latency_s": 13.090974766004365,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 3,
+      "f1": 0.1081081081081081,
+      "exact": 0,
+      "latency_s": 11.749421710002935,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 3,
+      "f1": 0.08695652173913045,
+      "exact": 1,
+      "latency_s": 13.945305653993273,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 3,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 6.252587568975287,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 3,
+      "f1": 0.125,
+      "exact": 0,
+      "latency_s": 9.102906290005194,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 3,
+      "f1": 0.13333333333333333,
+      "exact": 1,
+      "latency_s": 4.489692957984516,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 3,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 3.67860883299727,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 3,
+      "f1": 0.1111111111111111,
+      "exact": 0,
+      "latency_s": 16.061245226010215,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 3,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 10.246977282018634,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 3,
+      "f1": 0.10526315789473684,
+      "exact": 0,
+      "latency_s": 19.438404704997083,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 4,
+      "f1": 0.42857142857142855,
+      "exact": 1,
+      "latency_s": 8.264790501998505,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 4,
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 18.118121659004828,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 4,
+      "f1": 0.47619047619047616,
+      "exact": 0,
+      "latency_s": 9.738580350007396,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 4,
+      "f1": 0.15384615384615383,
+      "exact": 0,
+      "latency_s": 10.10352575298748,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 4,
+      "f1": 0.375,
+      "exact": 0,
+      "latency_s": 5.8240829599963035,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 4,
+      "f1": 0.11764705882352941,
+      "exact": 1,
+      "latency_s": 4.185161241010064,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 4,
+      "f1": 0.4999999999999999,
+      "exact": 0,
+      "latency_s": 5.018695956008742,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 4,
+      "f1": 0.125,
+      "exact": 1,
+      "latency_s": 10.542322410008637,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 4,
+      "f1": 0.10526315789473685,
+      "exact": 0,
+      "latency_s": 8.024845615000231,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 4,
+      "f1": 0.48,
+      "exact": 0,
+      "latency_s": 7.77383245297824,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 4,
+      "f1": 0.25,
+      "exact": 0,
+      "latency_s": 12.779662254004506,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 4,
+      "f1": 0.16666666666666666,
+      "exact": 0,
+      "latency_s": 2.7673003370000515,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 4,
+      "f1": 0.5454545454545454,
+      "exact": 1,
+      "latency_s": 2.9674582809966523,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 4,
+      "f1": 0.4999999999999999,
+      "exact": 0,
+      "latency_s": 10.847173895977903,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 4,
+      "f1": 0.18181818181818182,
+      "exact": 1,
+      "latency_s": 12.065051763987867,
+      "rerank_status": "reranked"
+    },
+    {
+      "category": 4,
+      "f1": 0.3157894736842105,
+      "exact": 1,
+      "latency_s": 8.531067373987753,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 4,
+      "f1": 0.1739130434782609,
+      "exact": 0,
+      "latency_s": 13.590095728985034,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 4,
+      "f1": 0.4444444444444445,
+      "exact": 1,
+      "latency_s": 6.757672483014176,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 4,
+      "f1": 0.1739130434782609,
+      "exact": 0,
+      "latency_s": 25.684735629998613,
+      "rerank_status": "reranked_partial"
+    },
+    {
+      "category": 4,
+      "f1": 0.6956521739130435,
+      "exact": 0,
+      "latency_s": 15.426085871993564,
+      "rerank_status": "reranked"
+    }
+  ]
+}

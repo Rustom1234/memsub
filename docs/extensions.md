@@ -229,3 +229,93 @@ LLM rerank, LLM multi-hop decomposition) remain the next queue if this
 direction is revisited; the local-model repositioning headline that DID
 survive holdout is memsub hybrid v2 at 0.152 F1 vs naive 0.117 vs no-memory
 0.022, with 2.8ms p95 retrieval latency.
+
+## Round 2 pre-registration (2026-07-09): candidate 1, local LLM rerank
+
+Implemented per docs/error-analysis-locomo.md: 220/223 dev evidence-all
+failures are `ranked_low` (evidence exists, ranked too low for the budget).
+Sleep plateaued (see verdict above); candidate 1 is next in the queue.
+
+**Mechanism** (`memsub/rerank.py`, `memsub.bench.RerankSystem`): take the
+frozen hybrid-v2 rank order, batch the top `rerank_k=25` candidates' content
+into one `qwen3:8b` prompt asking for a relevance-ordered permutation, parse
+the response, reorder that head (tail stays in hybrid order), then pack
+under budget exactly as every other bench system does. Opt-in only (a new
+`RerankSystem`, does not touch `HybridRetriever`/`MemoryClient` defaults).
+Every call falls back to the unmodified hybrid order on a backend exception
+or a totally unparseable response, and is logged (query, n, backend, model,
+status, resulting order) to `RerankSystem.rerank_log` -- this call log is
+the audit trail this round's rationale calls out as the real edge, since a
+rerank system that silently reorders is unauditable. Observed in a timing
+pilot: qwen3:8b often returns a partial list (e.g. its top 3 of 25) rather
+than a full permutation; the parser trusts what it returns as "most
+relevant first" and appends the rest in original order rather than
+discarding a partial answer as a full failure (status `reranked_partial`
+vs `reranked` for a full permutation vs `fallback_*` for anything
+unusable).
+
+**Metric and decision rule (pre-registered before any F1 number is
+produced)**: per the KEEP/REVERT rule, the only number that decides
+keep/revert is end-to-end local-model answer token-F1 on the FROZEN holdout
+split (LOCOMO conversations 4-10, n=80, same protocol/sampling seed as
+`scripts/holdout_answer_quality.py`, qwen3:8b as both backend and answerer,
+budget 1000) -- not dev, not evidence-recall (rerank changes order, not
+which ids are stored, so evidence-recall on stored ids cannot see a rerank
+effect the way it can see a retrieval-signal change). A small dev run
+(informal, reduced n, directional only) is done first as a go/no-go check.
+**Threshold: the holdout `memsub_rerank` mean token-F1 must exceed 0.152
+(the frozen memsub_hybrid_v2 holdout number) to keep the mode opt-in in the
+codebase; otherwise it is reverted from bench/docs the same as sleep-derived
+inferences would be, matching the project's no-fabricated-results /
+no-hopeful-defaults convention.**
+
+## Round 2 outcome (2026-07-09/10, after measurement): KEPT, thin margin, real cost
+
+Dev go/no-go (`scripts/rerank_eval.py --dev`, n=32, 8/category, dev
+conversations 1-3, results/rerank-eval-dev.json): mean token-F1 0.1287,
+below the frozen dev `memsub_hybrid_v2` number (0.157, docs/metrics-local.md)
+but directional-only per the pre-registered protocol, so the frozen
+holdout run went ahead anyway.
+
+HOLDOUT (`scripts/rerank_eval.py --holdout`, n=80, seed 123, conversations
+4-10, one run, results/rerank-eval-holdout.json): mean token-F1 **0.1544**
+vs the frozen `memsub_hybrid_v2` holdout number of **0.152**
+(docs/metrics-local.md). Per category: multi-hop 0.1368 (vs 0.1614 for
+plain hybrid v2 — worse), temporal 0.0672 (flat, identical to plain hybrid
+v2's 0.0722), open-domain 0.1033 (vs 0.1019 — flat), single-hop 0.3105 (vs
+0.2707 — the only clear gain, and where nearly all of the aggregate lift
+comes from). Rerank status: 25/80 calls returned a full permutation
+(`reranked`), 55/80 a partial list completed by the fallback rule
+(`reranked_partial`); zero backend failures. Full per-question rows and the
+call-level audit trail are in results/rerank-eval-holdout.json and
+results/rerank-log-holdout.jsonl.
+
+Per the pre-registered mechanical rule (0.1544 > 0.152), this is a **KEEP**:
+`RerankSystem` (`memsub/rerank.py`, `memsub.bench.RerankSystem`) ships as an
+opt-in bench system, same as `memsub sleep`. Two honest caveats the
+mechanical rule doesn't capture, stated plainly rather than rounded away:
+
+- **The margin is thin.** +0.0024 absolute / +1.6% relative on n=80 is well
+  within what a different random seed could flip; unlike sleep's holdout
+  reversal (0.143 vs 0.152, a clean revert in the other direction) this is
+  not a decisive win, and the category breakdown shows the aggregate is
+  carried almost entirely by single-hop while multi-hop (rerank's original
+  target, per docs/error-analysis-locomo.md's `ranked_low` failure mode)
+  is flat-to-worse. Treat this as "did not lose, marginal-at-best gain,"
+  not as validation that LLM rerank fixes the multi-hop ranking problem.
+- **The cost is not thin.** Mean per-question latency on holdout was 9.07s
+  (results/rerank-eval-holdout.json `mean_latency_s`), against 1.53s for
+  plain `memsub_hybrid_v2` on the dev latency table (docs/metrics-local.md
+  part (a); dev, not holdout, is the only latency figure recorded for plain
+  hybrid v2, noted here rather than compared apples-to-apples). That is
+  roughly a 6x latency increase from one extra local LLM call per query for
+  a gain that may not be real. This is exactly why the mechanism was
+  designed opt-in, not a default: `RerankSystem` (`memsub/rerank.py`,
+  `memsub.bench.RerankSystem`) exists as a bench/library system for callers
+  who want to trade latency for a shot at the single-hop lift, but it is
+  NOT wired into the CLI's `--retrieval` flag, the SDK's `MemoryClient`, or
+  the MCP server (those remain `hybrid`/`dense` only, unchanged); the audit
+  log (`rerank_log` / `results/rerank-log-*.jsonl`) makes every reorder
+  traceable for anyone who does adopt it directly, but the default
+  retrieval stack is unchanged (hybrid v2) and no general answer-quality
+  claim is made for rerank the way none was made for sleep.

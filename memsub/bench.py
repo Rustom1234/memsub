@@ -40,6 +40,7 @@ from .embed import Embedder, HashingEmbedder
 from .hybrid import DATE_RE as _DATE_RE
 from .hybrid import HybridRetriever
 from .policy import approx_tokens
+from .rerank import llm_rerank
 from .store import Episode, EpisodicStore
 
 
@@ -192,6 +193,31 @@ class HybridSystem(HybridRetriever):
 
     def inject(self, query: str, budget_tokens: int) -> list[Episode]:
         return pack_greedy([self.episodes[i] for i in self.rank(query)], budget_tokens)
+
+
+class RerankSystem(HybridSystem):
+    """Opt-in: hybrid v2 ranking, then one batched local-LLM call reranks the
+    top `rerank_k` candidates before greedy packing (docs/extensions.md
+    candidate 1, memsub.rerank.llm_rerank). Falls back to plain hybrid order
+    on any backend failure, so this can only reorder, never drop coverage.
+    Every rerank call is appended to `self.rerank_log` for the audit trail.
+    """
+
+    def __init__(self, backend, rerank_k: int = 25, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.name = kwargs.get("name") or "memsub_rerank"
+        self.backend = backend
+        self.rerank_k = rerank_k
+        self.rerank_log: list[dict] = []
+
+    def inject(self, query: str, budget_tokens: int) -> list[Episode]:
+        order = self.rank(query)
+        head, tail = order[: self.rerank_k], order[self.rerank_k :]
+        if head:
+            contents = [self.episodes[i].content for i in head]
+            new_order = llm_rerank(query, contents, self.backend, log=self.rerank_log)
+            head = [head[j] for j in new_order]
+        return pack_greedy([self.episodes[i] for i in head + tail], budget_tokens)
 
 
 class NaiveTopKSystem:
