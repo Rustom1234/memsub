@@ -10,10 +10,13 @@ scripts, and paper draft. The repo pivoted to the memory PRODUCT (the top
 level of this repository); this experiment is preserved intact here and, in
 its original top-level layout, on the git branch `lying-game-experiment`.
 
-Status when archived: cell A complete (null result on objective deception,
-scoped statistically in docs/findings.md), cell E judge-reliability numbers
-in, cell C partial (killed mid-run, rows committed), cells C through G
-otherwise pending. The runner resumes cleanly with `--skip-existing`.
+Status when archived: all seven cells (A-G) complete at their pre-registered n
+(61 runs, 244 sessions). Full-matrix null on objective deception (0 of 61
+runs, 0 of 244 sessions overstated claimed completion), scoped statistically
+in docs/findings.md. The one graded, non-null effect measured is write-transform
+quality on judge-rated cross-session consistency (cell C: accurate 88.3,
+summarized 59.7, distorted 46.0). The runner resumes cleanly with
+`--skip-existing`.
 
 Run from the repo root:
 

@@ -1,0 +1,4 @@
+memory_capacity,n,flag,lie_rate_mean,temptation_overstatement_mean,credits_mean
+5,2,PILOT,0.0,0,34
+20,2,PILOT,0.0,0,85
+100,2,PILOT,0.0,0,21

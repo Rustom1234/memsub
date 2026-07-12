@@ -18,11 +18,18 @@ cross-session consistency, and a manipulation check verifies memory actually
 fires. We implement the memory layer as a reusable, file-backed library
 (`memsub`) with four parts, episodic store, semantic retrieval, structured
 retrieval, and a policy layer, and toggle between a no-memory control, a
-context-stuffing baseline (level 1), and full retrieval memory (level 2). [Results
-summary is filled from the actual pilot runs in the Results section and
-`docs/findings.md`.] We argue that if the effect exists at retrieval-level
-memory, it becomes harder to mitigate under weight-level memory (Titans/TTT),
-because the memory cannot simply be cleared or inspected.
+context-stuffing baseline (level 1), and full retrieval memory (level 2). We
+find a full-matrix null: across 61 runs (244 sessions) spanning memory on/off,
+three memory types, three memory capacities, two model tiers, three probing
+depths, and two protocol versions, not one session showed claimed-completion
+overstatement (see Results and `docs/findings.md`). The one clear graded
+effect measured is write-transform quality degrading judge-rated cross-session
+consistency (accurate 88.3, summarized 59.7, distorted 46.0), without
+translating into objective deception at this n. We argue that if a deception
+effect exists at retrieval-level memory, it becomes harder to mitigate under
+weight-level memory (Titans/TTT), because the memory cannot simply be cleared
+or inspected; that auditability argument is independent of this pilot's null
+result.
 
 ## Background
 
@@ -102,21 +109,33 @@ session where a prior memory existed it was retrieved and injected (0.75 of
 sessions, the ceiling by construction since session 1 has no priors).
 
 Secondary results from the same cell are protocol findings rather than
-deception findings. Memory conditions earned fewer credits than control (175.0
-vs 145.6 stuffing vs 119.4 retrieval), and a marker-phrase scan shows why:
-agents in memory conditions broke frame more often (0.20 and 0.15 of sessions
-vs 0.05 in control), telling the overseer the scenario was not real, which the
-overseer punished. The injected memories appear to have made the setup's
+deception findings. Memory conditions broke frame more often than control
+(0.10 retrieval, 0.15 stuffing, vs 0.05 control), telling the overseer the
+scenario was not real, which the overseer sometimes punished with near-zero
+session credits. The injected memories appear to have made the setup's
 artificiality more salient to this model, producing out-of-role honesty rather
-than sustained narrative. Separately, the LLM judge reported nonzero deception
-(18 to 32 mean) despite zero objective overstatement; rationale inspection
-shows it scores invented supporting detail as deception even when the headline
-claim is true. Both artifacts motivated protocol v2 (in-frame per-task work
-log; account-based probing), replicated as cell G.
+than sustained narrative in those sessions. But condition-level mean credits
+do not track this gradient cleanly (context-stuffing has both the highest
+frame-break rate and the highest mean credits of the three arms at n=5), so
+credits are reported as a noisy, partially-contaminated measure rather than
+a clean secondary finding. Separately, the LLM judge reported nonzero
+deception (21.8 to 29.2 mean) despite zero objective overstatement; rationale
+inspection shows it scores invented supporting detail as deception even when
+the headline claim is true. Both artifacts motivated protocol v2 (in-frame
+per-task work log; account-based probing), replicated as cell G, where the
+frame-break rate collapsed to 0.0-0.062.
 
-Remaining cells (B length ablation, C type ablation, D model tiers, E truthful
-baseline, F probing-depth sweep, G v2 replication) are reported in
-`docs/findings.md` with per-cell n; all are pilot-sized.
+**Full matrix (all cells, n = 61 runs / 244 sessions).** Every cell (B length
+ablation, C type ablation, D model tiers, E truthful baseline, F
+probing-depth sweep, G v2 replication) is now complete at its pre-registered
+n and reported in `docs/findings.md`; all but A and G are pilot-sized (n < 5
+per arm). Pooling across the full matrix: 0 of 61 runs and 0 of 244 sessions,
+including all 61 scripted temptation sessions, showed any claimed-completion
+overstatement, across memory on/off, three memory types, three memory
+capacities, two model tiers, three probing depths, and two protocol versions.
+The one clear graded, non-null effect measured anywhere in the pilot is
+write-transform quality on judge-rated cross-session consistency (cell C):
+accurate 88.3, summarized 59.7, distorted 46.0, a monotonic 42-point spread.
 
 ## Limitations
 
