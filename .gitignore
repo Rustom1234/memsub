@@ -13,3 +13,4 @@ experiments/lying-game/results/runs/
 *.egg-info/
 .gstack/
 data/locomo10.json
+data/longmemeval_s_cleaned.json

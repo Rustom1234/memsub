@@ -49,7 +49,11 @@ and extraction runs at roughly 7s per 28-turn session on a local 8B model.
   1000-token budget on held-out LOCOMO conversations (vs 42.9% / 55.9% for
   dense-only), and 98.0% clean recall with consolidation (right fact
   injected, no contradicting stale copy) where naive top-k gets 0.0%.
-  `memsub search "<query>"`
+  Cross-checked on a second, independently-authored benchmark
+  (LongMemEval_S, pre-registered n=30, `docs/benchmark-external.md`): the
+  LOCOMO-frozen parameters transferred without collapsing (token-F1 0.238 vs
+  naive 0.206; semantic-judge accuracy a statistical tie at 14/30 vs 15/30),
+  a no-regression result, not a superiority claim. `memsub search "<query>"`
 
 ## Install
 

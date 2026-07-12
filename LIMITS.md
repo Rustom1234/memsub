@@ -99,6 +99,21 @@ interpretation and should be stated wherever cell B is reported.
   tested mechanically (mocked LLM), and smoke-tested live, but there is no
   labeled dataset measuring extraction precision/recall yet.
 
+## External benchmark (LongMemEval_S) limitations, added 2026-07-12
+
+- **n=30 of 500 questions, abstention items excluded.** Pre-registered
+  stratified sample (5 per question type, seed 123); differences of a few
+  F1 points or 1-2 judged items are within noise at this n. The
+  memsub-vs-naive judge result (14/30 vs 15/30) is a tie, not a loss or win.
+- **Not leaderboard-comparable.** qwen3:8b answerer and Sonnet-CLI judge
+  substitute for the paper's frontier reader and GPT-4o judge; only the
+  within-run condition ordering is meaningful. Full deviation list in
+  `docs/benchmark-external.md`.
+- **The adapter's timestamps are synthetic ingestion counters**, so recency
+  weighting reflects haystack order, not real dates; a plausible contributor
+  to the weak knowledge-update cell (1/5 vs naive's 4/5, n=5, hypothesis
+  only).
+
 ## Local-model metrics limitations, added 2026-07-09
 
 - **Token-F1 is a lexical grade.** The end-to-end answer-quality numbers in

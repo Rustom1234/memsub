@@ -1,0 +1,727 @@
+{
+  "condition": "naive_topk",
+  "n": 80,
+  "rows": [
+    {
+      "category": 1,
+      "question": "What kind of beer does McGee's bar serve?",
+      "gold": "Stout, lager",
+      "answer": "McGee's bar serves a great stout.",
+      "f1": 0.22222222222222224,
+      "exact": 0,
+      "latency_s": 5.004156100971159
+    },
+    {
+      "category": 1,
+      "question": "How many Prius has Evan owned?",
+      "gold": "two",
+      "answer": "Evan has owned two Prius cars.",
+      "f1": 0.2857142857142857,
+      "exact": 1,
+      "latency_s": 4.351170922978781
+    },
+    {
+      "category": 1,
+      "question": "What places has Joanna submitted her work to?",
+      "gold": "film contest, film festival.",
+      "answer": "I don't know.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 3.1195464900229126
+    },
+    {
+      "category": 1,
+      "question": "What new yoga poses did Deborah try?",
+      "gold": "Warrior II, Dancer Pose (Natarajasana), Tree pose",
+      "answer": "Deborah tried the Dancer Pose (Natarajasana), Tree Pose, and Warrior II.",
+      "f1": 0.7777777777777778,
+      "exact": 0,
+      "latency_s": 2.9146866170340218
+    },
+    {
+      "category": 1,
+      "question": "Which TV series does Tim mention watching?",
+      "gold": "That, Wheel of Time",
+      "answer": "Tim mentions watching the TV series \"The Wheel of Time.\"",
+      "f1": 0.4285714285714285,
+      "exact": 0,
+      "latency_s": 2.8378358040354215
+    },
+    {
+      "category": 1,
+      "question": "What is something that Andrew really misses while working in the city?",
+      "gold": "being in nature",
+      "answer": "Andrew really misses the peacefulness and connection with nature, especially being out on hikes.",
+      "f1": 0.23529411764705882,
+      "exact": 0,
+      "latency_s": 3.5525751339737326
+    },
+    {
+      "category": 1,
+      "question": "Which cities did Dave travel to in 2023?",
+      "gold": "San Francsico, Detroit",
+      "answer": "I don't know.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 3.4289353429921903
+    },
+    {
+      "category": 1,
+      "question": "Which countries did James visit in July 2022?",
+      "gold": "Canada, Greenland",
+      "answer": "James visited Italy, Turkey, and Mexico, but the context does not specify the exact month or year of these visits.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 3.7080193869769573
+    },
+    {
+      "category": 1,
+      "question": "What recommendations has Nate received from Joanna?",
+      "gold": "\"Eternal Sunshine of the Spotless Mind\" movie, \"A Court of Thorns and Roses\" book, pointers for making living room comfy, starting a cork board for memories, \"Little Women\" movie",
+      "answer": "Joanna has offered to give movie and book recommendations but has not provided specific ones to Nate.",
+      "f1": 0.13043478260869565,
+      "exact": 0,
+      "latency_s": 16.785406176990364
+    },
+    {
+      "category": 1,
+      "question": "How many times has Nate taken his turtles on a walk?",
+      "gold": "Twice.",
+      "answer": "Nate has taken his turtles on a walk once.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 7.081119955983013
+    },
+    {
+      "category": 1,
+      "question": "What items has Audrey bought or made for her dogs?",
+      "gold": "dog tags, toys, dog beds, collars",
+      "answer": "Audrey has bought new collars and tags for her dogs and made personalized tags for them.",
+      "f1": 0.18181818181818182,
+      "exact": 0,
+      "latency_s": 4.330118526995648
+    },
+    {
+      "category": 1,
+      "question": "How many times has Joanna's scripts been rejected?",
+      "gold": "Twice",
+      "answer": "Joanna's scripts have been rejected twice.",
+      "f1": 0.25,
+      "exact": 1,
+      "latency_s": 2.8929690830409527
+    },
+    {
+      "category": 1,
+      "question": "What does Joanna do to remember happy memories?",
+      "gold": "Hangs them on a corkboard, writes themin a notebook.",
+      "answer": "Joanna remembers happy memories by receiving cute notes from her brother.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 4.547358969983179
+    },
+    {
+      "category": 1,
+      "question": "what are John's goals with regards to his basketball career?",
+      "gold": "improve shooting percentage, win a championship",
+      "answer": "John's goals with regards to his basketball career include improving his skills through training, maintaining physical fitness, achieving success in games, and mentoring his teammates.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 5.6225195929873735
+    },
+    {
+      "category": 1,
+      "question": "What similar sports collectible do Tim and John own?",
+      "gold": "signed basketball",
+      "answer": "Tim and John both collect jerseys.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 5.1042587389820255
+    },
+    {
+      "category": 1,
+      "question": "What ways do Deborah and Jolene use to enhance their yoga practice?",
+      "gold": "candles, music, essential oils",
+      "answer": "Deborah and Jolene enhance their yoga practice by using candles and essential oils, creating serene spaces, listening to calming music like \"Savana,\" practicing various yoga poses, and engaging in meditation, including attending meditation retreats together.",
+      "f1": 0.20512820512820512,
+      "exact": 0,
+      "latency_s": 4.27783154998906
+    },
+    {
+      "category": 1,
+      "question": "Where did Audrey get Pixie from?",
+      "gold": "breeder",
+      "answer": "Don't know.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 6.436313466983847
+    },
+    {
+      "category": 1,
+      "question": "How many video game tournaments has Nate participated in?",
+      "gold": "nine",
+      "answer": "Don't know.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 17.09885656205006
+    },
+    {
+      "category": 1,
+      "question": "How has Nate tried to disburse his vegan ice-cream recipes?",
+      "gold": "teaching others, cooking show",
+      "answer": "Nate has tried to share his vegan ice cream recipes by teaching them on his cooking show and sharing the ice cream with his vegan diet group.",
+      "f1": 0.19354838709677416,
+      "exact": 0,
+      "latency_s": 5.5363044400000945
+    },
+    {
+      "category": 1,
+      "question": "What kind of classes or groups has Audrey joined to take better care of her dogs?",
+      "gold": "positive reinforcement training workshop to bond with pets, dog training course, agility training course, grooming course, dog-owners group",
+      "answer": "Audrey joined a dog owners group to learn how to better take care of her dogs.",
+      "f1": 0.22857142857142856,
+      "exact": 0,
+      "latency_s": 2.5594619000330567
+    },
+    {
+      "category": 2,
+      "question": "When was Deborah in Bali?",
+      "gold": "in 2022",
+      "answer": "Deborah was in Bali last year.",
+      "f1": 0.25,
+      "exact": 0,
+      "latency_s": 2.57387085998198
+    },
+    {
+      "category": 2,
+      "question": "When did Jolene lose a lot of progress in her work?",
+      "gold": "last week of July 2023",
+      "answer": "The context does not mention Jolene losing progress in her work.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 3.2043372520129196
+    },
+    {
+      "category": 2,
+      "question": "When did Evan have his sudden heart palpitation incident that really shocked him up?",
+      "gold": "first week of June 2023",
+      "answer": "Evan had his sudden heart palpitation incident last week.",
+      "f1": 0.14285714285714285,
+      "exact": 0,
+      "latency_s": 2.1959062870009802
+    },
+    {
+      "category": 2,
+      "question": "When did Audrey's positive reinforcement training course for dogs take place?",
+      "gold": "June, 2023",
+      "answer": "The context does not specify when Audrey's positive reinforcement training course took place.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 3.7491751690395176
+    },
+    {
+      "category": 2,
+      "question": "When did Nate take his turtles to the beach?",
+      "gold": "10 November, 2022",
+      "answer": "Nate took his turtles to the beach in Tampa yesterday.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 3.2907631709822454
+    },
+    {
+      "category": 2,
+      "question": "When did Nate win his fourth video game tournament?",
+      "gold": "The Friday before 10July, 2022.",
+      "answer": "Nate won his fourth video game tournament on Friday.",
+      "f1": 0.14285714285714285,
+      "exact": 0,
+      "latency_s": 2.591451455024071
+    },
+    {
+      "category": 2,
+      "question": "When will John start his new job?",
+      "gold": "In July, 2022",
+      "answer": "John will start his new job next month.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 3.2385944849811494
+    },
+    {
+      "category": 2,
+      "question": "Where was James at on July 12, 2022?",
+      "gold": "Toronto, Canada",
+      "answer": "The context does not mention where James was on July 12, 2022.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 3.176835032994859
+    },
+    {
+      "category": 2,
+      "question": "When did Jolene's mom gift her a pendant?",
+      "gold": "in 2010",
+      "answer": "Jolene's mom gifted her the pendant in 2010.",
+      "f1": 0.3636363636363636,
+      "exact": 1,
+      "latency_s": 4.418601484969258
+    },
+    {
+      "category": 2,
+      "question": "When was Calvin's concert in Tokyo?",
+      "gold": "last week of May 2023",
+      "answer": "Calvin's concert in Tokyo was during his tour last week, but the exact date isn't specified in the context.",
+      "f1": 0.15384615384615385,
+      "exact": 0,
+      "latency_s": 12.52405866101617
+    },
+    {
+      "category": 2,
+      "question": "When did Calvin attend a gala in Boston?",
+      "gold": "November 16, 2023",
+      "answer": "Calvin attended a gala in Boston the day before he sent the message mentioning it.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 6.586039411020465
+    },
+    {
+      "category": 2,
+      "question": "When did Nate win a lot of money in a video game tournament?",
+      "gold": "September 2022",
+      "answer": "Nate won a lot of money in a video game tournament last week.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 4.108861085027456
+    },
+    {
+      "category": 2,
+      "question": "Which book did Jolene read in January 2023?",
+      "gold": "Avalanche by Neal Stephenson",
+      "answer": "The context does not mention the month or year when Jolene read \"Avalanche\" by Neal Stephenson, so I don't know.",
+      "f1": 0.32,
+      "exact": 0,
+      "latency_s": 3.253360702015925
+    },
+    {
+      "category": 2,
+      "question": "When was Deborah's parents' wedding?",
+      "gold": "in 1993",
+      "answer": "Deborah's parents' wedding was in 1993.",
+      "f1": 0.4444444444444445,
+      "exact": 1,
+      "latency_s": 6.478743100014981
+    },
+    {
+      "category": 2,
+      "question": "When did Evan announce his marriage to his extended family?",
+      "gold": "January 5, 2024",
+      "answer": "Evan announced his marriage to his extended family yesterday.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 4.39955704897875
+    },
+    {
+      "category": 2,
+      "question": "When did John start playing professionally?",
+      "gold": "May, 2023",
+      "answer": "John started playing professionally just under a year ago.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 2.6613575639785267
+    },
+    {
+      "category": 2,
+      "question": "When did Deborah go to an art show with Anna?",
+      "gold": "on 9 April, 2023",
+      "answer": "I don't know.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 3.8109401569818147
+    },
+    {
+      "category": 2,
+      "question": "In which month's game did John achieve a career-high score in points?",
+      "gold": "June 2023",
+      "answer": "Don't know.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 6.19697270396864
+    },
+    {
+      "category": 2,
+      "question": "When did James' mother and her friend visit him?",
+      "gold": "October 19, 2022",
+      "answer": "James' mother and her friend visited him two days ago.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 2.580660153995268
+    },
+    {
+      "category": 2,
+      "question": "When did Joanna plan on going to Nate's to watch him play with his turtles?",
+      "gold": "10 November, 2022",
+      "answer": "The context does not specify when Joanna planned to go to Nate's to watch him play with his turtles.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 3.6680362569750287
+    },
+    {
+      "category": 3,
+      "question": "Did John and James study together?",
+      "gold": "Yes",
+      "answer": "Don't know.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 5.1245344979688525
+    },
+    {
+      "category": 3,
+      "question": "Does Deborah live close to the beach or the mountains?",
+      "gold": "beach",
+      "answer": "The context does not explicitly state whether Deborah lives close to the beach or the mountains.",
+      "f1": 0.11764705882352941,
+      "exact": 1,
+      "latency_s": 3.305277095991187
+    },
+    {
+      "category": 3,
+      "question": "Does Calvin wish to become more popular?",
+      "gold": "Yes; he want's to grow his fanbase",
+      "answer": "The context does not explicitly state whether Calvin wishes to become more popular.",
+      "f1": 0.09523809523809525,
+      "exact": 0,
+      "latency_s": 3.1355047920369543
+    },
+    {
+      "category": 3,
+      "question": "Which US states might Tim be in during September 2023 based on his plans of visiting Universal Studios?",
+      "gold": "California or Florida",
+      "answer": "The CONTEXT does not mention Tim's plans to visit Universal Studios or any specific locations, so it is not possible to determine which US states he might be in during September 2023.",
+      "f1": 0.05555555555555555,
+      "exact": 0,
+      "latency_s": 3.915501558978576
+    },
+    {
+      "category": 3,
+      "question": "Which popular music composer's tunes does Tim enjoy playing on the piano?",
+      "gold": "John Williams",
+      "answer": "Don't know.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 10.311590700992383
+    },
+    {
+      "category": 3,
+      "question": "How old is Jolene?",
+      "gold": "likely no more than 30; since she's in school",
+      "answer": "don't know",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 2.7488232310279272
+    },
+    {
+      "category": 3,
+      "question": "In which state is the shelter from which James adopted the puppy?",
+      "gold": "Connecticut.",
+      "answer": "The context does not provide information about the state where the shelter is located.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 3.747744261054322
+    },
+    {
+      "category": 3,
+      "question": "Which country did James book tickets for in July 2022?",
+      "gold": "Canada",
+      "answer": "Don't know.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 2.8426396540016867
+    },
+    {
+      "category": 3,
+      "question": "What could John do after his basketball career?",
+      "gold": "become a basketball coach since he likes giving back and leadership",
+      "answer": "The context does not provide information on what John could do after his basketball career.",
+      "f1": 0.07692307692307691,
+      "exact": 0,
+      "latency_s": 4.189588768000249
+    },
+    {
+      "category": 3,
+      "question": "Which US state do Audrey and Andrew potentially live in?",
+      "gold": "Minnesota",
+      "answer": "The context does not provide enough information to determine which US state Audrey and Andrew live in.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 8.480066132033244
+    },
+    {
+      "category": 3,
+      "question": "Are John and James fans of the same football team?",
+      "gold": "No, James is a Liverpool fan and John is a Manchester City fan.",
+      "answer": "The CONTEXT does not mention John and James being fans of the same football team.",
+      "f1": 0.21428571428571427,
+      "exact": 0,
+      "latency_s": 4.121927241038065
+    },
+    {
+      "category": 3,
+      "question": "Was James feeling lonely before meeting Samantha?",
+      "gold": "Most likely yes, because he mentioned that the only creatures that gave him joy are dogs and he was actively trying to date.",
+      "answer": "The context does not mention James feeling lonely before meeting Samantha.",
+      "f1": 0.0588235294117647,
+      "exact": 0,
+      "latency_s": 4.115017439995427
+    },
+    {
+      "category": 3,
+      "question": "Does Calvin love music tours?",
+      "gold": "yes",
+      "answer": "Yes, Calvin loves music tours as evidenced by his excitement about performing, sharing experiences from tours, and looking forward to future tours.",
+      "f1": 0.08695652173913045,
+      "exact": 1,
+      "latency_s": 3.295765729038976
+    },
+    {
+      "category": 3,
+      "question": "What is a career that Andrew could potentially pursue with his love for animals and nature?",
+      "gold": "Park ranger or a similar position working for the National Park Services.",
+      "answer": "I don't know.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 4.655381797987502
+    },
+    {
+      "category": 3,
+      "question": "What would be a good hobby related to his travel dreams for Tim to pick up?",
+      "gold": "Writing a travel blog.",
+      "answer": "A good hobby related to Tim's travel dreams would be exploring real-life locations inspired by his favorite books, such as the Harry Potter places he mentioned.",
+      "f1": 0.125,
+      "exact": 0,
+      "latency_s": 17.988112269027624
+    },
+    {
+      "category": 3,
+      "question": "What state did Joanna visit in summer 2021?",
+      "gold": "Indiana",
+      "answer": "The context does not specify the state Joanna visited in summer 2021.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 5.008110050985124
+    },
+    {
+      "category": 3,
+      "question": "Which country was Evan visiting in May 2023?",
+      "gold": "Canada",
+      "answer": "I don't know.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 3.177014640008565
+    },
+    {
+      "category": 3,
+      "question": "What is a Star Wars book that Tim might enjoy?",
+      "gold": "Star Wars: Jedi Apprentice by Judy Blundell and David Farland. It is a highly rated and immersive series about his favorite movies.",
+      "answer": "I don't know.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 3.9335699780494906
+    },
+    {
+      "category": 3,
+      "question": "Which US state was Sam travelling in during October 2023?",
+      "gold": "California",
+      "answer": "The CONTEXT does not mention any specific US state where Sam was traveling in October 2023.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 4.430726416991092
+    },
+    {
+      "category": 3,
+      "question": "What is an indoor activity that Andrew would enjoy doing while make his dog happy?",
+      "gold": "cook dog treats",
+      "answer": "An indoor activity Andrew would enjoy doing while making his dog happy is visiting the doggy daycare's indoor play space.",
+      "f1": 0.08333333333333333,
+      "exact": 0,
+      "latency_s": 5.1402301079942845
+    },
+    {
+      "category": 4,
+      "question": "What type of games do Audrey's dogs like to play at the park?",
+      "gold": "Fetch and Frisbee",
+      "answer": "I don't know.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 3.071096017025411
+    },
+    {
+      "category": 4,
+      "question": "What sports activity is Calvin planning to try after the tour with Frank Ocean?",
+      "gold": "Skiing",
+      "answer": "The context does not mention any sports activity Calvin is planning to try after the tour with Frank Ocean.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 5.393342103983741
+    },
+    {
+      "category": 4,
+      "question": "Which activity helps Nate escape and stimulates his imagination?",
+      "gold": "watching fantasy and sci-fi movies",
+      "answer": "Nate finds that fantasy and sci-fi movies help him escape and stimulate his imagination.",
+      "f1": 0.47619047619047616,
+      "exact": 0,
+      "latency_s": 3.8503520790254697
+    },
+    {
+      "category": 4,
+      "question": "What does Nate love most about having turtles?",
+      "gold": "They make him feel calm and don't require much looking after",
+      "answer": "Nate loves the joy and peace turtles bring him, along with their big personalities.",
+      "f1": 0.15384615384615383,
+      "exact": 0,
+      "latency_s": 11.776852110982873
+    },
+    {
+      "category": 4,
+      "question": "How does Calvin stay motivated when faced with setbacks?",
+      "gold": "Reminds himself of his passion for goals, gets help from others, and takes a break to recharge",
+      "answer": "Calvin stays motivated by collaborating with others, learning from them, and surrounding himself with positive energy and passion.",
+      "f1": 0.28571428571428575,
+      "exact": 0,
+      "latency_s": 4.1502897620084696
+    },
+    {
+      "category": 4,
+      "question": "What did Joanna take a picture of near Fort Wayne last summer?",
+      "gold": "Sunset",
+      "answer": "Joanna took a picture of the sunset and the surrounding beauty during a hike near Fort Wayne last summer.",
+      "f1": 0.1,
+      "exact": 1,
+      "latency_s": 8.419693935953546
+    },
+    {
+      "category": 4,
+      "question": "What sparked James' passion for gaming when he was a kid?",
+      "gold": "Super Mario and The Legend of Zelda games",
+      "answer": "James' passion for gaming was sparked by his first gaming system and playing Super Mario and The Legend of Zelda.",
+      "f1": 0.4999999999999999,
+      "exact": 0,
+      "latency_s": 3.640105038008187
+    },
+    {
+      "category": 4,
+      "question": "What did Calvin recently get that is a \"masterpiece on wheels\"?",
+      "gold": "Ferrari",
+      "answer": "Calvin recently got a new Ferrari, which he refers to as a \"masterpiece on wheels.\"",
+      "f1": 0.125,
+      "exact": 1,
+      "latency_s": 2.486989305005409
+    },
+    {
+      "category": 4,
+      "question": "How did Nate celebrate winning the international tournament?",
+      "gold": "Taking time off to chill with pets",
+      "answer": "Nate celebrated winning the international tournament by hanging out with the guys from the tournament.",
+      "f1": 0.09090909090909091,
+      "exact": 0,
+      "latency_s": 4.662288935971446
+    },
+    {
+      "category": 4,
+      "question": "What did Andrew get for Scout to create a safe and fun space for them?",
+      "gold": "essentials like a bed, toys, and puppy pads",
+      "answer": "Andrew got a bed, toys, and puppy pads to create a safe and fun space for Scout.",
+      "f1": 0.48,
+      "exact": 0,
+      "latency_s": 7.469606971018948
+    },
+    {
+      "category": 4,
+      "question": "Who helped Evan get the painting published in the exhibition?",
+      "gold": "a close friend",
+      "answer": "A close friend helped Evan get the painting published in the exhibition.",
+      "f1": 0.4,
+      "exact": 1,
+      "latency_s": 2.812047759012785
+    },
+    {
+      "category": 4,
+      "question": "Which show did Deborah go to with a friend on 9 April, 2023?",
+      "gold": "an art show",
+      "answer": "The context does not mention the specific show Deborah attended on 9 April 2023.",
+      "f1": 0.11764705882352941,
+      "exact": 0,
+      "latency_s": 3.645483725995291
+    },
+    {
+      "category": 4,
+      "question": "What gift did Evan receive from a close friend?",
+      "gold": "1968 Kustom K-200A vintage guitar",
+      "answer": "Evan received a 1968 Kustom K-200A vintage guitar as a gift from a close friend.",
+      "f1": 0.5454545454545454,
+      "exact": 1,
+      "latency_s": 3.7224759869859554
+    },
+    {
+      "category": 4,
+      "question": "What was the main focus of the session that stood out to Jolene during the retreat?",
+      "gold": "releasing expectations and judgments and savoring the present",
+      "answer": "The main focus of the session that stood out to Jolene was releasing expectations and judgments and savoring the present.",
+      "f1": 0.5714285714285715,
+      "exact": 1,
+      "latency_s": 4.498154593980871
+    },
+    {
+      "category": 4,
+      "question": "What is the name of the pup that was adopted by James?",
+      "gold": "Ned",
+      "answer": "The name of the pup adopted by James is Luna.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 12.32874389900826
+    },
+    {
+      "category": 4,
+      "question": "What is Dave's new business venture as of 1 May, 2023?",
+      "gold": "Car maintenance shop",
+      "answer": "I don't know.",
+      "f1": 0.0,
+      "exact": 0,
+      "latency_s": 8.458937035000417
+    },
+    {
+      "category": 4,
+      "question": "What was the video game console that Jolene's parents got her at age 10?",
+      "gold": "nintendo game console",
+      "answer": "The context does not specify the name of the video game console Jolene's parents got her at age 10.",
+      "f1": 0.1739130434782609,
+      "exact": 0,
+      "latency_s": 5.615881396981422
+    },
+    {
+      "category": 4,
+      "question": "What event did Calvin attend in Boston?",
+      "gold": "Fancy gala",
+      "answer": "The context does not specify the exact name of the event Calvin attended in Boston, but it mentions he attended a gala and a performance there.",
+      "f1": 0.07142857142857144,
+      "exact": 0,
+      "latency_s": 15.240065900958143
+    },
+    {
+      "category": 4,
+      "question": "What did Deb share a photo of, which brought a smile to Jolene's face?",
+      "gold": "a yellow coffee cup with a handwritten message",
+      "answer": "Deborah shared a photo of reflecting outdoors, which reminded Jolene of finding peace and brought a smile to her face.",
+      "f1": 0.14285714285714288,
+      "exact": 0,
+      "latency_s": 4.345606819959357
+    },
+    {
+      "category": 4,
+      "question": "Where did Deborah get her cats?",
+      "gold": "Luna is from the shelter and Max is her mother's cat",
+      "answer": "Deborah got her cat Max from her mother and Luna from a shelter.",
+      "f1": 0.64,
+      "exact": 0,
+      "latency_s": 3.033652842976153
+    }
+  ],
+  "wall_time_s": 418.6
+}

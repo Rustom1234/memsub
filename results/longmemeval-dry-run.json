@@ -1,0 +1,184 @@
+{
+  "n": 5,
+  "rows": [
+    {
+      "condition": "no_memory",
+      "question_id": "e47becba",
+      "question_type": "single-session-user",
+      "n_episodes": 550,
+      "t_ingest_s": 0.0,
+      "t_retrieve_s": 0.0,
+      "t_answer_s": 3.443,
+      "t_total_s": 3.443,
+      "f1": 0.0
+    },
+    {
+      "condition": "no_memory",
+      "question_id": "118b2229",
+      "question_type": "single-session-user",
+      "n_episodes": 485,
+      "t_ingest_s": 0.0,
+      "t_retrieve_s": 0.0,
+      "t_answer_s": 1.295,
+      "t_total_s": 1.295,
+      "f1": 0.0
+    },
+    {
+      "condition": "no_memory",
+      "question_id": "51a45a95",
+      "question_type": "single-session-user",
+      "n_episodes": 529,
+      "t_ingest_s": 0.0,
+      "t_retrieve_s": 0.0,
+      "t_answer_s": 1.476,
+      "t_total_s": 1.476,
+      "f1": 0.0
+    },
+    {
+      "condition": "no_memory",
+      "question_id": "58bf7951",
+      "question_type": "single-session-user",
+      "n_episodes": 616,
+      "t_ingest_s": 0.0,
+      "t_retrieve_s": 0.0,
+      "t_answer_s": 1.213,
+      "t_total_s": 1.213,
+      "f1": 0.0
+    },
+    {
+      "condition": "no_memory",
+      "question_id": "1e043500",
+      "question_type": "single-session-user",
+      "n_episodes": 510,
+      "t_ingest_s": 0.0,
+      "t_retrieve_s": 0.0,
+      "t_answer_s": 2.268,
+      "t_total_s": 2.268,
+      "f1": 0.0
+    },
+    {
+      "condition": "naive_topk",
+      "question_id": "e47becba",
+      "question_type": "single-session-user",
+      "n_episodes": 550,
+      "t_ingest_s": 0.285,
+      "t_retrieve_s": 0.0,
+      "t_answer_s": 2.459,
+      "t_total_s": 2.744,
+      "f1": 0.4
+    },
+    {
+      "condition": "naive_topk",
+      "question_id": "118b2229",
+      "question_type": "single-session-user",
+      "n_episodes": 485,
+      "t_ingest_s": 0.274,
+      "t_retrieve_s": 0.0,
+      "t_answer_s": 4.495,
+      "t_total_s": 4.769,
+      "f1": 0.6667
+    },
+    {
+      "condition": "naive_topk",
+      "question_id": "51a45a95",
+      "question_type": "single-session-user",
+      "n_episodes": 529,
+      "t_ingest_s": 0.283,
+      "t_retrieve_s": 0.0,
+      "t_answer_s": 3.015,
+      "t_total_s": 3.299,
+      "f1": 0.0
+    },
+    {
+      "condition": "naive_topk",
+      "question_id": "58bf7951",
+      "question_type": "single-session-user",
+      "n_episodes": 616,
+      "t_ingest_s": 0.277,
+      "t_retrieve_s": 0.001,
+      "t_answer_s": 3.768,
+      "t_total_s": 4.045,
+      "f1": 0.1053
+    },
+    {
+      "condition": "naive_topk",
+      "question_id": "1e043500",
+      "question_type": "single-session-user",
+      "n_episodes": 510,
+      "t_ingest_s": 0.283,
+      "t_retrieve_s": 0.0,
+      "t_answer_s": 3.044,
+      "t_total_s": 3.328,
+      "f1": 0.0
+    },
+    {
+      "condition": "memsub_hybrid_v2",
+      "question_id": "e47becba",
+      "question_type": "single-session-user",
+      "n_episodes": 550,
+      "t_ingest_s": 0.325,
+      "t_retrieve_s": 0.001,
+      "t_answer_s": 3.018,
+      "t_total_s": 3.344,
+      "f1": 0.4
+    },
+    {
+      "condition": "memsub_hybrid_v2",
+      "question_id": "118b2229",
+      "question_type": "single-session-user",
+      "n_episodes": 485,
+      "t_ingest_s": 0.325,
+      "t_retrieve_s": 0.001,
+      "t_answer_s": 3.058,
+      "t_total_s": 3.384,
+      "f1": 0.5714
+    },
+    {
+      "condition": "memsub_hybrid_v2",
+      "question_id": "51a45a95",
+      "question_type": "single-session-user",
+      "n_episodes": 529,
+      "t_ingest_s": 0.336,
+      "t_retrieve_s": 0.001,
+      "t_answer_s": 6.462,
+      "t_total_s": 6.799,
+      "f1": 0.0
+    },
+    {
+      "condition": "memsub_hybrid_v2",
+      "question_id": "58bf7951",
+      "question_type": "single-session-user",
+      "n_episodes": 616,
+      "t_ingest_s": 0.534,
+      "t_retrieve_s": 0.002,
+      "t_answer_s": 3.382,
+      "t_total_s": 3.918,
+      "f1": 0.3158
+    },
+    {
+      "condition": "memsub_hybrid_v2",
+      "question_id": "1e043500",
+      "question_type": "single-session-user",
+      "n_episodes": 510,
+      "t_ingest_s": 0.334,
+      "t_retrieve_s": 0.001,
+      "t_answer_s": 2.474,
+      "t_total_s": 2.809,
+      "f1": 0.2857
+    }
+  ],
+  "by_condition": {
+    "no_memory": {
+      "mean_total_s": 1.939,
+      "max_total_s": 3.443
+    },
+    "naive_topk": {
+      "mean_total_s": 3.637,
+      "max_total_s": 4.769
+    },
+    "memsub_hybrid_v2": {
+      "mean_total_s": 4.051,
+      "max_total_s": 6.799
+    }
+  }
+}
