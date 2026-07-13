@@ -186,8 +186,14 @@ def test_cli_extract_end_to_end(tmp_path, monkeypatch):
 # --------------------------------------------------------------------------- #
 # Batch extract: multiple files, glob patterns, min-turns filter
 # --------------------------------------------------------------------------- #
-def _two_turn_file(path):
-    path.write_text('{"role": "user", "content": "hi"}\n{"role": "assistant", "content": "hello"}\n')
+def _substantive_file(path):
+    """3 real turns: clears the default --min-turns bar (a real corpus sits
+    almost entirely at exactly 2, see docs/dogfood-2-2026-07-12.md)."""
+    path.write_text(
+        '{"role": "user", "content": "hi"}\n'
+        '{"role": "assistant", "content": "hello"}\n'
+        '{"role": "user", "content": "thanks"}\n'
+    )
 
 
 def test_expand_files_deduplicates_and_globs(tmp_path):
@@ -224,8 +230,8 @@ def test_cli_extract_multiple_files(tmp_path, monkeypatch):
 
     monkeypatch.setattr(cli, "build_backend", lambda prefer, model: _mock())
     f1, f2 = tmp_path / "a.jsonl", tmp_path / "b.jsonl"
-    _two_turn_file(f1)
-    _two_turn_file(f2)
+    _substantive_file(f1)
+    _substantive_file(f2)
     db = tmp_path / "mem.db"
     rc = main(["extract", str(f1), str(f2), "--db", str(db)])
     assert rc == 0
@@ -239,8 +245,8 @@ def test_cli_extract_glob_pattern_expanded_internally(tmp_path, monkeypatch):
     import memsub.cli as cli
 
     monkeypatch.setattr(cli, "build_backend", lambda prefer, model: _mock())
-    _two_turn_file(tmp_path / "a.jsonl")
-    _two_turn_file(tmp_path / "b.jsonl")
+    _substantive_file(tmp_path / "a.jsonl")
+    _substantive_file(tmp_path / "b.jsonl")
     db = tmp_path / "mem.db"
     rc = main(["extract", str(tmp_path / "*.jsonl"), "--db", str(db)])
     assert rc == 0
@@ -255,9 +261,9 @@ def test_cli_extract_no_files_matched(tmp_path, capsys):
 
 
 def test_cli_extract_min_turns_default_skips_thin_session(tmp_path, monkeypatch, capsys):
-    """Default --min-turns is 2: a single-turn transcript (the median shape
-    of a real ~/.claude/projects/ automation dump) is skipped without an
-    LLM call, and no store file is created."""
+    """Default --min-turns is 3: a single-turn transcript (a one-shot
+    automation dump) is skipped without an LLM call, and no store file is
+    created."""
     import memsub.cli as cli
 
     monkeypatch.setattr(cli, "build_backend", lambda prefer, model: _mock())
@@ -267,7 +273,7 @@ def test_cli_extract_min_turns_default_skips_thin_session(tmp_path, monkeypatch,
     rc = main(["extract", str(f), "--db", str(db)])
     assert rc == 0
     out = capsys.readouterr().out
-    assert "skipped (1 real turn(s) < --min-turns 2)" in out
+    assert "skipped (1 real turn(s) < --min-turns 3)" in out
     assert not db.exists()
 
 
@@ -291,7 +297,7 @@ def test_cli_extract_batch_mixes_thin_and_substantive(tmp_path, monkeypatch, cap
     thin = tmp_path / "thin.jsonl"
     thin.write_text('{"role": "user", "content": "hi"}\n')
     substantive = tmp_path / "real.jsonl"
-    _two_turn_file(substantive)
+    _substantive_file(substantive)
     db = tmp_path / "mem.db"
     rc = main(["extract", str(thin), str(substantive), "--db", str(db)])
     assert rc == 0

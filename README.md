@@ -100,12 +100,14 @@ injection to the audit trail.
 ```bash
 memsub extract session.jsonl --dry-run     # transcript -> candidate memories
 memsub extract session.jsonl               # ... and write them to the store
+memsub extract sessions/*.jsonl            # batch: multiple files/globs, --min-turns filters thin ones
 memsub consolidate --dry-run               # propose dedup/supersede/forget
 memsub ns create shared:team --owner lead  # shared namespace with ACL
 memsub search "how do we run tests?"       # hybrid retrieval (v2, default)
 memsub audit --recent                      # what has memory been doing?
 memsub audit <memory-id>                   # why does this memory exist?
 memsub vault --db <db> sync --vault DIR    # export to an Obsidian-compatible vault
+memsub vault --db <db> apply --vault DIR   # read human edits/verdicts back into the store
 memsub mcp                                 # the MCP stdio server
 ```
 

@@ -323,11 +323,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_ext.add_argument(
         "--min-turns",
         type=int,
-        default=2,
+        default=3,
         help="skip files with fewer real (user/assistant) turns than this "
-        "(default 2: drops single-shot automation transcripts, which the "
-        "round-1 dogfood found make up the median session in a real "
-        "~/.claude/projects/ corpus)",
+        "(default 3: a real ~/.claude/projects/ corpus sits almost entirely "
+        "at exactly 2 turns, one user message plus one automated reply, so "
+        "the useful floor for 'an actual back-and-forth happened' is 3, not "
+        "2; measured on 500 sampled sessions during round-2 dogfooding, see "
+        "docs/dogfood-2-2026-07-12.md)",
     )
     p_ext.add_argument("--dry-run", action="store_true", help="print candidates, write nothing")
     p_ext.set_defaults(func=_cmd_extract)
