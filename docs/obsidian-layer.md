@@ -58,7 +58,7 @@ becoming an audited episode.
 
 **Three actions, driven by what a human changed in a note:**
 
-1. **Correction** — edit the text under `## Content` to something other
+1. **Correction**: edit the text under `## Content` to something other
    than what sync wrote. Apply supersedes the old episode with a new one
    carrying the edited text (`superseded` event, `reason: human_correction`
    on the old episode) and provenance `{"origin": "human_correction",
@@ -68,11 +68,11 @@ becoming an audited episode.
    `consolidate._is_inferred` and the existing observed-beats-inferred rule
    ranks it above any agent-inferred memory with zero new logic
    (`tests/test_vault.py::test_apply_correction_outranks_inferred_memory_on_contradiction`).
-2. **Rejection** — set `verdict: reject` in frontmatter. Apply logs a
+2. **Rejection**: set `verdict: reject` in frontmatter. Apply logs a
    `forgotten` event (`reason: human_reject`), the same terminal state
    decay produces. The memory stays in the store (nothing is ever deleted)
    but stops being active.
-3. **Confirm / pin** — set `verdict: confirm` in frontmatter, with no body
+3. **Confirm / pin**: set `verdict: confirm` in frontmatter, with no body
    edit. Apply logs a `confirmed` event. The memory stays active and
    `consolidate`'s decay phase now skips any episode with a `confirmed`
    event unconditionally, so a pinned memory never ages out.
@@ -111,7 +111,7 @@ up to what apply just did to the store.
   run.
 - Skip, not error on: notes whose `id` is not in the store (orphans), notes
   whose episode is no longer active, and malformed notes (no frontmatter
-  block) — each counted separately in the returned `VaultApplyResult` so a
+  block): each counted separately in the returned `VaultApplyResult` so a
   run's output is auditable.
 
 **What apply will not do (explicitly out of scope for round 2):**
