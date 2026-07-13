@@ -2,6 +2,7 @@
 
 Commands:
   memsub extract <file>     extract candidate memories from a transcript
+  memsub vault sync         export the store to an Obsidian-compatible markdown vault
 
 The default store is a single SQLite file at $MEMSUB_DB or ~/.memsub/memory.db.
 """
@@ -180,6 +181,26 @@ def _cmd_search(args: argparse.Namespace) -> int:
         client.close()
 
 
+def _cmd_vault_sync(args: argparse.Namespace) -> int:
+    from .vault import sync_vault
+
+    db = Path(args.db)
+    if not db.exists():
+        print(f"no store at {db}")
+        return 1
+    store = EpisodicStore(db)
+    try:
+        result = sync_vault(store, args.vault, namespace=args.namespace)
+    finally:
+        store.close()
+    print(
+        f"{result.written} written, {result.updated} updated, "
+        f"{result.unchanged} unchanged, {result.removed} removed "
+        f"across {len(result.namespaces)} namespace(s) -> {args.vault}"
+    )
+    return 0
+
+
 def _cmd_mcp(args: argparse.Namespace) -> int:
     from .mcp_server import serve
     from .sdk import MemoryClient
@@ -272,6 +293,14 @@ def build_parser() -> argparse.ArgumentParser:
                         help="hashing (default, zero-dependency) or ollama (real local embeddings)")
     p_srch.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
     p_srch.set_defaults(func=_cmd_search)
+
+    p_vault = sub.add_parser("vault", help="export the store to an Obsidian-compatible markdown vault")
+    p_vault.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    vault_sub = p_vault.add_subparsers(dest="vault_command", required=True)
+    v_sync = vault_sub.add_parser("sync", help="write/update/remove notes so the vault matches the store")
+    v_sync.add_argument("--vault", required=True, help="vault folder (created if missing)")
+    v_sync.add_argument("--namespace", default=None, help="restrict to one namespace (default: all)")
+    v_sync.set_defaults(func=_cmd_vault_sync)
 
     p_mcp = sub.add_parser("mcp", help="run the MCP stdio server (for claude mcp add)")
     p_mcp.add_argument("--db", default=None, help="SQLite store path (default: $MEMSUB_DB or ~/.memsub/memory.db)")

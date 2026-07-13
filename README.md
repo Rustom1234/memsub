@@ -41,6 +41,10 @@ and extraction runs at roughly 7s per 28-turn session on a local 8B model.
 - **Audit**: every memory can answer "why do you exist and when were you
   used": provenance, every retrieval, every injection, every supersede or
   forget decision. `memsub audit <id>`, `memsub audit --recent`
+- **Obsidian vault export**: turn the store into a browsable, plain-markdown
+  knowledge graph (no plugin needed): one note per memory with frontmatter,
+  provenance, and wiki-links for shared entities and supersede chains.
+  `memsub vault sync --vault ~/memsub-vault` (docs/obsidian-layer.md).
 - **Benchmarked retrieval under a hard token budget**: the default search
   is a hybrid stack (stemmed BM25 + dense embeddings + temporal, speaker,
   and session signals fused with reciprocal rank fusion), dependency-free
@@ -101,6 +105,7 @@ memsub ns create shared:team --owner lead  # shared namespace with ACL
 memsub search "how do we run tests?"       # hybrid retrieval (v2, default)
 memsub audit --recent                      # what has memory been doing?
 memsub audit <memory-id>                   # why does this memory exist?
+memsub vault --db <db> sync --vault DIR    # export to an Obsidian-compatible vault
 memsub mcp                                 # the MCP stdio server
 ```
 
