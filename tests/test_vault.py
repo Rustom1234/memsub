@@ -367,6 +367,22 @@ def test_apply_confirm_pins_and_protects_from_decay(tmp_path):
     assert store.status(ep.id) == "active"
 
 
+def test_apply_confirm_rerun_does_not_double_log(tmp_path):
+    """Re-running apply on a still-verdict-carrying confirm note (before a
+    resync strips the verdict) must not log a second confirmed event."""
+    store, (ep,) = _store_with(_ep("a pinned fact"))
+    vault = tmp_path / "vault"
+    sync_vault(store, vault)
+    _set_verdict(vault / "default" / note_filename(ep), "confirm")
+
+    first = apply_vault(store, vault)
+    assert first.confirmed == 1
+    second = apply_vault(store, vault)
+    assert second.confirmed == 0
+    assert second.unchanged == 1
+    assert len(store.events(episode_id=ep.id, event="confirmed")) == 1
+
+
 def test_apply_skips_orphan_note(tmp_path):
     store, (ep,) = _store_with(_ep("fact one"))
     vault = tmp_path / "vault"

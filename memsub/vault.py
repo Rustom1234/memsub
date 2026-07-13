@@ -478,9 +478,14 @@ def apply_vault(
                 result.corrected += 1
                 result.detail.append(f"correct {ep_id[:8]} -> {new_ep.id[:8]}")
             elif verdict == "confirm":
-                store.log_event(ep_id, "confirmed", {"reason": "human_confirm"})
-                result.confirmed += 1
-                result.detail.append(f"confirm {ep_id[:8]}")
+                if store.events(episode_id=ep_id, event="confirmed"):
+                    # already pinned (e.g. apply rerun before a resync removed
+                    # the verdict from the note file): do not double-log
+                    result.unchanged += 1
+                else:
+                    store.log_event(ep_id, "confirmed", {"reason": "human_confirm"})
+                    result.confirmed += 1
+                    result.detail.append(f"confirm {ep_id[:8]}")
             else:
                 result.unchanged += 1
 
