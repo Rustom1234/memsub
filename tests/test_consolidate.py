@@ -153,6 +153,16 @@ def test_decay_spares_young_memories():
     assert consolidate(store, backend=None, now=NOW) == []
 
 
+def test_decay_spares_human_confirmed():
+    """A vault-apply confirm (verdict: confirm) logs a "confirmed" event;
+    decay must skip it forever, regardless of age or value."""
+    old_ts = NOW - 90 * 86400
+    store, (pinned,) = _store_with(_ep("some low value note", old_ts, importance=0.3))
+    store.log_event(pinned.id, "confirmed", {"reason": "human_confirm"})
+    assert consolidate(store, backend=None, now=NOW) == []
+    assert store.status(pinned.id) == "active"
+
+
 def test_dry_run_applies_nothing():
     store, (old, _) = _store_with(
         _ep("the repo uses pytest.ini to disable ROS plugins", NOW),

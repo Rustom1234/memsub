@@ -1,4 +1,4 @@
-"""Obsidian vault export: a read-only, browsable view of the episodic store.
+"""Obsidian vault export and annotate loop.
 
 `sync_vault` writes one plain markdown note per memory into a folder of
 folders (one per namespace), plus a per-namespace index note and a
@@ -6,10 +6,10 @@ top-level map-of-content note. No Obsidian plugin is required: it is just
 markdown files with YAML frontmatter and `[[wiki-links]]`, which Obsidian
 (and plain grep) read natively.
 
-This is a one-way export. There is no vault-to-store editing: the store
-stays the single source of truth, and re-running sync is the only supported
-way to move data. See docs/obsidian-layer.md for what is deliberately not
-built here.
+`apply_vault` is the other direction: it reads a human's edits to notes
+sync wrote and turns them into store writes (correction, rejection,
+confirm). See docs/obsidian-layer.md for the exact semantics and what apply
+deliberately does not do.
 
 Idempotency: filenames are derived only from the (stable, append-only)
 memory id, so a note's path never changes across runs. A note is rewritten
@@ -20,6 +20,7 @@ store changes touches no files.
 
 from __future__ import annotations
 
+import hashlib
 import re
 import time
 from collections import defaultdict
@@ -100,6 +101,15 @@ def _memory_type(ep: Episode) -> str:
     return "inferred" if (ep.kind == "inference" or ep.provenance.get("inferred")) else "observed"
 
 
+def content_hash(content: str) -> str:
+    """Stable fingerprint of a memory's body text, written to frontmatter at
+    sync time and re-checked at apply time to detect a human edit. Content
+    never changes for a given episode id (the store is append-only), so this
+    hash is deterministic for as long as a note's `id` field points at the
+    same episode."""
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()[:16]
+
+
 # --------------------------------------------------------------------------- #
 # Cross-note relationships
 # --------------------------------------------------------------------------- #
@@ -141,22 +151,25 @@ def render_note(
     events = store.events(episode_id=ep.id)
     lifecycle_events = [e for e in events if e.event in ("superseded", "forgotten")]
     usage_events = [e for e in events if e.event in ("retrieved", "injected")]
+    confirmed = any(e.event == "confirmed" for e in events)
     last_updated = max([ep.ts] + [e.ts for e in lifecycle_events]) if lifecycle_events else ep.ts
     last_used = max((e.ts for e in usage_events), default=None)
 
-    frontmatter = _frontmatter(
-        {
-            "id": ep.id,
-            "namespace": ep.namespace,
-            "kind": ep.kind,
-            "type": _memory_type(ep),
-            "status": status,
-            "created": _iso(ep.ts),
-            "last_updated": _iso(last_updated),
-            "last_used": _iso(last_used) if last_used else "",
-            "confidence": ep.provenance.get("confidence"),
-        }
-    )
+    frontmatter_fields = {
+        "id": ep.id,
+        "namespace": ep.namespace,
+        "kind": ep.kind,
+        "type": _memory_type(ep),
+        "status": status,
+        "created": _iso(ep.ts),
+        "last_updated": _iso(last_updated),
+        "last_used": _iso(last_used) if last_used else "",
+        "confidence": ep.provenance.get("confidence"),
+        "content_hash": content_hash(ep.content),
+    }
+    if confirmed:
+        frontmatter_fields["human_confirmed"] = True
+    frontmatter = _frontmatter(frontmatter_fields)
 
     lines = [frontmatter, "", f"# {ep.content[:80]}", "", "## Content", "", ep.content, ""]
 
@@ -312,5 +325,168 @@ def sync_vault(store: EpisodicStore, vault_path: str | Path, namespace: str | No
         display_name = first_line.lstrip("#").strip() or entry.name
         moc_namespaces.append((entry.name, display_name, n_notes))
     _write_if_changed(vault_root / "index.md", render_moc(moc_namespaces))
+
+    return result
+
+
+# --------------------------------------------------------------------------- #
+# Annotate/override loop: read human edits in the vault back into the store
+# --------------------------------------------------------------------------- #
+# Semantics (see docs/obsidian-layer.md for the full writeup):
+#   - A note's body (the text between "## Content" and "## Provenance") edited
+#     to something other than what sync wrote is a CORRECTION: the old episode
+#     is superseded by a new one carrying the edited text, marked
+#     human-verified (never an inference, so it already outranks any
+#     agent-inferred memory under the observed-beats-inferred consolidation
+#     rule with no extra logic needed).
+#   - `verdict: reject` in frontmatter is a REJECTION: the memory is forgotten
+#     (a "forgotten" event, same terminal state consolidation's decay phase
+#     produces). Rejection wins over a simultaneous body edit: dropping a
+#     memory is a stronger, simpler signal than correcting text that is about
+#     to be discarded anyway.
+#   - `verdict: confirm` in frontmatter (with no body edit) is a PIN: a
+#     "confirmed" event is logged. The episode stays active; consolidate's
+#     decay phase skips any episode with a confirmed event, forever.
+#   - A note with no body edit and no verdict is exactly what sync would
+#     still write today: apply does nothing to it. This is the safety
+#     property that makes round-tripping sync -> apply -> sync loss-free.
+#   - Human edits are detected by comparing the body text against the
+#     content_hash sync wrote into frontmatter (falling back to hashing the
+#     episode's current content when a note predates content_hash). Because
+#     episode content never changes in place, this is equivalent to comparing
+#     against the store directly, but matches the note as sync actually wrote
+#     it rather than requiring a second store read to decide "did this
+#     change".
+#   - Notes whose episode is no longer active (already superseded or
+#     forgotten, by a previous apply run or by consolidate) are skipped, not
+#     reprocessed: this is what makes re-running apply without an
+#     intervening sync safe, and it is also why apply never invents a new
+#     memory from a note whose id it does not recognize (the shared-notes /
+#     staging-vault ideas are explicitly out of scope, see
+#     docs/obsidian-layer.md).
+FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n(.*)$", re.DOTALL)
+_FM_FIELD_RE = re.compile(r'^([A-Za-z_]+):\s*(.*)$')
+_BODY_RE = re.compile(r"## Content\n\n(.*?)\n\n## Provenance", re.DOTALL)
+
+
+@dataclass
+class VaultApplyResult:
+    corrected: int = 0
+    rejected: int = 0
+    confirmed: int = 0
+    unchanged: int = 0
+    skipped: int = 0
+    detail: list[str] = field(default_factory=list)  # ids only, never content
+
+
+def _parse_frontmatter(raw: str) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    for line in raw.splitlines():
+        m = _FM_FIELD_RE.match(line)
+        if not m:
+            continue
+        key, value = m.group(1), m.group(2).strip()
+        if value.startswith('"') and value.endswith('"') and len(value) >= 2:
+            value = value[1:-1].replace('\\"', '"')
+        fields[key] = value
+    return fields
+
+
+def _parse_note(text: str) -> tuple[dict[str, str], str] | None:
+    """Returns (frontmatter fields, body text) or None if not a memory note
+    (e.g. an index note, which carries no frontmatter block)."""
+    m = FRONTMATTER_RE.match(text)
+    if not m:
+        return None
+    fields = _parse_frontmatter(m.group(1))
+    body_m = _BODY_RE.search(m.group(2))
+    body = body_m.group(1) if body_m else ""
+    return fields, body
+
+
+def apply_vault(
+    store: EpisodicStore,
+    vault_path: str | Path,
+    namespace: str | None = None,
+    run_id: str = "vault-apply",
+) -> VaultApplyResult:
+    vault_root = Path(vault_path)
+    result = VaultApplyResult()
+
+    if namespace is not None:
+        ns_dirs = [vault_root / namespace_dirname(namespace)]
+    else:
+        ns_dirs = sorted(
+            d for d in vault_root.iterdir() if d.is_dir() and (d / "index.md").exists()
+        ) if vault_root.exists() else []
+
+    for ns_dir in ns_dirs:
+        if not ns_dir.exists():
+            continue
+        for note_path in sorted(ns_dir.glob("*.md")):
+            if note_path.name == "index.md":
+                continue
+            parsed = _parse_note(note_path.read_text(encoding="utf-8"))
+            if parsed is None:
+                result.skipped += 1
+                result.detail.append(f"skip malformed {note_path.name}")
+                continue
+            fields, body = parsed
+            ep_id = fields.get("id")
+            if not ep_id:
+                result.skipped += 1
+                result.detail.append(f"skip no-id {note_path.name}")
+                continue
+            ep = store.get(ep_id)
+            if ep is None:
+                result.skipped += 1
+                result.detail.append(f"skip orphan {ep_id[:8]}")
+                continue
+            if store.status(ep_id) != "active":
+                result.skipped += 1
+                result.detail.append(f"skip inactive {ep_id[:8]}")
+                continue
+
+            verdict = fields.get("verdict", "").strip().lower()
+            baseline_hash = fields.get("content_hash") or content_hash(ep.content)
+            edited = body != "" and content_hash(body) != baseline_hash
+
+            if verdict == "reject":
+                store.log_event(ep_id, "forgotten", {"reason": "human_reject"})
+                result.rejected += 1
+                result.detail.append(f"reject {ep_id[:8]}")
+            elif edited:
+                new_ep = store.append(
+                    Episode(
+                        content=body,
+                        run_id=run_id,
+                        session_id=ep.session_id,
+                        kind=ep.kind,
+                        importance=1.0,
+                        namespace=ep.namespace,
+                        provenance={
+                            "origin": "human_correction",
+                            "corrected_from": ep_id,
+                            "human_verified": True,
+                            "confidence": 1.0,
+                        },
+                    )
+                )
+                store.log_event(
+                    ep_id, "superseded", {"reason": "human_correction", "by": new_ep.id}
+                )
+                result.corrected += 1
+                result.detail.append(f"correct {ep_id[:8]} -> {new_ep.id[:8]}")
+            elif verdict == "confirm":
+                if store.events(episode_id=ep_id, event="confirmed"):
+                    # already pinned (e.g. apply rerun before a resync removed
+                    # the verdict from the note file): do not double-log
+                    result.unchanged += 1
+                else:
+                    store.log_event(ep_id, "confirmed", {"reason": "human_confirm"})
+                    result.confirmed += 1
+                    result.detail.append(f"confirm {ep_id[:8]}")
+            else:
+                result.unchanged += 1
 
     return result
