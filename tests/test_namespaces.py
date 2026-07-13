@@ -183,6 +183,6 @@ def test_cli_extract_namespace(tmp_path, monkeypatch):
     f = tmp_path / "c.jsonl"
     f.write_text('{"role": "user", "content": "hello"}\n')
     db = tmp_path / "mem.db"
-    assert main(["extract", str(f), "--db", str(db), "--namespace", "agent:me"]) == 0
+    assert main(["extract", str(f), "--db", str(db), "--namespace", "agent:me", "--min-turns", "1"]) == 0
     store = EpisodicStore(db)
     assert len(store.all(namespace="agent:me")) == 1

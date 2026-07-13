@@ -11,7 +11,9 @@ Three phases, in order:
    a backend; skipped cleanly without one.
 3. Decay: low-value memories are forgotten. Value is importance discounted by
    age (half-life) and boosted by how often the memory was actually retrieved.
-   Only memories older than a minimum age are eligible.
+   Only memories older than a minimum age are eligible. Episodes carrying a
+   "confirmed" event (memsub.vault.apply_vault, a human pin) are skipped by
+   decay unconditionally.
 
 Nothing is ever deleted: supersede and forget are events in the store's event
 log, so every decision is auditable and reversible in principle.
@@ -208,6 +210,10 @@ def consolidate(
     # -- phase 3: decay ------------------------------------------------------ #
     for ep in episodes:
         if ep.id in removed:
+            continue
+        if store.events(episode_id=ep.id, event="confirmed"):
+            # human pinned this memory (memsub vault apply, verdict: confirm):
+            # protected from decay indefinitely, regardless of age or value.
             continue
         age_days = max(now - ep.ts, 0.0) / 86400.0
         if age_days < cfg.decay_min_age_days:

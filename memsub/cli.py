@@ -1,8 +1,9 @@
 """memsub command line interface.
 
 Commands:
-  memsub extract <file>     extract candidate memories from a transcript
+  memsub extract <file(s)>  extract candidate memories from one or more transcripts
   memsub vault sync         export the store to an Obsidian-compatible markdown vault
+  memsub vault apply        read human edits/verdicts in the vault back into the store
 
 The default store is a single SQLite file at $MEMSUB_DB or ~/.memsub/memory.db.
 """
@@ -10,13 +11,14 @@ The default store is a single SQLite file at $MEMSUB_DB or ~/.memsub/memory.db.
 from __future__ import annotations
 
 import argparse
+import glob as globmod
 import os
 import sys
 from pathlib import Path
 
 from .backends import build_backend
 from .consolidate import ConsolidationConfig, consolidate
-from .extraction import extract_file
+from .extraction import extract_file, load_transcript
 from .store import EpisodicStore
 
 
@@ -27,25 +29,82 @@ def default_db_path() -> Path:
     return Path.home() / ".memsub" / "memory.db"
 
 
+def _expand_files(patterns: list[str]) -> list[str]:
+    """Expand glob patterns to files, in sorted order, de-duplicated.
+
+    Shells already expand unquoted globs, but a quoted pattern (needed to
+    ingest more files than the shell's argv limit, or to keep the pattern
+    itself in shell history) reaches us literally, so patterns containing
+    glob metacharacters are expanded here too. Plain paths pass through
+    unchanged.
+    """
+    files: list[str] = []
+    seen: set[str] = set()
+    for pattern in patterns:
+        matches = (
+            sorted(globmod.glob(pattern, recursive=True))
+            if any(c in pattern for c in "*?[")
+            else [pattern]
+        )
+        for m in matches:
+            if m in seen or not Path(m).is_file():
+                continue
+            seen.add(m)
+            files.append(m)
+    return files
+
+
+def _real_turn_count(path: str) -> int:
+    """Turns with an actual user/assistant speaker, the same filter the
+    round-1 dogfood run used by hand to find substantive sessions among a
+    corpus mostly made of single-shot automation transcripts."""
+    return sum(1 for t in load_transcript(path) if t.role in ("user", "assistant"))
+
+
 def _cmd_extract(args: argparse.Namespace) -> int:
     backend = build_backend(prefer=args.backend, model=args.model)
-    candidates = extract_file(args.file, backend, max_chars=args.max_chars)
-    if not candidates:
-        print("no candidate memories extracted")
-        return 0
-    for c in candidates:
-        print(f"[{c.kind:>10}] conf={c.confidence:.2f}  {c.content}")
-    if args.dry_run:
-        print(f"\n{len(candidates)} candidate(s), dry run: nothing written")
-        return 0
-    db = Path(args.db)
-    db.parent.mkdir(parents=True, exist_ok=True)
-    store = EpisodicStore(db)
-    session_id = args.session_id or Path(args.file).stem
-    for c in candidates:
-        store.append(c.to_episode(run_id=args.run_id, session_id=session_id, namespace=args.namespace))
-    store.close()
-    print(f"\n{len(candidates)} memories written to {db}")
+    files = _expand_files(args.files)
+    if not files:
+        print("no files matched")
+        return 1
+
+    store: EpisodicStore | None = None
+    total_written = 0
+    skipped_thin = 0
+    for f in files:
+        turns = _real_turn_count(f)
+        if turns < args.min_turns:
+            skipped_thin += 1
+            print(f"{f}: skipped ({turns} real turn(s) < --min-turns {args.min_turns})")
+            continue
+        candidates = extract_file(f, backend, max_chars=args.max_chars)
+        if not candidates:
+            print(f"{f}: no candidate memories extracted")
+            continue
+        for c in candidates:
+            print(f"[{c.kind:>10}] conf={c.confidence:.2f}  {c.content}")
+        if args.dry_run:
+            print(f"{f}: {len(candidates)} candidate(s), dry run: nothing written")
+            continue
+        if store is None:
+            db = Path(args.db)
+            db.parent.mkdir(parents=True, exist_ok=True)
+            store = EpisodicStore(db)
+        session_id = args.session_id or Path(f).stem
+        for c in candidates:
+            store.append(
+                c.to_episode(run_id=args.run_id, session_id=session_id, namespace=args.namespace)
+            )
+        total_written += len(candidates)
+        print(f"{f}: {len(candidates)} memories written")
+
+    if store is not None:
+        store.close()
+    scanned = len(files) - skipped_thin
+    print(
+        f"\n{total_written} memor{'y' if total_written == 1 else 'ies'} written across "
+        f"{scanned}/{len(files)} file(s) ({skipped_thin} skipped by --min-turns) to {args.db}"
+    )
     return 0
 
 
@@ -201,6 +260,28 @@ def _cmd_vault_sync(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_vault_apply(args: argparse.Namespace) -> int:
+    from .vault import apply_vault
+
+    db = Path(args.db)
+    if not db.exists():
+        print(f"no store at {db}")
+        return 1
+    store = EpisodicStore(db)
+    try:
+        result = apply_vault(store, args.vault, namespace=args.namespace, run_id=args.run_id)
+    finally:
+        store.close()
+    for line in result.detail:
+        print(f"  {line}")
+    print(
+        f"{result.corrected} corrected, {result.rejected} rejected, "
+        f"{result.confirmed} confirmed, {result.unchanged} unchanged, "
+        f"{result.skipped} skipped <- {args.vault}"
+    )
+    return 0
+
+
 def _cmd_mcp(args: argparse.Namespace) -> int:
     from .mcp_server import serve
     from .sdk import MemoryClient
@@ -216,8 +297,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="memsub", description="local-first memory for agents")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_ext = sub.add_parser("extract", help="extract candidate memories from a transcript file")
-    p_ext.add_argument("file", help="transcript file (.jsonl or plain text)")
+    p_ext = sub.add_parser(
+        "extract", help="extract candidate memories from one or more transcript files"
+    )
+    p_ext.add_argument(
+        "files",
+        nargs="+",
+        help="transcript file(s) (.jsonl or plain text); shell globs work, "
+        "or pass a quoted glob pattern directly",
+    )
     p_ext.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
     p_ext.add_argument(
         "--backend",
@@ -228,8 +316,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_ext.add_argument("--model", default=None, help="model override for the backend")
     p_ext.add_argument("--namespace", default="default", help="namespace to file memories under")
     p_ext.add_argument("--run-id", default="default", help="run id to file memories under")
-    p_ext.add_argument("--session-id", default=None, help="session id (default: file stem)")
+    p_ext.add_argument(
+        "--session-id", default=None, help="session id (default: each file's stem)"
+    )
     p_ext.add_argument("--max-chars", type=int, default=12000, help="chunk size in characters")
+    p_ext.add_argument(
+        "--min-turns",
+        type=int,
+        default=2,
+        help="skip files with fewer real (user/assistant) turns than this "
+        "(default 2: drops single-shot automation transcripts, which the "
+        "round-1 dogfood found make up the median session in a real "
+        "~/.claude/projects/ corpus)",
+    )
     p_ext.add_argument("--dry-run", action="store_true", help="print candidates, write nothing")
     p_ext.set_defaults(func=_cmd_extract)
 
@@ -301,6 +400,17 @@ def build_parser() -> argparse.ArgumentParser:
     v_sync.add_argument("--vault", required=True, help="vault folder (created if missing)")
     v_sync.add_argument("--namespace", default=None, help="restrict to one namespace (default: all)")
     v_sync.set_defaults(func=_cmd_vault_sync)
+
+    v_apply = vault_sub.add_parser(
+        "apply",
+        help="read human edits and verdict: reject/confirm flags in the vault back into the store",
+    )
+    v_apply.add_argument("--vault", required=True, help="vault folder to read")
+    v_apply.add_argument("--namespace", default=None, help="restrict to one namespace (default: all)")
+    v_apply.add_argument(
+        "--run-id", default="vault-apply", help="run id attached to any new (corrected) episode"
+    )
+    v_apply.set_defaults(func=_cmd_vault_apply)
 
     p_mcp = sub.add_parser("mcp", help="run the MCP stdio server (for claude mcp add)")
     p_mcp.add_argument("--db", default=None, help="SQLite store path (default: $MEMSUB_DB or ~/.memsub/memory.db)")

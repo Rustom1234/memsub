@@ -145,7 +145,7 @@ def test_cli_extract_writes_store(tmp_path, capsys):
     f = tmp_path / "conv.jsonl"
     f.write_text('{"role": "user", "content": "we use pytest here"}\n')
     db = tmp_path / "mem.db"
-    rc = main(["extract", str(f), "--backend", "mock", "--db", str(db)])
+    rc = main(["extract", str(f), "--backend", "mock", "--db", str(db), "--min-turns", "1"])
     assert rc == 0
     store = EpisodicStore(db)
     eps = store.all()
@@ -161,7 +161,7 @@ def test_cli_extract_dry_run_writes_nothing(tmp_path, monkeypatch, capsys):
     f.write_text('{"role": "user", "content": "we use pytest here"}\n')
     db = tmp_path / "mem.db"
     monkeypatch.setattr(cli, "build_backend", lambda prefer, model: _mock())
-    rc = main(["extract", str(f), "--backend", "mock", "--db", str(db), "--dry-run"])
+    rc = main(["extract", str(f), "--backend", "mock", "--db", str(db), "--dry-run", "--min-turns", "1"])
     assert rc == 0
     assert not db.exists()
     assert "dry run" in capsys.readouterr().out
@@ -174,10 +174,128 @@ def test_cli_extract_end_to_end(tmp_path, monkeypatch):
     f.write_text('{"role": "user", "content": "we use pytest here"}\n')
     db = tmp_path / "mem.db"
     monkeypatch.setattr(cli, "build_backend", lambda prefer, model: _mock())
-    rc = main(["extract", str(f), "--db", str(db), "--run-id", "r1"])
+    rc = main(["extract", str(f), "--db", str(db), "--run-id", "r1", "--min-turns", "1"])
     assert rc == 0
     store = EpisodicStore(db)
     eps = store.all(run_id="r1")
     assert len(eps) == 2
     assert eps[0].session_id == "conv"
     assert eps[0].provenance["origin"] == "extraction"
+
+
+# --------------------------------------------------------------------------- #
+# Batch extract: multiple files, glob patterns, min-turns filter
+# --------------------------------------------------------------------------- #
+def _two_turn_file(path):
+    path.write_text('{"role": "user", "content": "hi"}\n{"role": "assistant", "content": "hello"}\n')
+
+
+def test_expand_files_deduplicates_and_globs(tmp_path):
+    from memsub.cli import _expand_files
+
+    a = tmp_path / "a.jsonl"
+    b = tmp_path / "b.jsonl"
+    a.write_text("{}")
+    b.write_text("{}")
+    files = _expand_files([str(tmp_path / "*.jsonl"), str(a)])  # a matched twice
+    assert files == [str(a), str(b)]
+
+
+def test_expand_files_skips_missing_paths(tmp_path):
+    from memsub.cli import _expand_files
+
+    assert _expand_files([str(tmp_path / "nope.jsonl")]) == []
+
+
+def test_real_turn_count_filters_non_message_roles(tmp_path):
+    from memsub.cli import _real_turn_count
+
+    f = tmp_path / "t.jsonl"
+    f.write_text(
+        '{"role": "user", "content": "hi"}\n'
+        '{"role": "assistant", "content": "hello"}\n'
+        '{"type": "file-history-snapshot"}\n'
+    )
+    assert _real_turn_count(f) == 2
+
+
+def test_cli_extract_multiple_files(tmp_path, monkeypatch):
+    import memsub.cli as cli
+
+    monkeypatch.setattr(cli, "build_backend", lambda prefer, model: _mock())
+    f1, f2 = tmp_path / "a.jsonl", tmp_path / "b.jsonl"
+    _two_turn_file(f1)
+    _two_turn_file(f2)
+    db = tmp_path / "mem.db"
+    rc = main(["extract", str(f1), str(f2), "--db", str(db)])
+    assert rc == 0
+    store = EpisodicStore(db)
+    assert len(store.all()) == 4  # 2 candidates per file x 2 files
+
+
+def test_cli_extract_glob_pattern_expanded_internally(tmp_path, monkeypatch):
+    """A quoted glob pattern the shell never expanded must still work: the
+    CLI expands it itself."""
+    import memsub.cli as cli
+
+    monkeypatch.setattr(cli, "build_backend", lambda prefer, model: _mock())
+    _two_turn_file(tmp_path / "a.jsonl")
+    _two_turn_file(tmp_path / "b.jsonl")
+    db = tmp_path / "mem.db"
+    rc = main(["extract", str(tmp_path / "*.jsonl"), "--db", str(db)])
+    assert rc == 0
+    store = EpisodicStore(db)
+    assert len(store.all()) == 4
+
+
+def test_cli_extract_no_files_matched(tmp_path, capsys):
+    rc = main(["extract", str(tmp_path / "nope-*.jsonl"), "--db", str(tmp_path / "mem.db")])
+    assert rc == 1
+    assert "no files matched" in capsys.readouterr().out
+
+
+def test_cli_extract_min_turns_default_skips_thin_session(tmp_path, monkeypatch, capsys):
+    """Default --min-turns is 2: a single-turn transcript (the median shape
+    of a real ~/.claude/projects/ automation dump) is skipped without an
+    LLM call, and no store file is created."""
+    import memsub.cli as cli
+
+    monkeypatch.setattr(cli, "build_backend", lambda prefer, model: _mock())
+    f = tmp_path / "thin.jsonl"
+    f.write_text('{"role": "user", "content": "hi"}\n')
+    db = tmp_path / "mem.db"
+    rc = main(["extract", str(f), "--db", str(db)])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "skipped (1 real turn(s) < --min-turns 2)" in out
+    assert not db.exists()
+
+
+def test_cli_extract_min_turns_override_includes_thin_session(tmp_path, monkeypatch):
+    import memsub.cli as cli
+
+    monkeypatch.setattr(cli, "build_backend", lambda prefer, model: _mock())
+    f = tmp_path / "thin.jsonl"
+    f.write_text('{"role": "user", "content": "hi"}\n')
+    db = tmp_path / "mem.db"
+    rc = main(["extract", str(f), "--db", str(db), "--min-turns", "1"])
+    assert rc == 0
+    store = EpisodicStore(db)
+    assert len(store.all()) == 2
+
+
+def test_cli_extract_batch_mixes_thin_and_substantive(tmp_path, monkeypatch, capsys):
+    import memsub.cli as cli
+
+    monkeypatch.setattr(cli, "build_backend", lambda prefer, model: _mock())
+    thin = tmp_path / "thin.jsonl"
+    thin.write_text('{"role": "user", "content": "hi"}\n')
+    substantive = tmp_path / "real.jsonl"
+    _two_turn_file(substantive)
+    db = tmp_path / "mem.db"
+    rc = main(["extract", str(thin), str(substantive), "--db", str(db)])
+    assert rc == 0
+    store = EpisodicStore(db)
+    assert len(store.all()) == 2  # only the substantive file's candidates
+    out = capsys.readouterr().out
+    assert "1 skipped by --min-turns" in out
