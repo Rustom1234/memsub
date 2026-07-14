@@ -305,3 +305,114 @@ def test_cli_extract_batch_mixes_thin_and_substantive(tmp_path, monkeypatch, cap
     assert len(store.all()) == 2  # only the substantive file's candidates
     out = capsys.readouterr().out
     assert "1 skipped by --min-turns" in out
+
+
+# --------------------------------------------------------------------------- #
+# Batch extract resume: checkpoint per (source path, file content hash)
+# --------------------------------------------------------------------------- #
+def _counting_mock(response: str = CANDIDATES_JSON):
+    """MockBackend that records one call per invocation, so a test can assert
+    a checkpointed file was skipped without an LLM call."""
+    calls: list[str] = []
+
+    def responder(system, messages):
+        calls.append(messages[0]["content"])
+        return response
+
+    return MockBackend(responder=responder), calls
+
+
+def test_cli_extract_resume_after_interrupt_completes_only_remainder(tmp_path, monkeypatch):
+    """Simulates a crash mid-batch: the first invocation only covers file a
+    (as if the process was killed before reaching b), then a rerun over both
+    files must not re-extract a and must extract only b."""
+    import memsub.cli as cli
+
+    backend, calls = _counting_mock()
+    monkeypatch.setattr(cli, "build_backend", lambda prefer, model: backend)
+    a, b = tmp_path / "a.jsonl", tmp_path / "b.jsonl"
+    _substantive_file(a)
+    _substantive_file(b)
+    db = tmp_path / "mem.db"
+
+    rc = main(["extract", str(a), "--db", str(db)])  # "crash" after file a
+    assert rc == 0
+    assert len(calls) == 1
+
+    rc = main(["extract", str(a), str(b), "--db", str(db)])  # rerun, same command shape
+    assert rc == 0
+    assert len(calls) == 2  # a was not re-sent to the backend
+
+    store = EpisodicStore(db)
+    assert len(store.all()) == 4  # 2 candidates from a (first run) + 2 from b (second run)
+
+
+def test_cli_extract_resume_skips_unchanged_file(tmp_path, monkeypatch, capsys):
+    import memsub.cli as cli
+
+    backend, calls = _counting_mock()
+    monkeypatch.setattr(cli, "build_backend", lambda prefer, model: backend)
+    f = tmp_path / "a.jsonl"
+    _substantive_file(f)
+    db = tmp_path / "mem.db"
+
+    rc = main(["extract", str(f), "--db", str(db)])
+    assert rc == 0
+    assert len(calls) == 1
+
+    rc = main(["extract", str(f), "--db", str(db)])  # rerun, file untouched
+    assert rc == 0
+    assert len(calls) == 1  # no second LLM call
+    out = capsys.readouterr().out
+    assert "skipped (already extracted, unchanged since last checkpoint)" in out
+    assert "1 skipped by checkpoint" in out
+
+    store = EpisodicStore(db)
+    assert len(store.all()) == 2  # still just the first run's candidates
+
+
+def test_cli_extract_resume_reextracts_changed_file(tmp_path, monkeypatch):
+    import memsub.cli as cli
+
+    backend, calls = _counting_mock()
+    monkeypatch.setattr(cli, "build_backend", lambda prefer, model: backend)
+    f = tmp_path / "a.jsonl"
+    _substantive_file(f)
+    db = tmp_path / "mem.db"
+
+    rc = main(["extract", str(f), "--db", str(db)])
+    assert rc == 0
+    assert len(calls) == 1
+
+    f.write_text(
+        '{"role": "user", "content": "hi"}\n'
+        '{"role": "assistant", "content": "hello"}\n'
+        '{"role": "user", "content": "actually, one more thing"}\n'
+    )  # content changed, still 3 real turns
+    rc = main(["extract", str(f), "--db", str(db)])
+    assert rc == 0
+    assert len(calls) == 2  # re-extracted because the content hash changed
+
+    store = EpisodicStore(db)
+    assert len(store.all()) == 4  # 2 + 2, both runs' candidates kept (append-only)
+
+
+def test_cli_extract_checkpoint_recorded_even_with_zero_candidates(tmp_path, monkeypatch):
+    """A file that legitimately yields no memories should still be
+    checkpointed, so a resumed run does not re-run the (expensive) LLM call
+    on it every time."""
+    import memsub.cli as cli
+
+    backend, calls = _counting_mock(response="[]")
+    monkeypatch.setattr(cli, "build_backend", lambda prefer, model: backend)
+    f = tmp_path / "a.jsonl"
+    _substantive_file(f)
+    db = tmp_path / "mem.db"
+
+    rc = main(["extract", str(f), "--db", str(db)])
+    assert rc == 0
+    assert len(calls) == 1
+
+    rc = main(["extract", str(f), "--db", str(db)])
+    assert rc == 0
+    assert len(calls) == 1  # second run skipped by checkpoint, no new LLM call

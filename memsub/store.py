@@ -40,6 +40,12 @@ CREATE TABLE IF NOT EXISTS memory_events (
 );
 CREATE INDEX IF NOT EXISTS idx_events_episode ON memory_events(episode_id, ts);
 CREATE INDEX IF NOT EXISTS idx_events_ts ON memory_events(ts);
+CREATE TABLE IF NOT EXISTS extraction_checkpoints (
+    source_path TEXT PRIMARY KEY,
+    content_hash TEXT NOT NULL,
+    ts REAL NOT NULL,
+    memory_count INTEGER NOT NULL DEFAULT 0
+);
 """
 
 # Events that end an episode's active life. The episode row is never deleted;
@@ -259,6 +265,35 @@ class EpisodicStore:
         query += " ORDER BY ts ASC, id ASC"
         rows = self._conn.execute(query, params).fetchall()
         return [self._row_to_episode(r) for r in rows]
+
+    # ------------------------------------------------------------------ #
+    # Extraction checkpoints: resume support for batch extract
+    # ------------------------------------------------------------------ #
+    def get_extraction_checkpoint(self, source_path: str) -> str | None:
+        """Content hash recorded for source_path's last successful extraction,
+        or None if it was never checkpointed."""
+        row = self._conn.execute(
+            "SELECT content_hash FROM extraction_checkpoints WHERE source_path = ?",
+            (source_path,),
+        ).fetchone()
+        return row[0] if row else None
+
+    def set_extraction_checkpoint(
+        self, source_path: str, content_hash: str, memory_count: int
+    ) -> None:
+        """Record that source_path was successfully extracted at content_hash.
+
+        Upsert: a rerun over a changed file overwrites the prior checkpoint,
+        so it is re-extracted (new hash) and the fresh result recorded.
+        """
+        self._conn.execute(
+            "INSERT INTO extraction_checkpoints (source_path, content_hash, ts, memory_count)"
+            " VALUES (?, ?, ?, ?)"
+            " ON CONFLICT(source_path) DO UPDATE SET"
+            " content_hash=excluded.content_hash, ts=excluded.ts, memory_count=excluded.memory_count",
+            (source_path, content_hash, time.time(), memory_count),
+        )
+        self._conn.commit()
 
     def __iter__(self) -> Iterator[Episode]:
         return iter(self.all())

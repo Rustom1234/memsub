@@ -18,7 +18,7 @@ from pathlib import Path
 
 from .backends import build_backend
 from .consolidate import ConsolidationConfig, consolidate
-from .extraction import extract_file, load_transcript
+from .extraction import extract_file, file_content_hash, load_transcript
 from .store import EpisodicStore
 
 
@@ -62,6 +62,13 @@ def _real_turn_count(path: str) -> int:
 
 
 def _cmd_extract(args: argparse.Namespace) -> int:
+    """Batch extract is resumable by default: each successfully processed file
+    is checkpointed in the store keyed on (source path, content hash of the
+    file), so rerunning the same command after a crash or timeout skips files
+    already extracted and only processes the remainder. A changed file (hash
+    differs) is re-extracted. --dry-run never checkpoints, matching its
+    existing "nothing written" contract.
+    """
     backend = build_backend(prefer=args.backend, model=args.model)
     files = _expand_files(args.files)
     if not files:
@@ -71,30 +78,44 @@ def _cmd_extract(args: argparse.Namespace) -> int:
     store: EpisodicStore | None = None
     total_written = 0
     skipped_thin = 0
+    skipped_checkpoint = 0
     for f in files:
         turns = _real_turn_count(f)
         if turns < args.min_turns:
             skipped_thin += 1
             print(f"{f}: skipped ({turns} real turn(s) < --min-turns {args.min_turns})")
             continue
+
+        if store is None and not args.dry_run:
+            db = Path(args.db)
+            db.parent.mkdir(parents=True, exist_ok=True)
+            store = EpisodicStore(db)
+
+        content_hash = None
+        if store is not None:
+            content_hash = file_content_hash(f)
+            if store.get_extraction_checkpoint(f) == content_hash:
+                skipped_checkpoint += 1
+                print(f"{f}: skipped (already extracted, unchanged since last checkpoint)")
+                continue
+
         candidates = extract_file(f, backend, max_chars=args.max_chars)
         if not candidates:
             print(f"{f}: no candidate memories extracted")
+            if store is not None:
+                store.set_extraction_checkpoint(f, content_hash, 0)
             continue
         for c in candidates:
             print(f"[{c.kind:>10}] conf={c.confidence:.2f}  {c.content}")
         if args.dry_run:
             print(f"{f}: {len(candidates)} candidate(s), dry run: nothing written")
             continue
-        if store is None:
-            db = Path(args.db)
-            db.parent.mkdir(parents=True, exist_ok=True)
-            store = EpisodicStore(db)
         session_id = args.session_id or Path(f).stem
         for c in candidates:
             store.append(
                 c.to_episode(run_id=args.run_id, session_id=session_id, namespace=args.namespace)
             )
+        store.set_extraction_checkpoint(f, content_hash, len(candidates))
         total_written += len(candidates)
         print(f"{f}: {len(candidates)} memories written")
 
@@ -103,7 +124,8 @@ def _cmd_extract(args: argparse.Namespace) -> int:
     scanned = len(files) - skipped_thin
     print(
         f"\n{total_written} memor{'y' if total_written == 1 else 'ies'} written across "
-        f"{scanned}/{len(files)} file(s) ({skipped_thin} skipped by --min-turns) to {args.db}"
+        f"{scanned}/{len(files)} file(s) ({skipped_thin} skipped by --min-turns, "
+        f"{skipped_checkpoint} skipped by checkpoint) to {args.db}"
     )
     return 0
 

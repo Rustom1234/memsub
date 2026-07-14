@@ -101,6 +101,9 @@ injection to the audit trail.
 memsub extract session.jsonl --dry-run     # transcript -> candidate memories
 memsub extract session.jsonl               # ... and write them to the store
 memsub extract sessions/*.jsonl            # batch: multiple files/globs, --min-turns filters thin ones
+memsub extract sessions/*.jsonl            # resumable by default: rerun after a crash/timeout and
+                                            # already-extracted, unchanged files are skipped (checkpoint
+                                            # keyed on path + content hash, recorded in the store)
 memsub consolidate --dry-run               # propose dedup/supersede/forget
 memsub ns create shared:team --owner lead  # shared namespace with ACL
 memsub search "how do we run tests?"       # hybrid retrieval (v2, default)

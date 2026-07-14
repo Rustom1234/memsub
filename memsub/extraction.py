@@ -12,6 +12,7 @@ so tests run against MockBackend with zero cost.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 from dataclasses import dataclass, field
@@ -74,6 +75,13 @@ class CandidateMemory:
 # --------------------------------------------------------------------------- #
 # Transcript parsing
 # --------------------------------------------------------------------------- #
+def file_content_hash(path: str | Path) -> str:
+    """Sha256 of a transcript file's raw bytes, for batch-extract checkpointing:
+    a rerun re-extracts a file only if its content changed since it was last
+    checkpointed (memsub.store.EpisodicStore.get/set_extraction_checkpoint)."""
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
 def load_transcript(path: str | Path) -> list[Turn]:
     """Parse a transcript file into turns.
 
