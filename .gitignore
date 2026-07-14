@@ -5,6 +5,7 @@
 .beads-credential-key
 
 # Project
+.claude/
 .venv/
 __pycache__/
 *.pyc
