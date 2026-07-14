@@ -211,9 +211,32 @@ def build_review_queue(store: EpisodicStore) -> ReviewQueue:
     return queue
 
 
+def _cap_interleaved(entries: list[QueueEntry], cap: int) -> list[QueueEntry]:
+    """Round-robin across categories (each internally sorted by score) so a
+    high-volume category (e.g. near_duplicate) cannot crowd a smaller one
+    (e.g. corrected_reassertion) out of the capped list entirely."""
+    by_cat: dict[str, list[QueueEntry]] = defaultdict(list)
+    for e in entries:
+        by_cat[e.category].append(e)
+    for cat_entries in by_cat.values():
+        cat_entries.sort(key=lambda e: e.score, reverse=True)
+
+    kept: list[QueueEntry] = []
+    queues = list(by_cat.values())
+    i = 0
+    while len(kept) < cap and any(queues):
+        q = queues[i % len(queues)]
+        if q:
+            kept.append(q.pop(0))
+        i += 1
+        if i > 10 * cap + 10:  # all queues exhausted, safety valve
+            break
+    return kept
+
+
 def render_review_queue(queue: ReviewQueue, cap: int = 100) -> str:
     ranked = sorted(queue.entries, key=lambda e: e.score, reverse=True)
-    kept = ranked[:cap]
+    kept = _cap_interleaved(queue.entries, cap)
     total_found = len(ranked)
 
     lines = [
