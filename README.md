@@ -82,6 +82,34 @@ That exposes four tools to Claude Code: `add_memory`, `search_memory`,
 `~/.memsub/memory.db` (override with `MEMSUB_DB`). Set `MEMSUB_NAMESPACE`
 and `MEMSUB_AGENT` in the server env to scope an agent to its own namespace.
 
+To make memsub available to every Claude Code session (not just one repo),
+register it at user scope, pointed at the live store:
+
+```bash
+claude mcp add memsub -s user -e MEMSUB_DB=/home/user/.memsub/memory.db -- /home/user/projects/memory-sublayer/.venv/bin/memsub mcp
+```
+
+Verify:
+
+```bash
+claude mcp list        # should show "memsub: ... - Connected"
+claude mcp get memsub  # scope, command, env
+```
+
+Remove:
+
+```bash
+claude mcp remove memsub -s user
+```
+
+## Daily automation
+
+`scripts/daily_extract.sh` runs extract -> consolidate -> vault sync over
+Rustom's real Claude Code transcripts into the live store, lock-protected
+and checkpoint-safe to rerun. See `docs/daily-extract.md` for what it does,
+its logfile/lock file, and the (not installed) crontab line for a 05:00
+daily run.
+
 ## Python SDK
 
 ```python
