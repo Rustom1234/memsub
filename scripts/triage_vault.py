@@ -43,7 +43,7 @@ from memsub.cli import default_db_path  # noqa: E402
 from memsub.store import Episode, EpisodicStore  # noqa: E402
 from memsub.vault import note_wikilink  # noqa: E402
 
-CORRECTED_SIM_THRESHOLD = 0.55
+CORRECTED_JACCARD_THRESHOLD = 0.35
 NEAR_DUP_SIM_THRESHOLD = 0.72
 STOPWORDS = {
     "this", "that", "with", "from", "have", "will", "your", "their", "about",
@@ -83,8 +83,13 @@ def _significant_words(text: str) -> set[str]:
 
 
 def _find_corrected_reassertions(store: EpisodicStore, active: list[Episode]) -> list[QueueEntry]:
-    """Active memories that closely restate text a human already corrected
-    away elsewhere in the store (superseded with reason human_correction)."""
+    """Active memories that restate the same claim as text a human already
+    corrected away elsewhere in the store (superseded with reason
+    human_correction). Compared on significant-word overlap (Jaccard), not
+    raw string similarity: a rephrased reassertion ("Rustom builds ... using
+    ... OpenClaw ..." vs the corrected-away "Rustom has experience ...
+    OpenClaw ...") shares the claim-bearing words even though the sentences
+    read quite differently."""
     corrections = [
         ev for ev in store.events(event="superseded")
         if ev.detail.get("reason") == "human_correction"
@@ -93,6 +98,7 @@ def _find_corrected_reassertions(store: EpisodicStore, active: list[Episode]) ->
         return []
 
     corrected_ids = {ev.episode_id for ev in corrections}
+    active_words = [_significant_words(ep.content) for ep in active]
     entries: list[QueueEntry] = []
     for ev in corrections:
         old_ep = store.get(ev.episode_id)
@@ -100,22 +106,23 @@ def _find_corrected_reassertions(store: EpisodicStore, active: list[Episode]) ->
             continue
         new_id = ev.detail.get("by")
         old_link = note_wikilink(old_ep)
-        for ep in active:
-            if ep.id == new_id or ep.id in corrected_ids:
+        old_words = _significant_words(old_ep.content)
+        for ep, ep_words in zip(active, active_words):
+            if ep.id == new_id or ep.id in corrected_ids or not old_words:
                 continue
-            sim = SequenceMatcher(None, old_ep.content, ep.content).ratio()
-            if sim >= CORRECTED_SIM_THRESHOLD:
+            jaccard = len(old_words & ep_words) / len(old_words | ep_words)
+            if jaccard >= CORRECTED_JACCARD_THRESHOLD:
                 new_ep = store.get(new_id) if new_id else None
                 new_link = note_wikilink(new_ep) if new_ep else None
                 reason = (
                     f"restates content already corrected away as [[{old_link}]]"
                     + (f" (corrected to [[{new_link}]])" if new_link else "")
-                    + f" -- lexical similarity {sim:.2f}"
+                    + f" -- shared-word overlap {jaccard:.2f}"
                 )
                 entries.append(
                     QueueEntry(
                         category="corrected_reassertion",
-                        score=100.0 + sim,
+                        score=100.0 + jaccard,
                         wikilink=note_wikilink(ep),
                         reason=reason,
                         suggested_verdict="reject, or correct to match the human-verified note",
