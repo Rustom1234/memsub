@@ -46,6 +46,14 @@ the agent remembers, and those corrections flow back into the store. See
   against this hash to detect a human edit; sync itself never sets
   `verdict`, so that field's mere presence in a note is unambiguous human
   intent (see below).
+- `templates/verdict-guide.md`: a reference note written (and refreshed) into
+  the vault root on every sync, documenting the frontmatter fields on a
+  memory note and the two `verdict` values apply understands. It carries a
+  fake `id` matching no episode in the store, so it is skipped as an orphan
+  if `vault apply` is ever pointed at the `templates/` folder, and it has no
+  `index.md`, so a namespace-agnostic `vault apply` run never scans it
+  either. See "The verdict field is hand-typed" under round 2's UX findings
+  in `docs/dogfood-2-2026-07-12.md`, the friction this note addresses.
 
 ## Annotate/override loop (`memsub vault apply`)
 
@@ -54,7 +62,9 @@ reads every note sync wrote and turns human edits into store writes. This
 is round 2's core feature: the vault stops being read-only and becomes
 "memory with receipts" in the fullest sense, a surface where a human
 reviews and corrects what the agent remembers, with every correction itself
-becoming an audited episode.
+becoming an audited episode. `templates/verdict-guide.md` (shipped into the
+vault on every sync, see above) is the cheat sheet for the two magic
+`verdict` strings below.
 
 **Three actions, driven by what a human changed in a note:**
 

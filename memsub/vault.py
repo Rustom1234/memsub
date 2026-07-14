@@ -248,6 +248,52 @@ def render_namespace_index(namespace: str, episodes: list[Episode], statuses: di
     return "\n".join(lines).rstrip() + "\n"
 
 
+TEMPLATE_NOTE_ID = "memsub-template-do-not-edit"
+
+
+def render_template_note() -> str:
+    """A reference note shipped into the vault on every sync, documenting the
+    frontmatter fields on a memory note and the verdict values `memsub vault
+    apply` understands. Carries a fake id (never a real store id) so apply
+    skips it as an orphan if it is ever pointed at the templates/ folder;
+    see docs/obsidian-layer.md."""
+    return (
+        f'---\nid: "{TEMPLATE_NOTE_ID}"\nverdict: ""\n---\n\n'
+        "# Memory note template & verdict guide\n\n"
+        "This note documents the fields on every memory note in this vault "
+        "and the verdict values `memsub vault apply` understands. It is not "
+        "itself a memory: its `id` matches no episode in the store, so "
+        "`vault apply` skips it as an orphan.\n\n"
+        "## Frontmatter fields (written by `memsub vault sync`, read-only)\n\n"
+        "- `id` - the memory's stable id in the store.\n"
+        "- `namespace` - which namespace this memory belongs to.\n"
+        "- `kind` - `fact` | `preference` | `decision` | `event`.\n"
+        "- `type` - `observed` (from a transcript or a human correction) or "
+        "`inferred` (agent-derived, e.g. by `memsub sleep`).\n"
+        "- `status` - `active` | `superseded` | `forgotten`.\n"
+        "- `created`, `last_updated`, `last_used` - ISO timestamps.\n"
+        "- `confidence` - extractor confidence, 0.0-1.0, if the memory "
+        "carries one.\n"
+        "- `content_hash` - fingerprint of the body text, used to detect a "
+        "human edit; do not hand-edit this field.\n\n"
+        "## Reviewing a memory: the `verdict` field\n\n"
+        "Set `verdict` in a note's frontmatter, or edit the text under "
+        "`## Content`, to tell `memsub vault apply` what to do. Only two "
+        "verdict values are understood; anything else is ignored:\n\n"
+        "- `verdict: confirm` - pin this memory. It stays active and is "
+        "never aged out by consolidation's decay pass.\n"
+        "- `verdict: reject` - forget this memory. It is marked forgotten "
+        "(kept in the store for audit, no longer active or retrievable).\n\n"
+        "A third gesture needs no `verdict` field at all: edit the text "
+        "under `## Content` to something else. That is a correction - the "
+        "old memory is superseded by a new, human-verified one carrying "
+        "your edited text.\n\n"
+        "**Precedence if a note carries more than one signal:** reject "
+        "beats a body edit beats confirm beats no-op. Full mechanics: "
+        "docs/obsidian-layer.md.\n"
+    )
+
+
 def render_moc(namespaces: list[tuple[str, str, int]]) -> str:
     """namespaces: list of (dirname, display_name, note_count)."""
     total = sum(count for _, _, count in namespaces)
@@ -325,6 +371,10 @@ def sync_vault(store: EpisodicStore, vault_path: str | Path, namespace: str | No
         display_name = first_line.lstrip("#").strip() or entry.name
         moc_namespaces.append((entry.name, display_name, n_notes))
     _write_if_changed(vault_root / "index.md", render_moc(moc_namespaces))
+
+    # Reference note, not tied to any namespace: written/refreshed every
+    # sync so an annotator always has the verdict guide at hand.
+    _write_if_changed(vault_root / "templates" / "verdict-guide.md", render_template_note())
 
     return result
 

@@ -12,6 +12,7 @@ from memsub.vault import (
     content_hash,
     namespace_dirname,
     note_filename,
+    render_template_note,
     slugify,
     sync_vault,
 )
@@ -88,6 +89,28 @@ def test_sync_writes_one_note_per_episode(tmp_path):
     assert len(md_files) == 2
     assert (ns_dir / "index.md").exists()
     assert (tmp_path / "vault" / "index.md").exists()
+
+
+def test_sync_ships_verdict_template_note(tmp_path):
+    store, eps = _store_with(_ep("fact one"))
+    sync_vault(store, tmp_path / "vault")
+    template = tmp_path / "vault" / "templates" / "verdict-guide.md"
+    assert template.exists()
+    text = template.read_text(encoding="utf-8")
+    assert "verdict: confirm" in text
+    assert "verdict: reject" in text
+    assert text == render_template_note()
+
+
+def test_template_note_is_not_absorbed_by_apply(tmp_path):
+    """The template note's id matches no real episode, so a --namespace
+    templates apply run treats it as a skippable orphan, never a memory."""
+    store, eps = _store_with(_ep("fact one"))
+    vault = tmp_path / "vault"
+    sync_vault(store, vault)
+    result = apply_vault(store, vault, namespace="templates")
+    assert result.corrected == 0 and result.rejected == 0 and result.confirmed == 0
+    assert result.skipped == 1
 
 
 def test_note_frontmatter_fields(tmp_path):
