@@ -163,6 +163,38 @@ up to what apply just did to the store.
   string matches. This is the same trade-off `sleep.py`'s existing link
   generation already makes; the vault layer does not improve on it.
 
+## AI triage review queue (`scripts/triage_vault.py`)
+
+A one-shot heuristic pass over the store (no LLM call, no new dependency:
+`difflib` + keyword regex) that writes `review-queue.md` at the vault
+**root**, outside any namespace folder, so `memsub vault apply` (which only
+scans directories carrying an `index.md`) never reads it and no verdict is
+ever applied automatically. It only ever suggests; a human `verdict:
+confirm|reject` or a body edit in an actual memory note is still the only
+real verdict path (see "Annotate/override loop" above).
+
+Three heuristic categories, each scored and capped (default 100 total,
+interleaved round-robin across categories so a high-volume category like
+near-duplicates cannot crowd out a low-volume one):
+
+- **corrected_reassertion**: an active memory whose significant-word
+  overlap (Jaccard) with an episode already superseded elsewhere for
+  `reason: human_correction` clears a threshold -- i.e. the same corrected
+  claim resurfacing from an independent extraction. Looked up generically
+  from the store's own supersede audit trail, not hardcoded to any one
+  fact (verified on the real store: it found 4 independent reassertions of
+  the OpenClaw-attribution correction, 2 more than a manual keyword grep
+  turned up).
+- **near_duplicate**: active/active pairs with high lexical similarity
+  (`difflib.SequenceMatcher`, candidates narrowed first with a word-overlap
+  inverted index so this stays roughly linear) that consolidation's
+  embedding-based dedup pass (cosine >= 0.92) did not merge.
+- **stale_transient**: content matching transient system/process-state
+  patterns (pid, port, "currently running/disabled", "today") stored as a
+  durable fact.
+
+Run: `scripts/triage_vault.py [--db PATH] [--vault DIR] [--cap N] [--dry-run]`.
+
 ## Second-layer ideas (not built, honestly speculative)
 
 Rustom mentioned a "second layer" direction for this vault; round 1 wrote

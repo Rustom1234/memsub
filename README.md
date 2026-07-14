@@ -110,6 +110,11 @@ and checkpoint-safe to rerun. See `docs/daily-extract.md` for what it does,
 its logfile/lock file, and the (not installed) crontab line for a 05:00
 daily run.
 
+`scripts/triage_vault.py` is a one-shot heuristic pass that flags
+candidates (likely-false, stale, near-duplicate) for human review into
+`review-queue.md` at the vault root; it never applies a verdict itself. See
+`docs/obsidian-layer.md#ai-triage-review-queue-scriptstriage_vaultpy`.
+
 ## Python SDK
 
 ```python
