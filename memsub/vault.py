@@ -34,6 +34,11 @@ _SLUG_RE = re.compile(r"[^a-z0-9]+")
 MIN_ENTITY_SHARERS = 2  # an entity needs to show up in >=2 memories to link them
 MAX_ENTITY_LINKS = 8  # per note, keep the Links section readable
 
+# Reserved: the human notes promotion folder (see promote_notes below).
+# sync_vault must never write or delete files under this folder, so a
+# namespace cannot collide with it.
+NOTES_DIRNAME = "notes"
+
 
 @dataclass
 class VaultSyncResult:
@@ -210,6 +215,13 @@ def render_note(
     for old_id in supersedes.get(ep.id, []):
         if old_id in by_id:
             link_lines.append(f"- supersedes [[{note_wikilink(by_id[old_id])}]]")
+    source_note = ep.provenance.get("source_note")
+    if source_note:
+        # human notes promotion (memsub vault promote): link back to the
+        # notes/ file this memory was promoted from. A bare wikilink (no
+        # directory) so Obsidian resolves it by basename across the vault,
+        # same as every other cross-note link here.
+        link_lines.append(f"- promoted from [[{Path(source_note).stem}]]")
     entity_links = 0
     for entity in sorted(_extract_entities(ep.content)):
         sharers = entity_index.get(entity, [])
@@ -330,6 +342,13 @@ def sync_vault(store: EpisodicStore, vault_path: str | Path, namespace: str | No
     result = VaultSyncResult(namespaces=namespaces)
 
     for ns in namespaces:
+        if namespace_dirname(ns) == NOTES_DIRNAME:
+            # notes/ is reserved for human-authored content (see
+            # promote_notes): sync must never write into or delete from it.
+            raise ValueError(
+                f"namespace {ns!r} slugifies to the reserved '{NOTES_DIRNAME}/' "
+                "folder name used for human notes promotion; rename the namespace"
+            )
         episodes = store.all(namespace=ns)
         by_id = {ep.id: ep for ep in episodes}
         statuses = {ep.id: store.status(ep.id) for ep in episodes}
@@ -538,6 +557,105 @@ def apply_vault(
                     result.detail.append(f"confirm {ep_id[:8]}")
             else:
                 result.unchanged += 1
+
+    return result
+
+
+# --------------------------------------------------------------------------- #
+# Human notes promotion: notes/*.md -> first-class memories
+# --------------------------------------------------------------------------- #
+# See docs/obsidian-layer.md, second-layer idea #1. `notes/` at the vault
+# root is the human-authored side of the vault: free-form markdown the owner
+# writes directly, never generated or rewritten by sync_vault. `promote_notes`
+# is the explicit "absorb this into memory" action idea #1 called for --
+# a note's id is never inferred, so nothing under notes/ becomes a memory
+# without this being run.
+
+
+@dataclass
+class VaultPromoteResult:
+    promoted: int = 0  # new note -> new episode
+    updated: int = 0  # changed note -> old episode superseded, new one appended
+    unchanged: int = 0  # note content matches what was already promoted
+    skipped: int = 0  # empty note
+    detail: list[str] = field(default_factory=list)
+
+
+def promote_notes(
+    store: EpisodicStore,
+    vault_path: str | Path,
+    namespace: str = "default",
+    run_id: str = "vault-promote",
+) -> VaultPromoteResult:
+    """Turn every new or changed note under `<vault>/notes/` into a
+    first-class memory episode, provenance `origin: human_authored`.
+
+    Idempotent by content hash, the same mechanism `vault apply` uses to
+    detect a human edit: a note whose text hasn't changed since its last
+    promotion is skipped, so running promote repeatedly does not duplicate
+    memories. A changed note supersedes its prior promoted episode with a
+    new one carrying the updated text (append-only, same pattern as an
+    apply correction).
+
+    A promoted episode is never `kind="inference"` and never sets
+    `provenance.inferred`, so `consolidate._is_inferred` already treats it
+    as observed and the existing observed-beats-inferred rule ranks it
+    above any agent-inferred memory with no new logic (mirrors how `vault
+    apply` corrections outrank inferences).
+    """
+    vault_root = Path(vault_path)
+    notes_dir = vault_root / NOTES_DIRNAME
+    result = VaultPromoteResult()
+    if not notes_dir.exists():
+        return result
+
+    # Most recent human_authored episode per source note, so a re-promote
+    # can tell new / unchanged / changed apart.
+    latest_by_note: dict[str, Episode] = {}
+    for ep in store.active(namespace=namespace):
+        source_note = ep.provenance.get("source_note")
+        if source_note and ep.provenance.get("origin") == "human_authored":
+            latest_by_note[source_note] = ep
+
+    for note_path in sorted(notes_dir.rglob("*.md")):
+        rel = note_path.relative_to(vault_root).as_posix()
+        text = note_path.read_text(encoding="utf-8").strip()
+        if not text:
+            result.skipped += 1
+            result.detail.append(f"skip empty {rel}")
+            continue
+
+        note_hash = content_hash(text)
+        prior = latest_by_note.get(rel)
+        if prior is not None and prior.provenance.get("source_content_hash") == note_hash:
+            result.unchanged += 1
+            continue
+
+        new_ep = store.append(
+            Episode(
+                content=text,
+                run_id=run_id,
+                session_id=rel,
+                kind="fact",
+                importance=1.0,
+                namespace=namespace,
+                provenance={
+                    "origin": "human_authored",
+                    "source_note": rel,
+                    "source_content_hash": note_hash,
+                    "human_verified": True,
+                },
+            )
+        )
+        if prior is not None:
+            store.log_event(
+                prior.id, "superseded", {"reason": "human_note_updated", "by": new_ep.id}
+            )
+            result.updated += 1
+            result.detail.append(f"update {rel} -> {new_ep.id[:8]}")
+        else:
+            result.promoted += 1
+            result.detail.append(f"promote {rel} -> {new_ep.id[:8]}")
 
     return result
 

@@ -342,6 +342,29 @@ def _cmd_stats(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_vault_promote(args: argparse.Namespace) -> int:
+    from .vault import promote_notes
+
+    db = Path(args.db)
+    if not db.exists():
+        print(f"no store at {db}")
+        return 1
+    store = EpisodicStore(db)
+    try:
+        result = promote_notes(
+            store, args.vault, namespace=args.namespace, run_id=args.run_id
+        )
+    finally:
+        store.close()
+    for line in result.detail:
+        print(f"  {line}")
+    print(
+        f"{result.promoted} promoted, {result.updated} updated, "
+        f"{result.unchanged} unchanged, {result.skipped} skipped <- {args.vault}/notes"
+    )
+    return 0
+
+
 def _cmd_vault_check(args: argparse.Namespace) -> int:
     from .vault import check_vault
 
@@ -486,6 +509,19 @@ def build_parser() -> argparse.ArgumentParser:
         "--run-id", default="vault-apply", help="run id attached to any new (corrected) episode"
     )
     v_apply.set_defaults(func=_cmd_vault_apply)
+
+    v_promote = vault_sub.add_parser(
+        "promote",
+        help="turn new/changed notes under <vault>/notes/ into human_authored memories",
+    )
+    v_promote.add_argument("--vault", required=True, help="vault folder (notes/ subfolder is scanned)")
+    v_promote.add_argument(
+        "--namespace", default="default", help="namespace to file promoted memories under"
+    )
+    v_promote.add_argument(
+        "--run-id", default="vault-promote", help="run id attached to promoted episodes"
+    )
+    v_promote.set_defaults(func=_cmd_vault_promote)
 
     v_check = vault_sub.add_parser(
         "check", help="scan a vault for unresolved [[wikilinks]] (broken links)"

@@ -146,6 +146,46 @@ up to what apply just did to the store.
   different feature; apply only ever acts on what a human already wrote
   into a note that already exists.
 
+## Human notes promotion (`memsub vault promote`)
+
+`memsub vault --db DB promote --vault DIR [--namespace NS] [--run-id ID]`
+is round 3's build of second-layer idea #1 below: a `notes/` folder at the
+vault root where the owner writes free-form markdown, never touched or
+rewritten by `vault sync` (see the reserved-name guard on `sync_vault`: a
+namespace that would slugify to `notes/` is rejected, so the two can never
+collide). Promote is the explicit "absorb this into memory" action idea
+#1 called for; nothing under `notes/` becomes a memory on its own.
+
+- **One note, one memory.** Each `.md` file under `<vault>/notes/`
+  (recursively) becomes exactly one episode, `provenance.origin:
+  human_authored`, `kind="fact"`. It is never `kind="inference"` and never
+  sets `provenance.inferred`, so `consolidate._is_inferred` already treats
+  it as observed, and the existing observed-beats-inferred rule
+  (`memsub/consolidate.py:64`) ranks it above any agent-inferred memory
+  with zero new logic, the same mechanism an apply correction relies on.
+- **Idempotent by content hash**, the same mechanism `vault apply` uses to
+  detect a human edit: `promote_notes` records `source_content_hash` in
+  the promoted episode's provenance and skips a note whose hash matches
+  what was last promoted. Running `vault promote` twice with no edits
+  promotes nothing the second time.
+- **A changed note supersedes its prior promoted episode**, the same
+  append-only pattern as an apply correction: the old episode gets a
+  `superseded` event (`reason: human_note_updated`), and a new episode
+  carries the updated text.
+- **Round-trips into the vault.** A promoted episode is a normal episode
+  once it exists, so the next `vault sync` writes it a normal note in its
+  namespace folder like anything else, with a `- promoted from
+  [[<source note>]]` link back to the `notes/` file it came from (bare
+  wikilink, resolved by Obsidian's basename search, same as every other
+  cross-note link this layer writes).
+- **What it will not do:** promote does not delete or rewrite notes under
+  `notes/` (a human note stays exactly as the human wrote it), does not
+  write anything back into the source note (no reverse link from note to
+  memory: keeping this one-directional avoids surprising edits to a
+  human's own file), and does not react to a note being deleted from
+  `notes/` (the promoted memory it produced stays active; deletion
+  handling is unbuilt, out of scope for round 3).
+
 ## What it deliberately does not do
 
 - **No MCP tool, no live sync.** `vault sync` is a CLI command you run when
@@ -199,18 +239,18 @@ Run: `scripts/triage_vault.py [--db PATH] [--vault DIR] [--cap N] [--dry-run]`.
 
 Rustom mentioned a "second layer" direction for this vault; round 1 wrote
 down three candidate ideas. Round 2 built idea #2 (the annotate/override
-loop, documented above as `memsub vault apply`) and deliberately did not
-build the other two:
+loop, documented above as `memsub vault apply`), round 3 built idea #1
+(human notes promotion, documented above as `memsub vault promote`), and
+idea #3 remains not built:
 
-1. **Vault as a shared human+agent memory surface.** Right now the store is
-   agent-facing (SDK/MCP) and the vault is human-facing. A real second layer
-   would let a human's own notes in the vault (separate files, never the
-   generated ones) become memories an agent can retrieve, closing the loop.
-   This needs a clear boundary between generated and human content (e.g. a
-   `notes/` subfolder sync never touches) and an explicit "promote this note
-   to a memory" action, not silent absorption of anything sitting in the
-   vault. `vault apply` deliberately does not do this: a note whose `id`
-   does not match an existing episode is skipped, not promoted.
+1. ~~Vault as a shared human+agent memory surface.~~ **Built in round 3.**
+   `memsub vault promote` turns notes under `<vault>/notes/` into
+   first-class, retrievable episodes (`provenance.origin: human_authored`),
+   idempotent by content hash, superseding on edit, round-tripping back
+   into the vault as a normal note linked to its source. `vault apply`
+   still does not do this (a note whose `id` does not match an existing
+   episode is skipped, not promoted); promotion is the separate, explicit
+   action this idea called for. See "Human notes promotion" above.
 2. ~~Review/annotate workflow for consolidation decisions.~~ **Built in
    round 2.** `memsub vault apply` lets a human correct, reject, or confirm
    a memory directly in Obsidian, and the result is a first-class, audited
@@ -226,7 +266,12 @@ build the other two:
    store's append-only guarantees. Note this is a different mechanism from
    `vault apply`: apply reviews memories that already exist in the store
    after the fact; a staging vault would gate memories before they ever
-   become active. Not built; still just a direction.
+   become active. Not built; assessed in round 3 as too large to land
+   safely alongside idea #1 in the same pass (a `--stage` flag on
+   consolidate, a new staging note format, and apply learning to execute
+   accepted / drop rejected proposals, each needing its own idempotency and
+   test coverage). Scoped instead of built; see the tracked bead for the
+   concrete design.
 
-Idea #1 and idea #3 are not scoped or estimated; they are directions, not
-commitments.
+Idea #3 is scoped (tracked in beads) but not yet built or estimated as a
+commitment.
