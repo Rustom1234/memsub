@@ -183,7 +183,18 @@ class OllamaBackend:
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-        except urllib.error.URLError as exc:
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            # A timeout during connect is wrapped in URLError, but a timeout
+            # during resp.read() (the slow part: ollama is still generating)
+            # raises a raw socket.timeout, which is TimeoutError since
+            # Python 3.10 -- urllib does not wrap it. That escaped uncaught
+            # in production (~/.memsub/daily_extract.log, 2026-07-14 12:39).
+            # OSError is included too (judgment call): it is TimeoutError's
+            # and ConnectionError's common base, and any other low-level
+            # socket failure during read() would be just as uncaught and
+            # just as much "the ollama request failed" from the caller's
+            # perspective. URLError is not itself an OSError subclass, so
+            # this does not create any duplicate handling.
             raise RuntimeError(f"ollama request failed: {exc}") from exc
         content = str(data.get("message", {}).get("content", ""))
         return strip_think_blocks(content)

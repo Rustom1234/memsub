@@ -86,6 +86,21 @@ def test_ollama_backend_raises_on_unreachable(monkeypatch):
         b.complete("system", [{"role": "user", "content": "hi"}])
 
 
+def test_ollama_backend_raises_clean_error_on_raw_timeout(monkeypatch):
+    """A slow generation can time out during resp.read(), which raises a raw
+    socket.timeout / TimeoutError that urllib does not wrap in URLError (the
+    production bug: this escaped uncaught instead of becoming a RuntimeError,
+    see ~/.memsub/daily_extract.log 2026-07-14 12:39)."""
+
+    def _open(req, timeout=None):
+        raise TimeoutError("timed out")
+
+    monkeypatch.setattr(backends.urllib.request, "urlopen", _open)
+    b = backends.OllamaBackend()
+    with pytest.raises(RuntimeError):
+        b.complete("system", [{"role": "user", "content": "hi"}])
+
+
 def test_build_backend_auto_prefers_ollama_when_no_api_key(monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.setattr(backends, "ollama_available", lambda *a, **k: True)
