@@ -22,6 +22,7 @@ log, so every decision is auditable and reversible in principle.
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import dataclass, field
 
@@ -74,6 +75,38 @@ def _decay_value(ep: Episode, retrieved_count: int, now: float, cfg: Consolidati
     return value * (1.0 + retrieved_count)
 
 
+_JUDGE_OBJ_RE = re.compile(r"\{[^{}]*\}")
+
+
+def _parse_judge_items(response: str) -> list[dict]:
+    """Pull the verdict objects out of a judge response.
+
+    The prompt asks for a JSON array, and a compliant backend returns one; that
+    path is tried first and unchanged. But a smaller local model sometimes
+    returns a bare object (a single `{"pair": 0, "contradicts": true}`) or a
+    loose sequence of objects instead of an array. Fall back to scanning for
+    individual `{...}` objects so a single-pair contradiction is not silently
+    dropped just because the model omitted the brackets.
+    """
+    start, end = response.find("["), response.rfind("]")
+    if start != -1 and end > start:
+        try:
+            data = json.loads(response[start : end + 1])
+            if isinstance(data, list):
+                return [d for d in data if isinstance(d, dict)]
+        except json.JSONDecodeError:
+            pass
+    items: list[dict] = []
+    for m in _JUDGE_OBJ_RE.finditer(response):
+        try:
+            obj = json.loads(m.group(0))
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict) and "pair" in obj:
+            items.append(obj)
+    return items
+
+
 def _judge_contradictions(
     pairs: list[tuple[Episode, Episode]], backend: LLMBackend
 ) -> list[bool]:
@@ -85,16 +118,7 @@ def _judge_contradictions(
         CONTRADICTION_SYSTEM, [{"role": "user", "content": "\n\n".join(lines)}]
     )
     verdicts = [False] * len(pairs)
-    start, end = response.find("["), response.rfind("]")
-    if start == -1 or end <= start:
-        return verdicts
-    try:
-        data = json.loads(response[start : end + 1])
-    except json.JSONDecodeError:
-        return verdicts
-    for item in data:
-        if not isinstance(item, dict):
-            continue
+    for item in _parse_judge_items(response):
         try:
             idx = int(item.get("pair", -1))
         except (TypeError, ValueError):

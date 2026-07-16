@@ -96,6 +96,19 @@ def test_contradiction_newer_supersedes_older():
     assert len(backend.calls) == 1
 
 
+def test_contradiction_judge_accepts_bare_object():
+    """A smaller local backend sometimes returns a bare {"pair":0,...} object
+    instead of the array the prompt asks for; the judge must still act on it."""
+    store, (old, new) = _store_with(
+        _ep("the project database is postgres", NOW),
+        _ep("the project database is sqlite", NOW + 10),
+    )
+    bare = MockBackend(responder=lambda s, m: '{"pair": 0, "contradicts": true}')
+    actions = consolidate(store, backend=bare)
+    assert [a.reason for a in actions] == ["contradiction"]
+    assert store.status(old.id) == "superseded"
+
+
 def test_no_contradiction_keeps_both():
     store, _ = _store_with(
         _ep("the project database is postgres", NOW),

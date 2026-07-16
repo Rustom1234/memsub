@@ -405,6 +405,43 @@ def _cmd_vault_check(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_wiki_ingest(args: argparse.Namespace) -> int:
+    """Ingest a folder of markdown wiki pages into the store as claim episodes.
+
+    Idempotent by content hash (reuses the extraction-checkpoint mechanism): an
+    unchanged page is skipped, a changed page supersedes its own prior claims
+    and re-extracts. After ingesting, `memsub consolidate --stage` surfaces
+    cross-page contradictions as staged proposals.
+    """
+    from .wiki import ingest_wiki
+
+    pages = Path(args.pages)
+    if not pages.exists():
+        print(f"no wiki folder at {pages}")
+        return 1
+    backend = build_backend(prefer=args.backend, model=args.model)
+    db = Path(args.db)
+    db.parent.mkdir(parents=True, exist_ok=True)
+    store = EpisodicStore(db)
+    try:
+        result = ingest_wiki(
+            store, pages, backend, namespace=args.namespace, run_id=args.run_id,
+            max_chars=args.max_chars,
+        )
+    finally:
+        store.close()
+    for line in result.detail:
+        print(f"  {line}")
+    print(
+        f"{result.pages_ingested} page(s) ingested "
+        f"({result.pages_unchanged} unchanged, {result.pages_empty} empty), "
+        f"{result.claims_written} claim(s) written, "
+        f"{result.prior_superseded} prior claim(s) superseded "
+        f"across {result.pages_scanned} page(s) -> {args.db}"
+    )
+    return 0
+
+
 def _cmd_mcp(args: argparse.Namespace) -> int:
     from .mcp_server import serve
     from .sdk import MemoryClient
@@ -571,6 +608,22 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_stats.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
     p_stats.set_defaults(func=_cmd_stats)
+
+    p_wiki = sub.add_parser("wiki", help="ingest markdown wiki pages as a memory source")
+    wiki_sub = p_wiki.add_subparsers(dest="wiki_command", required=True)
+    w_ingest = wiki_sub.add_parser(
+        "ingest",
+        help="chunk each page in a wiki folder into claim memories; unchanged "
+        "pages are skipped, changed pages supersede their own prior claims",
+    )
+    w_ingest.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    w_ingest.add_argument("--pages", required=True, help="wiki folder to ingest (*.md scanned recursively)")
+    w_ingest.add_argument("--backend", default="auto", choices=["auto", "api", "ollama", "cli", "mock"])
+    w_ingest.add_argument("--model", default=None, help="model override for the backend")
+    w_ingest.add_argument("--namespace", default="default", help="namespace to file claims under")
+    w_ingest.add_argument("--run-id", default="wiki", help="run id to file claims under")
+    w_ingest.add_argument("--max-chars", type=int, default=12000, help="chunk size in characters")
+    w_ingest.set_defaults(func=_cmd_wiki_ingest)
 
     p_mcp = sub.add_parser("mcp", help="run the MCP stdio server (for claude mcp add)")
     p_mcp.add_argument("--db", default=None, help="SQLite store path (default: $MEMSUB_DB or ~/.memsub/memory.db)")

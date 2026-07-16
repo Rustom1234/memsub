@@ -40,6 +40,21 @@ Output ONLY a JSON array (no prose, no code fences). Each element:
 
 If nothing is worth remembering, output []."""
 
+WIKI_SYSTEM = """You extract the durable factual claims stated on a wiki page.
+
+A wiki page is reference documentation, not a conversation. Break it into
+self-contained atomic claims: each one a single statement of fact, decision,
+or preference that stands on its own without the surrounding page. Prefer the
+page's own wording. Do NOT invent claims the page does not state, and do NOT
+merge two distinct facts into one sentence.
+
+Output ONLY a JSON array (no prose, no code fences). Each element:
+{"content": "<one self-contained sentence>",
+ "kind": "fact" | "preference" | "decision" | "event",
+ "confidence": <0.0-1.0, how directly the page states this>}
+
+If the page states nothing durable, output []."""
+
 
 @dataclass(frozen=True)
 class Turn:
@@ -183,13 +198,19 @@ def extract_memories(
     backend: LLMBackend,
     source: str,
     max_chars: int = 12000,
+    system: str = EXTRACTION_SYSTEM,
 ) -> list[CandidateMemory]:
-    """Run LLM extraction over a transcript, one call per chunk."""
+    """Run LLM extraction over a transcript, one call per chunk.
+
+    `system` selects the extraction prompt: the default is tuned for
+    conversation transcripts; pass WIKI_SYSTEM to extract claims from a wiki
+    page (memsub.wiki).
+    """
     candidates: list[CandidateMemory] = []
     extracted_at = time.time()
     for chunk in chunk_turns(turns, max_chars=max_chars):
         response = backend.complete(
-            EXTRACTION_SYSTEM,
+            system,
             [{"role": "user", "content": _render_chunk(chunk)}],
         )
         span = (chunk[0].index, chunk[-1].index)
