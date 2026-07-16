@@ -109,7 +109,18 @@ class EpisodicStore:
 
     def __init__(self, path: str | Path = ":memory:") -> None:
         self.path = str(path)
-        self._conn = sqlite3.connect(self.path)
+        # busy_timeout is a connection-level PRAGMA (must be set on every
+        # connect, unlike WAL mode which is stored in the DB file). Both
+        # matter once more than one process opens this file: the MCP server
+        # and the extraction/consolidation CLI can now run concurrently.
+        # WAL lets readers and a writer proceed without blocking each other;
+        # busy_timeout makes a writer-vs-writer collision retry for up to
+        # 10s instead of raising "database is locked" immediately. WAL is a
+        # no-op (and briefly errors, harmlessly) on ":memory:" databases.
+        self._conn = sqlite3.connect(self.path, timeout=10.0)
+        self._conn.execute("PRAGMA busy_timeout = 10000")
+        if self.path != ":memory:":
+            self._conn.execute("PRAGMA journal_mode = WAL")
         self._migrate()
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
