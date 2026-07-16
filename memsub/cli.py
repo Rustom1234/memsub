@@ -304,6 +304,44 @@ def _cmd_vault_apply(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_stats(args: argparse.Namespace) -> int:
+    import time as _time
+
+    db = Path(args.db)
+    if not db.exists():
+        print(f"no store at {db}")
+        return 1
+    store = EpisodicStore(db)
+    try:
+        total = store.count()
+        active_ids = {ep.id for ep in store.active()}
+        by_namespace: dict[str, dict[str, int]] = {}
+        for ep in store.all():
+            row = by_namespace.setdefault(ep.namespace, {"total": 0, "active": 0})
+            row["total"] += 1
+            if ep.id in active_ids:
+                row["active"] += 1
+
+        print(f"episodes: {total} total, {len(active_ids)} active")
+        print("by namespace:")
+        for ns in sorted(by_namespace):
+            row = by_namespace[ns]
+            print(f"  {ns}: {row['active']} active / {row['total']} total")
+
+        print(f"extraction checkpoints: {store.extraction_checkpoint_count()}")
+        print(f"db file size: {db.stat().st_size} bytes")
+
+        last_ts = store.last_lifecycle_event_ts()
+        if last_ts is None:
+            print("last consolidate/audit event: none")
+        else:
+            when = _time.strftime("%Y-%m-%dT%H:%M:%S", _time.localtime(last_ts))
+            print(f"last consolidate/audit event: {when}")
+    finally:
+        store.close()
+    return 0
+
+
 def _cmd_mcp(args: argparse.Namespace) -> int:
     from .mcp_server import serve
     from .sdk import MemoryClient
@@ -435,6 +473,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--run-id", default="vault-apply", help="run id attached to any new (corrected) episode"
     )
     v_apply.set_defaults(func=_cmd_vault_apply)
+
+    p_stats = sub.add_parser(
+        "stats", help="store summary: episode/namespace counts, checkpoints, db size"
+    )
+    p_stats.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    p_stats.set_defaults(func=_cmd_stats)
 
     p_mcp = sub.add_parser("mcp", help="run the MCP stdio server (for claude mcp add)")
     p_mcp.add_argument("--db", default=None, help="SQLite store path (default: $MEMSUB_DB or ~/.memsub/memory.db)")

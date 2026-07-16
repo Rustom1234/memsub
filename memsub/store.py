@@ -292,6 +292,16 @@ class EpisodicStore:
         ).fetchone()
         return row[0] if row else None
 
+    def extraction_checkpoint_count(self) -> int:
+        """Number of distinct source files with a recorded checkpoint."""
+        return self._conn.execute("SELECT COUNT(*) FROM extraction_checkpoints").fetchone()[0]
+
+    def last_lifecycle_event_ts(self) -> float | None:
+        """Timestamp of the most recent consolidate/audit-triggered event
+        (supersede, forget, confirm, ...), or None if none have happened yet."""
+        row = self._conn.execute("SELECT MAX(ts) FROM memory_events").fetchone()
+        return row[0] if row and row[0] is not None else None
+
     def _insert_checkpoint(self, source_path: str, content_hash: str, memory_count: int) -> None:
         self._conn.execute(
             "INSERT INTO extraction_checkpoints (source_path, content_hash, ts, memory_count)"
