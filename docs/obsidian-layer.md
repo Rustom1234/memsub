@@ -235,13 +235,57 @@ near-duplicates cannot crowd out a low-volume one):
 
 Run: `scripts/triage_vault.py [--db PATH] [--vault DIR] [--cap N] [--dry-run]`.
 
-## Second-layer ideas (not built, honestly speculative)
+## Staging / approve-before-apply (`memsub consolidate --stage`)
+
+Consolidation's destructive actions (a contradiction supersede, a decay
+forget) normally apply immediately and are auditable after the fact.
+`--stage` inverts that for the highest-stakes decisions: it computes the same
+actions a dry run would, but instead of applying them writes each as a pending
+proposal note into the vault, leaving the store untouched.
+
+```bash
+memsub consolidate --db DB --stage --vault VAULT   # write proposals, apply nothing
+```
+
+Each proposal lands at `<vault>/staging/<namespace>/<action>--<id8>.md` with
+frontmatter recording the target episode `id`, the `action`
+(`supersede`/`forget`), the `reason` (`duplicate`/`contradiction`/`decay`),
+the action's detail (`by`, `similarity`, `judge_model`, `value`, `age_days`,
+`retrieved_count` as applicable), `status: pending`, and a blank `verdict`
+field. The note body shows the target memory's text (and, for a supersede, the
+superseding memory), so it can be judged without opening the store.
+
+A human reviews each note and sets `verdict` in its frontmatter:
+
+- `verdict: accept` - `memsub vault apply` executes the action for real (logs
+  exactly the `superseded`/`forgotten` event non-staged consolidation would
+  have) and marks the note `status: applied`.
+- `verdict: reject` - the proposal is dropped: the note is marked `status:
+  rejected` and the target episode is never touched.
+- no verdict - the proposal stays pending; apply leaves it alone.
+
+`memsub vault apply` scans `staging/` in addition to memory notes, and its
+summary line reports `staged applied` / `staged rejected` counts alongside the
+memory-note counts.
+
+Idempotency: a proposal's filename is derived from action + episode id, so
+re-running `--stage` never writes a second note for an action already staged,
+and an existing proposal (including one a human already rejected) is left
+as-is rather than clobbered. Re-running `apply` is inert: a resolved note
+(status applied/rejected) is skipped, and the append-only store guard prevents
+an accepted action from being executed twice even if a note is re-accepted.
+
+This is a natural fit for wiki mode (`docs/wiki-mode.md`): after ingesting a
+wiki, `--stage` surfaces cross-page contradictions as proposals a human
+approves before anything in the store changes.
+
+## Second-layer ideas
 
 Rustom mentioned a "second layer" direction for this vault; round 1 wrote
-down three candidate ideas. Round 2 built idea #2 (the annotate/override
-loop, documented above as `memsub vault apply`), round 3 built idea #1
-(human notes promotion, documented above as `memsub vault promote`), and
-idea #3 remains not built:
+down three candidate ideas. All three are now built: idea #2 (the
+annotate/override loop, `memsub vault apply`), idea #1 (human notes promotion,
+`memsub vault promote`), and idea #3 (staging / approve-before-apply,
+`memsub consolidate --stage`, documented in the section just above):
 
 1. ~~Vault as a shared human+agent memory surface.~~ **Built in round 3.**
    `memsub vault promote` turns notes under `<vault>/notes/` into
@@ -257,21 +301,12 @@ idea #3 remains not built:
    store write (a new human-verified episode, a `forgotten` event, or a
    `confirmed` event), not a comment sitting in a markdown file. See
    "Annotate/override loop" above.
-3. **Vault-driven curation before sleep/consolidate.** Sleep and
-   consolidation currently run unattended. A staging vault (write candidates,
-   let a human accept/reject in Obsidian by moving files or checking boxes,
-   then apply only the accepted set to the store) would trade the current
-   "audit after the fact" model for "approve before the fact" on the
-   highest-stakes decisions (contradictions, forgets), without touching the
-   store's append-only guarantees. Note this is a different mechanism from
-   `vault apply`: apply reviews memories that already exist in the store
-   after the fact; a staging vault would gate memories before they ever
-   become active. Not built; assessed in round 3 as too large to land
-   safely alongside idea #1 in the same pass (a `--stage` flag on
-   consolidate, a new staging note format, and apply learning to execute
-   accepted / drop rejected proposals, each needing its own idempotency and
-   test coverage). Scoped instead of built; see the tracked bead for the
-   concrete design.
-
-Idea #3 is scoped (tracked in beads) but not yet built or estimated as a
-commitment.
+3. ~~Vault-driven curation before consolidate.~~ **Built (bead
+   memory-sublayer-eie).** `memsub consolidate --stage` writes consolidation's
+   destructive actions as pending proposal notes for review instead of
+   applying them; `memsub vault apply` executes the accepted ones and drops
+   the rejected ones. This trades "audit after the fact" for "approve before
+   the fact" on contradictions and forgets, without touching the store's
+   append-only guarantees. Different mechanism from `vault apply`'s memory-note
+   verdicts: a proposal is an action to run, not a memory to edit. See
+   "Staging / approve-before-apply" above.
