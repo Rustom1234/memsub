@@ -39,6 +39,11 @@ MAX_ENTITY_LINKS = 8  # per note, keep the Links section readable
 # namespace cannot collide with it.
 NOTES_DIRNAME = "notes"
 
+# Reserved: the staging folder for pending consolidation proposals (see
+# stage_actions below). Same reasoning as notes/: sync must never treat it as
+# a namespace, so a namespace cannot slugify to it.
+STAGING_DIRNAME = "staging"
+
 
 @dataclass
 class VaultSyncResult:
@@ -342,12 +347,14 @@ def sync_vault(store: EpisodicStore, vault_path: str | Path, namespace: str | No
     result = VaultSyncResult(namespaces=namespaces)
 
     for ns in namespaces:
-        if namespace_dirname(ns) == NOTES_DIRNAME:
-            # notes/ is reserved for human-authored content (see
-            # promote_notes): sync must never write into or delete from it.
+        if namespace_dirname(ns) in (NOTES_DIRNAME, STAGING_DIRNAME):
+            # notes/ and staging/ are reserved (human-authored content and
+            # pending consolidation proposals): sync must never write into or
+            # delete from them.
+            reserved = namespace_dirname(ns)
             raise ValueError(
-                f"namespace {ns!r} slugifies to the reserved '{NOTES_DIRNAME}/' "
-                "folder name used for human notes promotion; rename the namespace"
+                f"namespace {ns!r} slugifies to the reserved '{reserved}/' "
+                "folder name; rename the namespace"
             )
         episodes = store.all(namespace=ns)
         by_id = {ep.id: ep for ep in episodes}
@@ -445,6 +452,13 @@ class VaultApplyResult:
     confirmed: int = 0
     unchanged: int = 0
     skipped: int = 0
+    # staging proposals (memsub consolidate --stage): kept as their own
+    # counters, not folded into corrected/rejected, because a staged proposal
+    # is a consolidation action (supersede/forget) the human accepted, not a
+    # human edit to a memory note -- conflating the two would confuse the
+    # `vault apply` summary line.
+    staged_applied: int = 0
+    staged_rejected: int = 0
     detail: list[str] = field(default_factory=list)  # ids only, never content
 
 
@@ -471,6 +485,16 @@ def _parse_note(text: str) -> tuple[dict[str, str], str] | None:
     body_m = _BODY_RE.search(m.group(2))
     body = body_m.group(1) if body_m else ""
     return fields, body
+
+
+def _parse_note_frontmatter(text: str) -> dict[str, str] | None:
+    """Returns just the frontmatter fields of a note, or None if it carries no
+    frontmatter block. Used for staging proposal notes, which do not have the
+    memory-note '## Content ... ## Provenance' body structure."""
+    m = FRONTMATTER_RE.match(text)
+    if not m:
+        return None
+    return _parse_frontmatter(m.group(1))
 
 
 def apply_vault(
@@ -558,7 +582,225 @@ def apply_vault(
             else:
                 result.unchanged += 1
 
+    # staging proposals (memsub consolidate --stage): execute accepted, drop
+    # rejected. Kept separate from the memory-note loop above because a
+    # proposal note has a different shape and semantics (an action to run, not
+    # a memory to edit).
+    _apply_staging(store, vault_root, namespace, result)
+
     return result
+
+
+# --------------------------------------------------------------------------- #
+# Staging: approve-before-apply for consolidation (memsub consolidate --stage)
+# --------------------------------------------------------------------------- #
+# Semantics (see docs/obsidian-layer.md second-layer idea #3, bead
+# memory-sublayer-eie):
+#   - `memsub consolidate --stage` computes the same actions dry-run would
+#     (supersede/forget), but instead of applying them writes one pending
+#     proposal note per action into <vault>/staging/<namespace>/. The store is
+#     not touched. stage_actions reuses consolidate(dry_run=True)'s action
+#     computation verbatim -- it adds no new action logic.
+#   - A proposal note carries the target episode id, the action, the reason,
+#     the action's detail fields (by/similarity/judge_model/value/age_days/
+#     retrieved_count as applicable), status: pending, and an empty verdict
+#     field for the human to fill in.
+#   - Idempotency: a proposal's filename is derived from action+episode id, so
+#     re-running --stage never writes a second note for an action already
+#     staged. An existing proposal note (whatever its status) is left as-is,
+#     so a prior human rejection is respected across re-stages.
+#   - `memsub vault apply` scans staging/ in addition to memory notes, reusing
+#     the same frontmatter parsing. verdict: accept executes the action for
+#     real (logs exactly the "superseded"/"forgotten" event non-staged
+#     consolidate would have logged) and marks the note applied; verdict:
+#     reject drops it (marks the note rejected, never touches the episode); no
+#     verdict leaves it pending. This generalizes apply's reject-wins
+#     precedence to accept/reject on proposals.
+
+# Action.detail keys and the types to restore them to when reconstructing the
+# event detail on apply, so a staged-then-accepted action logs a detail dict
+# with the same value types non-staged consolidate would have logged.
+_STAGING_DETAIL_KEYS: dict[str, type] = {
+    "by": str,
+    "similarity": float,
+    "judge_model": str,
+    "value": float,
+    "age_days": float,
+    "retrieved_count": int,
+}
+
+
+@dataclass
+class VaultStageResult:
+    staged: int = 0  # new proposal notes written
+    existing: int = 0  # proposal already staged (idempotent skip)
+    skipped: int = 0  # action whose target episode is no longer active
+    detail: list[str] = field(default_factory=list)
+
+
+def staging_note_filename(action: str, episode_id: str) -> str:
+    return f"{action}--{episode_id[:8]}.md"
+
+
+def render_staging_note(action, store: EpisodicStore) -> str:
+    """Render one pending proposal note for a consolidation Action. Includes
+    the target memory's text (and, for supersedes, the winner's text) so the
+    proposal can be judged in Obsidian without opening the store."""
+    ep = store.get(action.episode_id)
+    fields: dict = {
+        "id": action.episode_id,
+        "action": action.action,
+        "reason": action.reason,
+    }
+    for key in _STAGING_DETAIL_KEYS:
+        if key in action.detail:
+            fields[key] = action.detail[key]
+    fields["status"] = "pending"
+    # _frontmatter drops empty values, but we want an explicit blank verdict
+    # line so the human sees where to write accept/reject. Build it in: render
+    # the populated fields, then append the empty verdict before the closing
+    # fence.
+    body_fm = _frontmatter(fields)
+    frontmatter = body_fm[: -len("---")] + 'verdict: ""\n---'
+
+    verb = "supersede" if action.action == "supersede" else "forget"
+    lines = [
+        frontmatter,
+        "",
+        f"# Proposal: {verb} {action.episode_id[:8]} ({action.reason})",
+        "",
+        "Consolidation proposes this action. To decide, set `verdict` in the "
+        "frontmatter above to `accept` or `reject`, then run `memsub vault "
+        "apply`. No verdict leaves the proposal pending (nothing happens).",
+        "",
+        "## Target memory",
+        "",
+        ep.content if ep else "(episode not found)",
+    ]
+    winner_id = action.detail.get("by")
+    if winner_id:
+        winner = store.get(winner_id)
+        lines += [
+            "",
+            "## Superseding memory",
+            "",
+            winner.content if winner else f"(episode {winner_id[:8]} not found)",
+        ]
+    lines += [
+        "",
+        "## Details",
+        "",
+    ]
+    for key in _STAGING_DETAIL_KEYS:
+        if key in action.detail:
+            lines.append(f"- {key}: {action.detail[key]}")
+    return "\n".join(lines) + "\n"
+
+
+def stage_actions(
+    store: EpisodicStore, actions: list, vault_path: str | Path
+) -> VaultStageResult:
+    """Write each consolidation action as a pending proposal note under
+    <vault>/staging/<namespace>/. Idempotent: an action already staged (same
+    action+episode) is not re-written, and an action whose target episode is
+    no longer active is skipped."""
+    vault_root = Path(vault_path)
+    result = VaultStageResult()
+    for action in actions:
+        ep = store.get(action.episode_id)
+        if ep is None or store.status(action.episode_id) != "active":
+            result.skipped += 1
+            result.detail.append(f"skip inactive {action.episode_id[:8]}")
+            continue
+        ns_dir = vault_root / STAGING_DIRNAME / namespace_dirname(ep.namespace)
+        note_path = ns_dir / staging_note_filename(action.action, action.episode_id)
+        if note_path.exists():
+            # A proposal for this action already exists (pending, accepted, or
+            # rejected by a prior run). Leave it: re-staging must not clobber a
+            # human's earlier verdict, and must not duplicate a pending note.
+            result.existing += 1
+            continue
+        ns_dir.mkdir(parents=True, exist_ok=True)
+        note_path.write_text(render_staging_note(action, store), encoding="utf-8")
+        result.staged += 1
+        result.detail.append(f"stage {action.action} {action.episode_id[:8]}")
+    return result
+
+
+def _reconstruct_detail(fields: dict[str, str]) -> dict:
+    """Rebuild a consolidation Action.detail dict from a proposal note's parsed
+    frontmatter, restoring the value types non-staged consolidate logged."""
+    detail: dict = {}
+    for key, caster in _STAGING_DETAIL_KEYS.items():
+        if key in fields:
+            try:
+                detail[key] = caster(fields[key])
+            except (TypeError, ValueError):
+                detail[key] = fields[key]
+    return detail
+
+
+def _set_staging_status(path: Path, text: str, new_status: str) -> None:
+    """Rewrite a proposal note's `status:` frontmatter line in place."""
+    updated = re.sub(
+        r'^status:\s*.*$', f'status: "{new_status}"', text, count=1, flags=re.MULTILINE
+    )
+    path.write_text(updated, encoding="utf-8")
+
+
+def _apply_staging(
+    store: EpisodicStore,
+    vault_root: Path,
+    namespace: str | None,
+    result: VaultApplyResult,
+) -> None:
+    """Execute accepted proposals and drop rejected ones under staging/."""
+    staging_root = vault_root / STAGING_DIRNAME
+    if not staging_root.exists():
+        return
+    if namespace is not None:
+        stage_dirs = [staging_root / namespace_dirname(namespace)]
+    else:
+        stage_dirs = sorted(d for d in staging_root.iterdir() if d.is_dir())
+
+    for stage_dir in stage_dirs:
+        if not stage_dir.exists():
+            continue
+        for note_path in sorted(stage_dir.glob("*.md")):
+            text = note_path.read_text(encoding="utf-8")
+            parsed = _parse_note_frontmatter(text)
+            if parsed is None:
+                result.skipped += 1
+                result.detail.append(f"skip malformed staging {note_path.name}")
+                continue
+            if parsed.get("status", "").strip().lower() != "pending":
+                # already applied or rejected by a prior run: inert
+                continue
+            ep_id = parsed.get("id")
+            verdict = parsed.get("verdict", "").strip().lower()
+            if not ep_id or verdict not in ("accept", "reject"):
+                # pending with no decision yet: leave it
+                continue
+            if verdict == "reject":
+                _set_staging_status(note_path, text, "rejected")
+                result.staged_rejected += 1
+                result.detail.append(f"staged reject {ep_id[:8]}")
+                continue
+            # accept
+            if store.get(ep_id) is None or store.status(ep_id) != "active":
+                # target already resolved elsewhere: mark done, do not re-log
+                _set_staging_status(note_path, text, "applied")
+                result.skipped += 1
+                result.detail.append(f"skip inactive staged {ep_id[:8]}")
+                continue
+            action = parsed.get("action", "")
+            event = "superseded" if action == "supersede" else "forgotten"
+            detail = {"reason": parsed.get("reason", "consolidation")}
+            detail.update(_reconstruct_detail(parsed))
+            store.log_event(ep_id, event, detail)
+            _set_staging_status(note_path, text, "applied")
+            result.staged_applied += 1
+            result.detail.append(f"staged apply {action} {ep_id[:8]}")
 
 
 # --------------------------------------------------------------------------- #

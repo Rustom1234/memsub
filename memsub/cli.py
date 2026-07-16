@@ -143,6 +143,32 @@ def _cmd_consolidate(args: argparse.Namespace) -> int:
         decay_value_threshold=args.decay_threshold,
     )
     store = EpisodicStore(db)
+    if args.stage:
+        # Approve-before-apply: compute actions dry-run (store untouched), then
+        # write each as a pending proposal note into the vault for review.
+        from .vault import stage_actions
+
+        if not args.vault:
+            print("--stage requires --vault")
+            store.close()
+            return 1
+        actions = consolidate(
+            store, backend=backend, config=cfg, run_id=args.run_id,
+            namespace=args.namespace, dry_run=True,
+        )
+        for a in actions:
+            extra = f" by={a.detail['by']}" if "by" in a.detail else ""
+            print(f"{a.action:>9} [{a.reason}] {a.episode_id}{extra}")
+        stage_result = stage_actions(store, actions, args.vault)
+        remaining = len(store.active(run_id=args.run_id, namespace=args.namespace))
+        print(
+            f"{stage_result.staged} proposal(s) staged, "
+            f"{stage_result.existing} already staged, "
+            f"{stage_result.skipped} skipped -> {args.vault}/staging; "
+            f"store unchanged, {remaining} active memories remain"
+        )
+        store.close()
+        return 0
     actions = consolidate(
         store, backend=backend, config=cfg, run_id=args.run_id,
         namespace=args.namespace, dry_run=args.dry_run,
@@ -299,7 +325,8 @@ def _cmd_vault_apply(args: argparse.Namespace) -> int:
     print(
         f"{result.corrected} corrected, {result.rejected} rejected, "
         f"{result.confirmed} confirmed, {result.unchanged} unchanged, "
-        f"{result.skipped} skipped <- {args.vault}"
+        f"{result.skipped} skipped, {result.staged_applied} staged applied, "
+        f"{result.staged_rejected} staged rejected <- {args.vault}"
     )
     return 0
 
@@ -442,6 +469,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_con.add_argument("--half-life-days", type=float, default=30.0)
     p_con.add_argument("--min-age-days", type=float, default=14.0)
     p_con.add_argument("--dry-run", action="store_true", help="print actions, apply nothing")
+    p_con.add_argument(
+        "--stage",
+        action="store_true",
+        help="write actions as pending proposals into <vault>/staging for "
+        "review instead of applying them; requires --vault. Approve with "
+        "verdict: accept/reject in the note, then run `memsub vault apply`",
+    )
+    p_con.add_argument(
+        "--vault", default=None, help="vault folder for --stage proposals"
+    )
     p_con.set_defaults(func=_cmd_consolidate)
 
     p_sleep = sub.add_parser(
