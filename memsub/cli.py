@@ -342,6 +342,19 @@ def _cmd_stats(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_vault_check(args: argparse.Namespace) -> int:
+    from .vault import check_vault
+
+    result = check_vault(args.vault)
+    if result.broken:
+        print(f"{result.broken_count} broken link(s) found ({result.checked} link(s) checked):")
+        for source, target in result.broken:
+            print(f"  {source}: [[{target}]]")
+        return 1
+    print(f"0 broken links ({result.checked} link(s) checked)")
+    return 0
+
+
 def _cmd_mcp(args: argparse.Namespace) -> int:
     from .mcp_server import serve
     from .sdk import MemoryClient
@@ -473,6 +486,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--run-id", default="vault-apply", help="run id attached to any new (corrected) episode"
     )
     v_apply.set_defaults(func=_cmd_vault_apply)
+
+    v_check = vault_sub.add_parser(
+        "check", help="scan a vault for unresolved [[wikilinks]] (broken links)"
+    )
+    v_check.add_argument("--vault", required=True, help="vault folder to scan")
+    v_check.set_defaults(func=_cmd_vault_check)
 
     p_stats = sub.add_parser(
         "stats", help="store summary: episode/namespace counts, checkpoints, db size"

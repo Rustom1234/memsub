@@ -540,3 +540,68 @@ def apply_vault(
                 result.unchanged += 1
 
     return result
+
+
+# --------------------------------------------------------------------------- #
+# vault check: unresolved [[wikilinks]]
+# --------------------------------------------------------------------------- #
+_WIKILINK_RE = re.compile(r"\[\[([^\]|#]+)")
+
+
+@dataclass
+class VaultCheckResult:
+    checked: int = 0
+    broken: list[tuple[str, str]] = field(default_factory=list)  # (source note relpath, target)
+
+    @property
+    def broken_count(self) -> int:
+        return len(self.broken)
+
+
+def check_vault(vault_path: str | Path) -> VaultCheckResult:
+    """Scan every `.md` note in a vault for `[[wikilinks]]` whose target note
+    does not exist.
+
+    A link target resolves if it matches (a) a full relative path (as
+    written by `sync_vault`'s namespace-prefixed MOC links, e.g.
+    `work/index`), or (b) a bare filename found anywhere in the vault (as
+    written by same-namespace note links, which carry no directory prefix
+    and rely on Obsidian's basename search).
+
+    Judgment call: a link whose target matches an existing *directory* name
+    (with no matching note) is also treated as resolved, not broken. This is
+    Obsidian's folder-note convention (a link to a folder, e.g. `[[work]]`,
+    is valid even without a `work/work.md` note). memsub's own generated
+    vault never produces this case (every namespace folder gets an
+    `index.md`), but a human's own `notes/` folder could plausibly use it,
+    and flagging it would be a false positive.
+    """
+    vault_root = Path(vault_path)
+    result = VaultCheckResult()
+    if not vault_root.exists():
+        return result
+
+    md_files = sorted(vault_root.rglob("*.md"))
+    by_relpath: set[str] = set()
+    by_basename: dict[str, list[str]] = defaultdict(list)
+    for f in md_files:
+        rel = f.relative_to(vault_root).with_suffix("").as_posix()
+        by_relpath.add(rel)
+        by_basename[f.stem].append(rel)
+    dirnames = {
+        d.relative_to(vault_root).as_posix() for d in vault_root.rglob("*") if d.is_dir()
+    }
+
+    for f in md_files:
+        rel_source = f.relative_to(vault_root).as_posix()
+        text = f.read_text(encoding="utf-8")
+        for m in _WIKILINK_RE.finditer(text):
+            target = m.group(1).strip()
+            result.checked += 1
+            if target in by_relpath or target in dirnames:
+                continue
+            if "/" not in target and target in by_basename:
+                continue
+            result.broken.append((rel_source, target))
+
+    return result
