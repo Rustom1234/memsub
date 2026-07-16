@@ -1,8 +1,22 @@
 # Limitations
 
+This file has two parts, from two different phases of this repo.
+
+**Sections through "Reproducibility boundaries" below are historical.**
+They document the earlier "Lying Game" safety-experiment phase (an agent
+deception study), not the current memsub package. They once pointed at
+`docs/findings.md` and `docs/paper-draft.md`; those files were never
+committed to this repo and the experiment they describe is not the
+current focus. Kept here for the record, not as active documentation.
+
+**"Product (memsub) limitations" (below) is the current, maintained
+section.** It documents the actual limitations of the memsub package:
+the episodic store, hybrid retrieval, consolidation, and the Obsidian
+vault sync/apply layer. Everything after it (external benchmark,
+local-model metrics) is also current.
+
 This is a working pilot, not a finished study. The limitations below are
-first-class: they shape how the results in `docs/findings.md` and
-`docs/paper-draft.md` should be read.
+first-class: they shape how the results should be read.
 
 ## Scope and scale
 
