@@ -111,13 +111,13 @@ def _cmd_extract(args: argparse.Namespace) -> int:
             print(f"{f}: {len(candidates)} candidate(s), dry run: nothing written")
             continue
         session_id = args.session_id or Path(f).stem
-        for c in candidates:
-            store.append(
-                c.to_episode(run_id=args.run_id, session_id=session_id, namespace=args.namespace)
-            )
-        store.set_extraction_checkpoint(f, content_hash, len(candidates))
-        total_written += len(candidates)
-        print(f"{f}: {len(candidates)} memories written")
+        episodes = [
+            c.to_episode(run_id=args.run_id, session_id=session_id, namespace=args.namespace)
+            for c in candidates
+        ]
+        written = store.append_batch_with_checkpoint(episodes, f, content_hash)
+        total_written += len(written)
+        print(f"{f}: {len(written)} memories written")
 
     if store is not None:
         store.close()

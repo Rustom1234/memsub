@@ -139,8 +139,7 @@ class EpisodicStore:
             )
             self._conn.commit()
 
-    def append(self, episode: Episode) -> Episode:
-        ep = episode.with_defaults()
+    def _insert_episode(self, ep: Episode) -> None:
         self._conn.execute(
             "INSERT INTO episodes (id, ts, run_id, session_id, kind, content, importance, provenance, namespace)"
             " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -156,6 +155,10 @@ class EpisodicStore:
                 ep.namespace,
             ),
         )
+
+    def append(self, episode: Episode) -> Episode:
+        ep = episode.with_defaults()
+        self._insert_episode(ep)
         self._conn.commit()
         return ep
 
@@ -289,6 +292,15 @@ class EpisodicStore:
         ).fetchone()
         return row[0] if row else None
 
+    def _insert_checkpoint(self, source_path: str, content_hash: str, memory_count: int) -> None:
+        self._conn.execute(
+            "INSERT INTO extraction_checkpoints (source_path, content_hash, ts, memory_count)"
+            " VALUES (?, ?, ?, ?)"
+            " ON CONFLICT(source_path) DO UPDATE SET"
+            " content_hash=excluded.content_hash, ts=excluded.ts, memory_count=excluded.memory_count",
+            (source_path, content_hash, time.time(), memory_count),
+        )
+
     def set_extraction_checkpoint(
         self, source_path: str, content_hash: str, memory_count: int
     ) -> None:
@@ -297,14 +309,36 @@ class EpisodicStore:
         Upsert: a rerun over a changed file overwrites the prior checkpoint,
         so it is re-extracted (new hash) and the fresh result recorded.
         """
-        self._conn.execute(
-            "INSERT INTO extraction_checkpoints (source_path, content_hash, ts, memory_count)"
-            " VALUES (?, ?, ?, ?)"
-            " ON CONFLICT(source_path) DO UPDATE SET"
-            " content_hash=excluded.content_hash, ts=excluded.ts, memory_count=excluded.memory_count",
-            (source_path, content_hash, time.time(), memory_count),
-        )
+        self._insert_checkpoint(source_path, content_hash, memory_count)
         self._conn.commit()
+
+    def append_batch_with_checkpoint(
+        self, episodes: list[Episode], source_path: str, content_hash: str
+    ) -> list[Episode]:
+        """Append every episode in `episodes` and record the extraction
+        checkpoint for source_path as a single transaction: either all of it
+        lands or none of it does.
+
+        Without this, appending episodes one at a time (each auto-committed
+        by `append`) and only writing the checkpoint afterwards leaves a
+        window where a crash mid-file appends some episodes but never
+        checkpoints them. A rerun then sees no checkpoint, re-extracts the
+        same file, and appends the same episodes again -- permanent
+        duplicates, since the store is append-only and dedup is only
+        probabilistic (consolidation's embedding-similarity pass).
+        """
+        written: list[Episode] = []
+        try:
+            for episode in episodes:
+                ep = episode.with_defaults()
+                self._insert_episode(ep)
+                written.append(ep)
+            self._insert_checkpoint(source_path, content_hash, len(episodes))
+            self._conn.commit()
+        except Exception:
+            self._conn.rollback()
+            raise
+        return written
 
     def __iter__(self) -> Iterator[Episode]:
         return iter(self.all())

@@ -397,6 +397,55 @@ def test_cli_extract_resume_reextracts_changed_file(tmp_path, monkeypatch):
     assert len(store.all()) == 4  # 2 + 2, both runs' candidates kept (append-only)
 
 
+def test_cli_extract_crash_mid_file_leaves_no_partial_state(tmp_path, monkeypatch):
+    """A kill mid-file (after some episodes are appended but before the
+    checkpoint is written) must not leave orphaned episodes: the batch
+    append + checkpoint write is one transaction, so a crash rolls back to
+    zero episodes for that file, and a rerun re-extracts and appends the
+    candidates exactly once (no duplicates)."""
+    import memsub.cli as cli
+    from memsub.store import EpisodicStore as _Store
+
+    backend, calls = _counting_mock()  # CANDIDATES_JSON has 2 candidates
+    monkeypatch.setattr(cli, "build_backend", lambda prefer, model: backend)
+    f = tmp_path / "a.jsonl"
+    _substantive_file(f)
+    db = tmp_path / "mem.db"
+
+    # Simulate a crash inside the store transaction, after the first
+    # episode insert but before the checkpoint is written.
+    original = _Store.append_batch_with_checkpoint
+    state = {"n": 0}
+
+    def _crash_once(self, episodes, source_path, content_hash):
+        state["n"] += 1
+        if state["n"] == 1:
+            self._insert_episode(episodes[0].with_defaults())
+            raise RuntimeError("simulated kill mid-file")
+        return original(self, episodes, source_path, content_hash)
+
+    monkeypatch.setattr(_Store, "append_batch_with_checkpoint", _crash_once)
+
+    try:
+        main(["extract", str(f), "--db", str(db)])
+    except RuntimeError:
+        pass  # the "crash"
+
+    store = EpisodicStore(db)
+    assert store.count() == 0  # the partial insert was rolled back
+    assert store.get_extraction_checkpoint(str(f)) is None
+    store.close()
+
+    # rerun after the "crash": re-extracts (no checkpoint) and appends once
+    rc = main(["extract", str(f), "--db", str(db)])
+    assert rc == 0
+    assert len(calls) == 2  # crashed attempt + successful rerun, both hit the backend
+
+    store = EpisodicStore(db)
+    assert len(store.all()) == 2  # exactly the 2 candidates, no duplicates
+    store.close()
+
+
 def test_cli_extract_checkpoint_recorded_even_with_zero_candidates(tmp_path, monkeypatch):
     """A file that legitimately yields no memories should still be
     checkpointed, so a resumed run does not re-run the (expensive) LLM call

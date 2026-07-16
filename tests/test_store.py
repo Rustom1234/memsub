@@ -51,6 +51,50 @@ def test_file_backed_store_uses_wal_and_busy_timeout(tmp_path):
     store.close()
 
 
+def test_append_batch_with_checkpoint_writes_all_and_checkpoint():
+    store = EpisodicStore()
+    episodes = [Episode(content=f"e{i}", run_id="r1", session_id="1") for i in range(3)]
+    written = store.append_batch_with_checkpoint(episodes, "file.jsonl", "hash1")
+    assert len(written) == 3
+    assert store.count() == 3
+    assert store.get_extraction_checkpoint("file.jsonl") == "hash1"
+
+
+def test_append_batch_with_checkpoint_rolls_back_atomically_on_mid_batch_error(monkeypatch):
+    """A crash (or any exception) after some episodes are inserted but before
+    the transaction commits must leave zero episodes and no checkpoint, not
+    a partial batch with no checkpoint (which would cause a rerun to
+    re-extract and duplicate the ones that did land)."""
+    store = EpisodicStore()
+    episodes = [Episode(content=f"e{i}", run_id="r1", session_id="1") for i in range(3)]
+
+    original_insert = store._insert_episode
+    calls = {"n": 0}
+
+    def _failing_insert(ep):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise RuntimeError("simulated crash mid-batch")
+        original_insert(ep)
+
+    monkeypatch.setattr(store, "_insert_episode", _failing_insert)
+
+    import pytest
+
+    with pytest.raises(RuntimeError, match="simulated crash mid-batch"):
+        store.append_batch_with_checkpoint(episodes, "file.jsonl", "hash1")
+
+    assert store.count() == 0  # the first episode's insert was rolled back too
+    assert store.get_extraction_checkpoint("file.jsonl") is None
+
+    # rerun after the "crash" (this time nothing fails) succeeds cleanly
+    monkeypatch.setattr(store, "_insert_episode", original_insert)
+    written = store.append_batch_with_checkpoint(episodes, "file.jsonl", "hash1")
+    assert len(written) == 3
+    assert store.count() == 3
+    assert store.get_extraction_checkpoint("file.jsonl") == "hash1"
+
+
 def test_two_connections_interleave_write_and_read_without_locking(tmp_path):
     """Simulates an MCP server (reader) and the extraction/consolidation CLI
     (writer) holding independent connections to the same DB file at once.
