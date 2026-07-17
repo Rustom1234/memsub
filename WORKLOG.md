@@ -103,5 +103,51 @@ what this session's eval reproduces before measuring deltas.
   methods, `rank_decomposed` / `search_decomposed`, on `HybridRetriever` (and therefore
   on `HybridSystem` in memsub/bench.py, which subclasses it). 5 new tests in
   tests/test_hybrid_features.py, all pass. Full suite: 288 passed.
+- Task 3 (measure): scripts/multihop_improvements_eval.py ran the full LOCOMO dev slice
+  (383 questions, conversations 1-3, budget 1000), no smoke-test fallback needed (wall
+  time ~150s once `think=False` was applied, not the ~2-3.7h a default-thinking qwen3
+  run would have cost). First attempt used memsub.bench.HybridSystem's bare
+  benchmark-era defaults (all boosts off) and got a materially weaker baseline (59.5% /
+  73.6% total) than the shipped hybrid v2 default; caught this before trusting any
+  delta, fixed the eval to pass the frozen v2 boost params explicitly
+  (HYBRID_V2_KWARGS), reran, and confirmed the corrected baseline reproduces
+  docs/benchmark.md's documented dev totals exactly (72.8% / 85.1%, multi-hop 20.3% /
+  77.0%) before reading anything into the fusion/decompose deltas.
+
+  Results (from results/multihop-improvements-2026-07-17.json, n=383, budget 1000):
+
+  | condition | multi-hop all | multi-hop any | TOTAL all | TOTAL any |
+  |---|---|---|---|---|
+  | baseline | 20.3% | 77.0% | 72.8% | 85.1% |
+  | fusion | 20.3% | 74.3% | 72.6% | 84.3% |
+  | fusion + decompose | 20.3% | 74.3% | 72.6% | 84.3% |
+
+  Honest result: neither intervention improved multi-hop evidence recall on this dev
+  slice. Fusion alone cost 2.7pp of multi-hop evidence-any (fused entries compete for
+  the token budget but can never themselves count as evidence under this turn-level
+  metric, the same limitation already on record for the sleep extension in
+  docs/benchmark.md). Decomposition on top of fusion was an exact wash versus fusion
+  alone: per-question diffing of the JSONL records confirms the decompose call did fire
+  and did change retrieval for 6/383 questions, 3 gained and 3 lost, netting to zero,
+  consistent with the already-reverted "heuristic query decomposition" finding in
+  docs/benchmark.md (LOCOMO's "multi-hop" category is mostly single-topic aggregation,
+  not real chainable sub-questions). Full writeup: docs/multihop-improvements-2026-07-17.md.
+  This does not settle whether fusion has real value: the fair test is the separate
+  end-to-end answer-quality harness (scripts/holdout_answer_quality.py's protocol,
+  local model as answerer, token-F1), which was out of scope for this session and is
+  the natural next step before any ship/no-ship call on fusion as a default.
+
+  Both features remain opt-in and are not wired into any default code path, so this
+  negative result costs nothing to ship as-is: the audit-trail/provenance value of
+  fusion and the bounded-cost design of decomposition stand independent of this one
+  metric's verdict on this one dev slice.
+
+- Final suite check: `pytest` 288 passed. No em dashes in any new or modified file
+  (checked with `grep -c "—"`, in every touched file).
+- Commits (all local, no remote/push per this task's explicit instruction and the
+  global no-push-without-go-ahead rule):
+  - f2717e5 Add write-time cross-session fact fusion (MIRIX-style) to consolidate
+  - a172f1b Add bounded query-time decomposition to HybridRetriever
+  - (this checkpoint) eval script, results file, docs writeup, WORKLOG
 
 ---
