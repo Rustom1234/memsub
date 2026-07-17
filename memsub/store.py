@@ -49,15 +49,17 @@ CREATE TABLE IF NOT EXISTS extraction_checkpoints (
 """
 
 # Events that end an episode's active life. The episode row is never deleted;
-# status is derived from the event log, which is the audit trail.
-TERMINAL_EVENTS = ("superseded", "forgotten")
+# status is derived from the event log, which is the audit trail. "quarantined"
+# (memsub.consolidate, memsub.provenance) is a signature-verification failure:
+# the episode stays in the table forever, just no longer active/retrievable.
+TERMINAL_EVENTS = ("superseded", "forgotten", "quarantined")
 
 
 @dataclass(frozen=True)
 class MemoryEvent:
     """One lifecycle or usage event for an episode.
 
-    event: "superseded" | "forgotten" | "retrieved" | "injected" (open set).
+    event: "superseded" | "forgotten" | "quarantined" | "retrieved" | "injected" (open set).
     detail: structured context, e.g. {"reason": ..., "by": <episode_id>} for
     supersede, {"query": ..., "score": ...} for retrieval.
     """
@@ -246,9 +248,10 @@ class EpisodicStore:
         ]
 
     def status(self, episode_id: str) -> str:
-        """"active", or the terminal event name ("superseded"/"forgotten")."""
+        """"active", or the terminal event name ("superseded"/"forgotten"/"quarantined")."""
+        placeholders = ", ".join("?" * len(TERMINAL_EVENTS))
         row = self._conn.execute(
-            "SELECT event FROM memory_events WHERE episode_id = ? AND event IN (?, ?)"
+            f"SELECT event FROM memory_events WHERE episode_id = ? AND event IN ({placeholders})"
             " ORDER BY ts DESC LIMIT 1",
             (episode_id, *TERMINAL_EVENTS),
         ).fetchone()
@@ -261,10 +264,11 @@ class EpisodicStore:
         namespace: str | None = None,
     ) -> list[Episode]:
         """Episodes with no terminal event, oldest first."""
+        placeholders = ", ".join("?" * len(TERMINAL_EVENTS))
         query = (
             "SELECT id, ts, run_id, session_id, kind, content, importance, provenance, namespace"
             " FROM episodes WHERE id NOT IN"
-            " (SELECT episode_id FROM memory_events WHERE event IN (?, ?))"
+            f" (SELECT episode_id FROM memory_events WHERE event IN ({placeholders}))"
         )
         params: list[Any] = list(TERMINAL_EVENTS)
         if run_id is not None:

@@ -17,6 +17,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from . import provenance as provenance_mod
 from .audit import audit_episode, log_recall
 from .embed import Embedder, build_embedder
 from .hybrid import HybridRetriever
@@ -90,7 +91,13 @@ class MemoryClient:
         namespace: str | None = None,
         provenance: dict | None = None,
         session_id: str = "sdk",
+        channel: str | None = None,
     ) -> Episode:
+        """channel: memsub.provenance channel for this write. Defaults to
+        "imported" -- a generic SDK call has no pipeline signal telling it
+        whether content was actually observed, so it cannot claim
+        "user_stated" for itself; pass channel="user_stated" explicitly when
+        the caller genuinely knows this is a direct human statement."""
         ns = namespace or self.namespace
         self.namespaces.check(self.agent, "write", ns)
         prov = dict(provenance or {})
@@ -105,6 +112,7 @@ class MemoryClient:
             provenance=prov,
             namespace=ns,
         )
+        ep = provenance_mod.tag_episode(ep, channel or provenance_mod.CHANNEL_IMPORTED)
         stored = self.store.append(ep)
         self._invalidate()
         return stored

@@ -1,14 +1,26 @@
 """Consolidation: an explicit offline pass over the active memory set.
 
-Four phases, in order:
+Zero. Quarantine: every active episode's write-channel signature
+(memsub.provenance) is verified first. A row whose signature fails
+verification (tampered, or claims a channel it cannot prove) is quarantined:
+excluded from every phase below, from retrieval (store.active() no longer
+returns it once the event is logged), and from winning any supersede
+decision -- never silently deleted, always flagged in the audit trail.
 
 1. Dedup: near-identical active memories (cosine similarity over the local
    embedder above a threshold) are collapsed. The newest copy survives, the
-   older ones get a "superseded" event with reason "duplicate".
+   older ones get a "superseded" event with reason "duplicate" -- EXCEPT
+   when the two sides carry different channel trust rank (see
+   memsub.provenance and _trust_rank below): the higher-trust side always
+   survives regardless of recency. This is the fix for the SMSR blind spot
+   (arXiv:2606.12703): trust is decided by a memory's cryptographically
+   verified write channel, never by what its content or kind claims about
+   itself.
 2. Contradiction: same-kind pairs in a similarity band below the dedup
    threshold are judged by the LLM backend. When two memories contradict,
-   the newer one supersedes the older (new fact beats stale fact). Requires
-   a backend; skipped cleanly without one.
+   the newer one supersedes the older (new fact beats stale fact), with the
+   same channel-trust override as phase 1. Requires a backend; skipped
+   cleanly without one.
 3. Fusion (MIRIX-style write-time consolidation, arXiv:2507.07957): memories
    about the same entity, scattered across different sessions, are grouped
    (memsub.sleep._extract_entities finds the entity candidates; the dedup
@@ -28,8 +40,8 @@ Four phases, in order:
    "confirmed" event (memsub.vault.apply_vault, a human pin) are skipped by
    decay unconditionally.
 
-Nothing is ever deleted: supersede and forget are events in the store's event
-log, so every decision is auditable and reversible in principle.
+Nothing is ever deleted: supersede, forget, and quarantine are events in the
+store's event log, so every decision is auditable and reversible in principle.
 """
 
 from __future__ import annotations
@@ -43,6 +55,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from . import provenance
 from .backends import LLMBackend
 from .embed import Embedder, HashingEmbedder
 from .sleep import _extract_entities
@@ -75,17 +88,54 @@ class ConsolidationConfig:
 class Action:
     """One consolidation decision, applied as an event unless dry-run."""
 
-    action: str  # "supersede" | "forget" | "fuse"
+    action: str  # "supersede" | "forget" | "fuse" | "quarantine"
     episode_id: str
-    reason: str  # "duplicate" | "contradiction" | "decay" | "fusion"
+    reason: str  # "duplicate" | "contradiction" | "decay" | "fusion" | "signature_invalid"
     detail: dict = field(default_factory=dict)
+
+
+# action -> the event name logged for it (fuse is handled separately: it
+# appends a new episode rather than changing an existing one's status).
+_ACTION_EVENT = {"supersede": "superseded", "forget": "forgotten", "quarantine": "quarantined"}
 
 
 def _is_inferred(ep: Episode) -> bool:
     """True for memsub-sleep-generated inferences (memsub.sleep): conclusions
-    the model drew, not things directly observed. Never allowed to silently
-    outrank an observed memory during consolidation."""
+    the model drew, not things directly observed. Kept as the fallback signal
+    for episodes with no channel signature (unsigned-legacy, written before
+    memsub.provenance existed); _trust_rank below is the real trust ordering
+    for everything else."""
     return ep.kind == "inference" or bool(ep.provenance.get("inferred", False))
+
+
+# Trust ranks: higher wins a tie-break regardless of recency. Quarantined
+# (-1) always loses. A signed user_stated row (2) can never be outranked,
+# including by an unsigned-legacy row (max rank 1) -- the grandfather
+# guarantee promised in docs/poisoning-provenance-2026-07-17.md. Legacy rows
+# fall back to the pre-provenance heuristic (_is_inferred) so existing data's
+# relative ordering is unchanged.
+_RANK_QUARANTINED = -1
+_RANK_LEGACY_INFERRED = 0
+_RANK_LEGACY_OBSERVED = 1
+_RANK_VERIFIED_CHANNEL_ONLY = 1  # verified llm_inferred or imported
+_RANK_VERIFIED_USER_STATED = 2
+
+
+def _trust_rank(ep: Episode, key: bytes | None) -> int:
+    """A memory's trust rank for the observed-beats-inferred rule, decided by
+    its cryptographically verified write channel (memsub.provenance), never
+    by its self-described content or kind. This is the fix for SMSR's proven
+    blind spot (arXiv:2606.12703): a provenance-free heuristic cannot tell a
+    poison disguised as an observed fact from a real one; a channel bound at
+    write time by code the content never controls, can."""
+    status, channel = provenance.channel_status(ep, key)
+    if status == provenance.STATUS_QUARANTINED:
+        return _RANK_QUARANTINED
+    if status == provenance.STATUS_VERIFIED:
+        if channel == provenance.CHANNEL_USER_STATED:
+            return _RANK_VERIFIED_USER_STATED
+        return _RANK_VERIFIED_CHANNEL_ONLY
+    return _RANK_LEGACY_INFERRED if _is_inferred(ep) else _RANK_LEGACY_OBSERVED
 
 
 def _decay_value(ep: Episode, retrieved_count: int, now: float, cfg: ConsolidationConfig) -> float:
@@ -267,9 +317,33 @@ def consolidate(
     if not episodes:
         return actions
 
+    # -- phase 0: quarantine (verify every row's write-channel signature) --- #
+    # Computed once per episode and reused for the trust-ranked tie-breaks in
+    # phases 1 and 2 below, so a channel is only ever cryptographically
+    # checked once per consolidation pass. A quarantined row is excluded from
+    # every phase that follows (added to `removed` immediately) and, once the
+    # quarantine event is logged (non-dry-run), from store.active() itself --
+    # this is what keeps it out of retrieval without ever deleting it.
+    key = provenance.load_key()
+    trust: dict[str, int] = {}
+    removed: set[str] = set()
+    for ep in episodes:
+        rank = _trust_rank(ep, key)
+        trust[ep.id] = rank
+        if rank == _RANK_QUARANTINED:
+            claimed = ep.provenance.get("channel")
+            actions.append(
+                Action(
+                    action="quarantine",
+                    episode_id=ep.id,
+                    reason="signature_invalid",
+                    detail={"claimed_channel": claimed} if claimed else {},
+                )
+            )
+            removed.add(ep.id)
+
     vectors = np.stack([emb.embed(ep.content) for ep in episodes])
     sims = vectors @ vectors.T
-    removed: set[str] = set()
 
     # -- phase 1: dedup (newest copy survives) ------------------------------ #
     contradiction_pairs: list[tuple[Episode, Episode]] = []
@@ -280,14 +354,14 @@ def consolidate(
                 continue
             sim = float(sims[i, j])
             if sim >= cfg.dedup_threshold:
-                # newest survives, EXCEPT when exactly one of the pair is an
-                # inference (memsub sleep output): the observed copy survives
-                # regardless of recency. Without this, a newer inference that
-                # restates a value near-identically would silently supersede
-                # the observed fact here, before the contradiction judge ever
-                # saw the pair.
+                # newest survives, EXCEPT when the two sides have different
+                # channel trust rank: the higher-trust side survives
+                # regardless of recency. Without this, a newer low-trust
+                # write that restates a value near-identically would
+                # silently supersede a higher-trust memory here, before the
+                # contradiction judge ever saw the pair.
                 loser, winner = a, b
-                if _is_inferred(b) and not _is_inferred(a):
+                if trust[b.id] < trust[a.id]:
                     loser, winner = b, a
                 actions.append(
                     Action(
@@ -317,12 +391,12 @@ def consolidate(
         for (old, new), contradicts in zip(contradiction_pairs, verdicts):
             if not contradicts or old.id in removed or new.id in removed:
                 continue
-            # newer wins by default, EXCEPT: an inference (memsub sleep,
-            # provenance.inferred=True or kind="inference") never overwrites an
-            # observed memory, regardless of which one is newer. Sleep proposes,
-            # it never silently supersedes what was actually seen.
+            # newer wins by default, EXCEPT: a lower channel-trust rank never
+            # overwrites a higher one (see _trust_rank), regardless of which
+            # is newer. A verified llm_inferred memory proposes, it never
+            # silently supersedes a verified user_stated one.
             loser, winner = old, new
-            if _is_inferred(new) and not _is_inferred(old):
+            if trust[new.id] < trust[old.id]:
                 loser, winner = new, old
             actions.append(
                 Action(
@@ -410,7 +484,6 @@ def consolidate(
             if act.action == "fuse":
                 continue  # already applied inline above: creates a new episode
                 # plus a "fused_into" event on each source, not a status change
-                # on an existing episode_id like supersede/forget below.
-            event = "superseded" if act.action == "supersede" else "forgotten"
-            store.log_event(act.episode_id, event, {"reason": act.reason, **act.detail})
+                # on an existing episode_id like supersede/forget/quarantine below.
+            store.log_event(act.episode_id, _ACTION_EVENT[act.action], {"reason": act.reason, **act.detail})
     return actions

@@ -16,6 +16,7 @@ import os
 import sys
 from pathlib import Path
 
+from . import provenance
 from .backends import build_backend
 from .consolidate import ConsolidationConfig, consolidate
 from .extraction import extract_file, file_content_hash, load_transcript
@@ -111,8 +112,13 @@ def _cmd_extract(args: argparse.Namespace) -> int:
             print(f"{f}: {len(candidates)} candidate(s), dry run: nothing written")
             continue
         session_id = args.session_id or Path(f).stem
+        # Extraction only ever produces observed claims (never kind="inference"),
+        # so every episode from this path is channel user_stated (memsub.provenance).
         episodes = [
-            c.to_episode(run_id=args.run_id, session_id=session_id, namespace=args.namespace)
+            provenance.tag_episode(
+                c.to_episode(run_id=args.run_id, session_id=session_id, namespace=args.namespace),
+                provenance.CHANNEL_USER_STATED,
+            )
             for c in candidates
         ]
         written = store.append_batch_with_checkpoint(episodes, f, content_hash)

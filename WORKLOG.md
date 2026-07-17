@@ -197,3 +197,81 @@ Final suite check: `pytest` still 288 passed (this follow-up added only a new ev
 script under scripts/, no library code changed). No em dash character in any new file.
 
 ---
+
+## 2026-07-17: Part B items 4+5 (HMAC channel provenance, poisoning re-run), implementation session
+
+### Assumptions (stated before coding, per Karpathy rule 1)
+
+1. Channel + signature live inside the existing `provenance` JSON dict on Episode
+   (`provenance["channel"]`, `provenance["channel_sig"]`), not as new SQLite columns.
+   provenance is already a free-form JSON blob every write path already populates;
+   this needs zero schema migration and the "unsigned-legacy" grandfather case falls
+   out for free (old rows simply lack the two keys).
+2. Trust ranking replaces `_is_inferred`'s binary swap with a 4-level integer rank
+   (quarantined -1, legacy-inferred 0, legacy-observed/verified-llm_inferred-or-imported
+   1, verified-user_stated 2), chosen so legacy data (no channel/sig) reproduces the
+   exact old `_is_inferred` ordering bit-for-bit (verified by running the full suite
+   unmodified: all 288 pre-existing tests pass with zero test-file changes to
+   test_sleep.py/test_consolidate.py/test_vault*.py), while a signed user_stated row
+   can never be outranked by any unsigned-legacy row (max legacy rank 1 < 2).
+3. Quarantine reuses the existing supersede/forget event-log mechanism: "quarantined"
+   added to `store.TERMINAL_EVENTS`, so `store.active()` (and therefore every existing
+   retrieval path that reads it) excludes a quarantined row automatically, with zero
+   changes needed in hybrid.py/retrieval.py/bench.py. This is the same append-only,
+   never-delete pattern the codebase already uses for supersede/forget.
+4. Real write paths tagged per the task's three buckets: extraction (cli.py) and wiki
+   ingest (wiki.py) -> user_stated (never produce kind="inference"); sleep.py's
+   generate_inferences -> llm_inferred, its summaries/links -> user_stated (same
+   kind=="inference" check `_is_inferred` already used); vault.py human correction
+   and promote_notes -> user_stated; sdk.py MemoryClient.add (the generic/MCP
+   add_memory entry point) -> imported by default, with an optional `channel=`
+   override for a caller that genuinely knows better. consolidate.py's own fusion
+   output (landed by another agent this session) is deliberately left unsigned this
+   round: out of the task's three named buckets, and safe by the grandfather rule
+   either way (documented as a known follow-up in docs/poisoning-provenance-2026-07-17.md).
+5. Key: `~/.memsub/provenance.key`, 32 random bytes, 0600, created on first write
+   (`load_or_create_key`), overridable via `MEMSUB_PROVENANCE_KEY_PATH` for tests.
+   Read/consolidation paths use `load_key` (never creates), so a missing key
+   fails safe: every claimed-signed row becomes unverifiable -> quarantined, not
+   silently trusted.
+
+### What was built
+
+- `memsub/provenance.py` (new): channel constants, key load/create, HMAC-SHA256
+  sign/verify over (content, channel, ts, namespace) with a `\x1f`-separated
+  message (avoids field-concatenation ambiguity), `tag_episode`, `channel_status`.
+- `memsub/consolidate.py`: new phase 0 (quarantine, verifies every active episode's
+  signature once per namespace pass, before dedup); `_trust_rank` replaces the
+  `_is_inferred`-only swap in both the dedup and contradiction phases; `_is_inferred`
+  itself kept unchanged (still the legacy fallback signal, still monkeypatchable by
+  scripts/poisoning_benchmark.py and scripts/verify_sleep_cleanrecall.py exactly as
+  before). `Action.action` gains "quarantine"; the final apply loop maps action ->
+  event via a small dict instead of a two-way ternary.
+- `memsub/store.py`: `TERMINAL_EVENTS` gains `"quarantined"`. Found and fixed a real
+  latent bug while doing this: `status()`/`active()` had `event IN (?, ?)` hardcoded
+  to 2 placeholders instead of `len(TERMINAL_EVENTS)`, which would have broken the
+  moment a third terminal event was ever added, regardless of what it was named
+  (caught immediately by the full suite, not by design foresight).
+- Write-path wiring: `memsub/cli.py` (extract), `memsub/wiki.py` (ingest_wiki),
+  `memsub/sleep.py` (sleep_store), `memsub/vault.py` (apply_vault correction,
+  promote_notes), `memsub/sdk.py` (MemoryClient.add) -- see assumption 4.
+- `memsub/audit.py`: docstring only (event vocabulary now lists "quarantined");
+  zero code changes needed for the quarantine event to show up in `memsub audit`,
+  since `render_audit` already prints every provenance key and every event generically.
+- `tests/test_provenance.py` (new, 12 tests): key create/load/perms, sign/verify
+  roundtrip, unsigned-legacy status, forged-channel-claim-in-content-text does not
+  gain trust, tampered-content quarantined, tampered-channel-field quarantined,
+  key-absence fails safe (both for a signed row and confirms an unsigned-legacy row
+  is unaffected), plus three consolidate()-level integration tests: quarantine
+  excluded from active()+flagged in the event log+never deleted, verified
+  user_stated beats verified llm_inferred despite being older, and unsigned-legacy
+  cannot outrank signed user_stated despite being newer (the grandfather guarantee).
+
+Full suite: `pytest` 300 passed (288 existing + 12 new), zero existing test files
+modified. No em dash character in any new or touched file (checked with grep for the
+UTF-8 em dash byte sequence across every file this session touched).
+
+Commit: HMAC channel provenance (memsub/provenance.py, consolidate/store/cli/wiki/
+sleep/vault/sdk wiring, tests/test_provenance.py), local only, not pushed.
+
+---
