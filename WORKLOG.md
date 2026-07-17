@@ -274,4 +274,59 @@ UTF-8 em dash byte sequence across every file this session touched).
 Commit: HMAC channel provenance (memsub/provenance.py, consolidate/store/cli/wiki/
 sleep/vault/sdk wiring, tests/test_provenance.py), local only, not pushed.
 
+### Item 5: re-ran the poisoning benchmark against the new defense
+
+Extended `scripts/poisoning_benchmark.py` minimally: added `--provenance` CLI flag
+(default behavior/`main()` untouched, still reproduces docs/poisoning-benchmark.md
+unchanged if invoked without the flag), `poisoned_dataset_provenance` (tags the
+legit facts `user_stated` and the adversarial episode `llm_inferred` (Attack A) or
+`imported` (Attack B), per the task's threat framing: the channel an attacker who
+compromised extraction, not a real user turn, can actually reach), and
+`run_cell_provenance` (plain `consolidate()`, no `_is_inferred` monkeypatching --
+the channel-trust ranking is now the shipping default, so this needed zero new
+consolidate.py logic). Old-defense rows in the new report reuse `run_cell()`
+completely unchanged, so they are the identical computation as the original round,
+not a re-derivation.
+
+Ran `.venv/bin/python scripts/poisoning_benchmark.py --provenance` (wall 0.8s).
+Streamed to `results/poisoning-provenance-2026-07-17.json` (24 rows: 2 attacks x 3
+(defense, system) combinations x 4 budgets), rewriting the full accumulated list
+after each completed cell so a crash mid-run cannot lose prior results.
+
+Result (identical across all 4 budgets, matches the pre-registered expectation
+exactly): Attack A unchanged (0% ASR, 98.0% clean recall, old and new defense both).
+**Attack B: ASR 98.7% -> 0.0%, clean recall 0.0% -> 98.0%** under the new
+channel-provenance defense -- the exact gap the original round's Attack B row
+existed to surface is closed for this attack shape, because content dressing
+(kind="fact" vs kind="inference") no longer decides trust; the cryptographically
+verified write channel does, and neither attack could reach `user_stated`.
+
+Mapped both attacks onto MemPoison's (arXiv:2607.14651) L1/L2/L3 tiers: used
+WebSearch + WebFetch this session to pull the paper's actual tier definitions
+(confirmed real and quoted verbatim in the doc, not guessed), then applied a
+self-defined mapping (both attacks are single-record, non-fragmented,
+non-dormant -> L1 by MemPoison's own record-cardinality criterion) since this
+project has no access to MemPoison's released test-case labels. Flagged the one
+mapping caveat plainly: MemPoison's L1 text bundles in "detectable at write time,"
+but Attack B is specifically built to defeat write-time content detectability
+while remaining structurally a single record. L2 (compositional) and L3
+(dormant-trigger) are explicitly not tested by this round.
+
+Wrote `docs/poisoning-provenance-2026-07-17.md`: old-vs-new table, the threat
+model (what channels an attacker can/cannot forge, stated plainly that a
+compromised extractor can still poison the llm_inferred channel and a compromised
+import path can still poison the imported channel -- channel signing prevents
+either from impersonating user_stated, it does not make either channel immune),
+the MemPoison tier mapping, and updated claim language in the same measured style
+as the original doc (explicitly: not "solved poisoning," scoped to what was
+actually measured, L2/L3 stated as untested).
+
+Full suite: `pytest` still 300 passed (this task added only a script extension and
+two doc/results files, no library code changed). No em dash character in any new
+or touched file.
+
+Commit: poisoning benchmark re-run against channel provenance (scripts/
+poisoning_benchmark.py, docs/poisoning-provenance-2026-07-17.md,
+results/poisoning-provenance-2026-07-17.json), local only, not pushed.
+
 ---
