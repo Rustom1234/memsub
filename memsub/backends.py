@@ -162,11 +162,22 @@ class OllamaBackend:
     name = "ollama"
 
     def __init__(
-        self, model: str = "qwen3:8b", host: str = OLLAMA_HOST, timeout: float = 180.0
+        self,
+        model: str = "qwen3:8b",
+        host: str = OLLAMA_HOST,
+        timeout: float = 180.0,
+        think: bool | None = None,
     ) -> None:
         self.model = model
         self.host = host
         self.timeout = timeout
+        # None (default): omit the key, unchanged behavior for every existing
+        # caller. False: ollama >=0.9 skips qwen3's <think> reasoning pass,
+        # ~25x faster on this machine (35s -> 1.3s for a trivial call) at the
+        # cost of the reasoning trace; used for bounded, structured-output
+        # judgment calls (fusion, decomposition) where a short direct answer
+        # is enough. Callers that want the reasoning trace pass think=True.
+        self.think = think
 
     def complete(self, system: str, messages: list[dict[str, str]]) -> str:
         payload = {
@@ -174,6 +185,8 @@ class OllamaBackend:
             "messages": [{"role": "system", "content": system}, *messages],
             "stream": False,
         }
+        if self.think is not None:
+            payload["think"] = self.think
         req = urllib.request.Request(
             f"{self.host}/api/chat",
             data=json.dumps(payload).encode("utf-8"),
