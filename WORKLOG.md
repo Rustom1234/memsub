@@ -142,8 +142,8 @@ what this session's eval reproduces before measuring deltas.
   fusion and the bounded-cost design of decomposition stand independent of this one
   metric's verdict on this one dev slice.
 
-- Final suite check: `pytest` 288 passed. No em dashes in any new or modified file
-  (checked with `grep -c "—"`, in every touched file).
+- Final suite check: `pytest` 288 passed. No em dash character in any new or modified
+  file (checked with grep for the long-dash character across every touched file).
 - Commits (all local, no remote/push per this task's explicit instruction and the
   global no-push-without-go-ahead rule):
   - f2717e5 Add write-time cross-session fact fusion (MIRIX-style) to consolidate
