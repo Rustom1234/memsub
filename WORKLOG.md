@@ -148,6 +148,52 @@ what this session's eval reproduces before measuring deltas.
   global no-push-without-go-ahead rule):
   - f2717e5 Add write-time cross-session fact fusion (MIRIX-style) to consolidate
   - a172f1b Add bounded query-time decomposition to HybridRetriever
-  - (this checkpoint) eval script, results file, docs writeup, WORKLOG
+  - 94fbce8 Measure write-time fusion and bounded decomposition on the LOCOMO dev slice
+  - 066e863 Fix stray em dash character in WORKLOG.md self-check note
+
+## 2026-07-17 (follow-up): fair test, answer quality instead of evidence recall
+
+The coordinator's own read of the first measurement was correct: the evidence-all/any
+metric structurally cannot credit a fused entry (right information, wrong id), so that
+run could only ever cost fusion budget, never show its value. Follow-up:
+scripts/multihop_answer_quality_eval.py measures token-F1 answer quality on the
+multi-hop dev slice instead, reusing scripts/metrics_local.py's existing machinery
+unchanged (ANSWER_SYSTEM, BUDGET, FROZEN params, token_f1: the same protocol behind the
+documented 0.152 holdout number) rather than building a new harness.
+
+Slice: LOCOMO dev conversations 1-3, category-1 questions with a non-empty gold answer,
+n=74 (full slice, already above the 60-question pre-registered minimum; a timing check
+on one real answer call, ~0.65s with think=False, confirmed the full 3-condition run
+would finish in minutes, well under the 90-minute cap, so the seed-2026 subset fallback
+was never triggered). Actual wall time: 270s. Same fusion isolation as the first eval
+(contradiction and decay disabled in ConsolidationConfig so only dedup and fusion touch
+the ingested set, see assumption 7 above).
+
+Results (results/multihop-answer-quality-2026-07-17.jsonl, n=74 per condition, budget
+1000, qwen3:8b as answerer):
+
+| condition | n | mean token-F1 | exact-substring rate |
+|---|---|---|---|
+| baseline | 74 | 0.1946 | 0.0676 |
+| fusion | 74 | 0.1907 | 0.0676 |
+| fusion + decompose | 74 | 0.2029 | 0.0676 |
+
+Verdict: fusion alone still does not help (0.1946 -> 0.1907, -2.0% relative, same
+flat-to-negative direction as the evidence-recall run: both metrics now agree fusion by
+itself is not moving multi-hop quality on this dev slice). Fusion plus decomposition
+shows a modest positive delta (0.2029, +4.3% relative vs baseline, +6.4% vs fusion
+alone), flipping the sign from the evidence-recall run's exact wash. Read cautiously:
+effect size is 0.008-0.012 absolute F1 at n=74 with one run per condition (no repeated
+trials), plausibly within single-run noise, and exact-substring rate is identical
+(5/74) across all three conditions. Honest reading: the gain tracks with decomposition,
+not fusion. The MIRIX write-time-fusion hypothesis is parked on two independent
+measurements now (evidence-recall and answer-quality) that both say fusion alone is not
+the lever; decomposition is worth keeping as a cheap opt-in on the strength of this
+run, but neither result overrides moving to the graph layer (item 3,
+docs/improvement-plan-2026-07-17.md Part B) as the next real lever. Full writeup
+appended to docs/multihop-improvements-2026-07-17.md.
+
+Final suite check: `pytest` still 288 passed (this follow-up added only a new eval
+script under scripts/, no library code changed). No em dash character in any new file.
 
 ---
