@@ -93,4 +93,15 @@ what this session's eval reproduces before measuring deltas.
   this file and only this file (never recalled from context).
 - Whole-suite `pytest` stays green after each step; no em dashes anywhere written.
 
+### Step log
+
+- Task 1 (write-time fusion) implemented in memsub/consolidate.py (phase 3, between
+  contradiction and decay), plus the think= addition to memsub/backends.py. 6 new tests
+  in tests/test_consolidate.py, all pass. Full suite: 283 passed. Committed
+  (f2717e5): "Add write-time cross-session fact fusion (MIRIX-style) to consolidate".
+- Task 2 (bounded decomposition) implemented in memsub/hybrid.py as two new opt-in
+  methods, `rank_decomposed` / `search_decomposed`, on `HybridRetriever` (and therefore
+  on `HybridSystem` in memsub/bench.py, which subclasses it). 5 new tests in
+  tests/test_hybrid_features.py, all pass. Full suite: 288 passed.
+
 ---

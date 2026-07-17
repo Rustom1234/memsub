@@ -19,14 +19,37 @@ safe as the default for arbitrary memories.
 
 from __future__ import annotations
 
+import json
 import re
 from collections import Counter
 
 import numpy as np
 
+from .backends import LLMBackend
 from .embed import Embedder, HashingEmbedder
 from .lexical import BM25Index, rrf_fuse, tokenize
 from .store import Episode
+
+DECOMPOSITION_SYSTEM = """You split a question into simpler sub-questions, but ONLY when \
+it spans more than one topic or hop (asks about two different things, or needs facts \
+connected across separate parts of a conversation). Leave a single-topic question alone.
+
+Output ONLY a JSON array of 0 to 2 sub-question strings, each a complete standalone \
+question. Output [] when the question does not need splitting."""
+
+
+def _parse_subqueries(response: str, max_subqueries: int) -> list[str]:
+    start, end = response.find("["), response.rfind("]")
+    if start == -1 or end <= start:
+        return []
+    try:
+        data = json.loads(response[start : end + 1])
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(data, list):
+        return []
+    subs = [str(s).strip() for s in data if isinstance(s, str) and str(s).strip()]
+    return subs[:max_subqueries]
 
 _MONTHS = "january february march april may june july august september october november december".split()
 DATE_RE = re.compile(
@@ -184,6 +207,51 @@ class HybridRetriever:
         The score is 1/(rrf_k + position + 1): monotone in the fused ranking,
         comparable within one query, not across queries."""
         order = self.rank(query)
+        return [
+            (self.episodes[i], 1.0 / (self.rrf_k + pos + 1))
+            for pos, i in enumerate(order[:k])
+        ]
+
+    # -- opt-in: bounded query-time decomposition --------------------------- #
+    def rank_decomposed(
+        self, query: str, backend: LLMBackend, max_subqueries: int = 2
+    ) -> list[int]:
+        """Multi-hop-aware ranking, off by default: callers must opt in by
+        calling this instead of rank().
+
+        Makes exactly ONE LLM call to split `query` into at most
+        `max_subqueries` sub-questions, runs the existing hybrid retrieval
+        (self.rank, unmodified) once per sub-question plus once for the
+        original query, and RRF-fuses the resulting rankings. Bounded by
+        design: at most max_subqueries + 1 retrieval calls (<=3 for the
+        default max_subqueries=2) and exactly 1 LLM call, never an
+        open-ended agentic loop.
+
+        arXiv:2606.21553 ran query decomposition plus iterative retrieval on
+        Qwen2.5-7B-Instruct (a close cousin of memsub's qwen3:8b) and found
+        two decompose-then-retrieve iterations capture 95% of the gain of
+        five: a cheap, bounded pass is enough, going further has sharply
+        diminishing returns. If the backend decides the query does not need
+        splitting (returns []), this degrades to a plain rank() call plus
+        one wasted LLM call.
+        """
+        base_order = self.rank(query)
+        if not self.episodes:
+            return base_order
+        response = backend.complete(
+            DECOMPOSITION_SYSTEM, [{"role": "user", "content": query}]
+        )
+        sub_queries = _parse_subqueries(response, max_subqueries)
+        if not sub_queries:
+            return base_order
+        rankings = [base_order] + [self.rank(sq) for sq in sub_queries]
+        return rrf_fuse(rankings, k=self.rrf_k)
+
+    def search_decomposed(
+        self, query: str, backend: LLMBackend, k: int = 6, max_subqueries: int = 2
+    ) -> list[tuple[Episode, float]]:
+        """search()'s decomposition-aware counterpart; see rank_decomposed."""
+        order = self.rank_decomposed(query, backend, max_subqueries=max_subqueries)
         return [
             (self.episodes[i], 1.0 / (self.rrf_k + pos + 1))
             for pos, i in enumerate(order[:k])
