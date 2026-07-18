@@ -427,3 +427,94 @@ tests/test_vault_serve.py, docs/vault-serve-2026-07-18.md), local only, not
 pushed.
 
 ---
+
+## Graph layer: bipartite entity-episode index (2026-07-18)
+
+Ordered directly by Rustom ("Do the graph layer" / "Add the graph layer, learn
+from mem0 and open source things, and yes u can use a better model if need be
+(dont use api, use from my subscription)"). Design source:
+memory-sublayer-research/oss-source-dive/report-2026-07-18.md section 4.
+
+### Assumptions (stated before coding, Karpathy rule 1)
+
+1. **Entity id is namespace-scoped**: `f"{namespace}::{normalized_text}"`, not
+   bare normalized text as the report's schema sketch literally shows. Bare
+   normalized-text ids would collide two different namespaces' "Alice" into
+   one row, breaking the multi-tenant namespace isolation the rest of memsub
+   enforces (memsub/namespaces.py) and the task's own "namespace-aware
+   backfill" requirement. The `namespace` column stays as documented; the id
+   just also carries it. Documented here and in docs/graph-layer-2026-07-18.md
+   as the one deliberate deviation from the report's literal DDL.
+2. **Entity type is rule-based, two values**: PERSON (text that was the
+   "Speaker: ..." prefix of its source episode) else TOPIC. No NER, no LLM,
+   zero cost, matches mem0's "proper nouns / heuristics" precedent, not a
+   full mem0-style type taxonomy (no PLACE/EVENT/etc: nothing in memsub's
+   corpus format lets rules tell those apart from TOPIC reliably, and a wrong
+   guess costs nothing downstream since type is not used for retrieval
+   ranking, only stored for future use).
+3. **Near-miss threshold**: `difflib.SequenceMatcher.ratio() >= 0.82` against
+   an exact non-match. Stdlib-only per the report's explicit "no MinHash lib
+   needed" call. 0.82 is a starting point (catches "Melanie"/"Melany",
+   "Lisbon trip"/"the Lisbon trip"), tested directly in step 5, not tuned
+   against a labeled set (none exists) -- flagged as a knob, not a claim.
+4. **Resolution cache is per-run, in-memory**, scoped to one
+   `EntityResolver` instance (one `graph_store()` call = one backfill run or
+   one `consolidate(..., enable_graph=True)` call). Satisfies "no pair asks
+   twice" within a run. Does NOT persist across separate CLI invocations
+   (no third SQLite table added for it -- the report's schema is explicitly
+   two tables; a persistent cross-run cache would be a third). Each ambiguous
+   pair is bounded to at most one LLM call per run regardless of run count,
+   which is the cost property that matters; documented as a scope limit, not
+   silently glossed over.
+5. **One function, two call sites**: `memsub.graph.graph_store()` is the
+   single write-path implementation (rule-based extraction + dedup funnel +
+   upsert), reused unchanged by (a) the `memsub graph backfill` CLI command
+   and (b) an opt-in `enable_graph=False` parameter on
+   `memsub.consolidate.consolidate()`. Idempotent via a `"graphed"` event per
+   episode, exactly mirroring `memsub.sleep.sleep_store`'s `"slept"` event
+   pattern -- reuses an established idiom instead of inventing a new one.
+6. **Traversal**: 1-hop default = query's rule-based entities -> matching
+   `entities` rows (exact id match, then difflib fuzzy, no LLM) -> co-mentioned
+   episodes via `entity_links`. 2-hop (explicit `hops=2`) extends one more
+   entity-episode pair: those episodes' other entities -> their episodes. SQL
+   joins carry no relevance score, so the graph list is ordered by episode
+   recency (ts desc) before being handed to `rrf_fuse` as one more ranked
+   list, same shape as every other signal in `HybridRetriever.rank`.
+7. **Backfill test never touches the live store**: copies
+   `~/.memsub/memory.db` to a temp path first (`shutil.copy2`), runs backfill
+   against the copy only.
+8. **Eval naming**: today's runs get their own dated result files
+   (`results/graph-layer-eval-2026-07-18.jsonl`,
+   `results/locomo-jscore-2026-07-18.jsonl`) rather than appending into
+   yesterday's files, so each dated doc's raw records stay self-contained.
+
+### Success criteria (Karpathy rule 4, stated before coding)
+
+- Full test suite green, starting count 309, ending count >= 309 + new tests
+  added this session; zero existing tests broken or modified.
+- New tests (step 5) cover: additive migration on a store built before the
+  graph tables existed; extraction determinism (same input -> same entity
+  set); dedup funnel's three paths (clean exact match makes zero LLM calls,
+  clean miss with no near neighbor makes zero LLM calls, a stubbed-ambiguous
+  pair makes exactly one LLM call and is cached on a repeat); 1-hop vs 2-hop
+  traversal boundedness (2-hop reaches a strictly larger or equal episode set
+  than 1-hop, never open-ended); RRF fold actually changes ranking when the
+  graph signal disagrees with base rank; and a regression test asserting
+  `rank()`/`search()` output is byte-identical whether or not
+  `rank_graph`/`graph_store` have ever been called against the same store.
+- Backfill executed once against a temp copy of the real
+  `~/.memsub/memory.db`, entity count / link count / wall time recorded.
+- Answer-quality eval (step 6a): 3 conditions (baseline, graph, graph+decompose)
+  on the n=74 multi-hop dev slice, qwen3:8b, budget 1000, streamed
+  incrementally to `results/graph-layer-eval-2026-07-18.jsonl`.
+- J-score eval (step 6b): best config from 6a vs shipped baseline on the n=80
+  LOCOMO holdout slice, blind Sonnet-CLI judge, local qwen3:8b answerer,
+  appended incrementally to `results/locomo-jscore-2026-07-18.jsonl`.
+- `docs/graph-layer-2026-07-18.md` written: design credit to the report,
+  backfill stats, both eval tables, an honest verdict (ship or don't) either
+  way -- no result gets spun.
+- Local commits at each checkpoint (schema+backfill, write path, query path,
+  composition, tests, eval+docs); never `git push`; `memsub/vault_serve.py`
+  untouched.
+
+---

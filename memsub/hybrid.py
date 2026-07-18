@@ -25,10 +25,11 @@ from collections import Counter
 
 import numpy as np
 
+from . import graph as _graph
 from .backends import LLMBackend
 from .embed import Embedder, HashingEmbedder
 from .lexical import BM25Index, rrf_fuse, tokenize
-from .store import Episode
+from .store import Episode, EpisodicStore
 
 DECOMPOSITION_SYSTEM = """You split a question into simpler sub-questions, but ONLY when \
 it spans more than one topic or hop (asks about two different things, or needs facts \
@@ -252,6 +253,93 @@ class HybridRetriever:
     ) -> list[tuple[Episode, float]]:
         """search()'s decomposition-aware counterpart; see rank_decomposed."""
         order = self.rank_decomposed(query, backend, max_subqueries=max_subqueries)
+        return [
+            (self.episodes[i], 1.0 / (self.rrf_k + pos + 1))
+            for pos, i in enumerate(order[:k])
+        ]
+
+    # -- opt-in: bounded graph-augmented ranking ---------------------------- #
+    def rank_graph(
+        self, query: str, store: EpisodicStore, hops: int = 1, graph_weight: float = 1.0
+    ) -> list[int]:
+        """Entity-graph-aware ranking, off by default: callers opt in by
+        calling this instead of rank(). Design: memory-sublayer-research/
+        oss-source-dive/report-2026-07-18.md section 4.
+
+        Extracts rule-based entities from `query` (memsub.sleep's zero-LLM
+        extractor), looks them up in `store`'s entities/entity_links tables
+        (memsub/graph.py, no LLM at query time), and folds the resulting
+        "episodes sharing an entity" list into the existing RRF fusion as one
+        more ranked list -- never a separate query path. Bounded: hops=1
+        (default) is one SQL join, hops=2 is exactly one more entity-episode
+        hop pair (memsub.graph.graph_episode_order), never unbounded BFS.
+
+        If the store has no graph index for this data yet (or the query has
+        no extractable entities, or none match), this degrades to a plain
+        rank() call: the base ranking is always returned as the floor.
+        """
+        base_order = self.rank(query)
+        if not self.episodes:
+            return base_order
+        graph_order = _graph.graph_episode_order(query, store, self.episodes, hops=hops)
+        if not graph_order:
+            return base_order
+        return rrf_fuse([base_order, graph_order], k=self.rrf_k, weights=[1.0, graph_weight])
+
+    def search_graph(
+        self, query: str, store: EpisodicStore, k: int = 6, hops: int = 1, graph_weight: float = 1.0
+    ) -> list[tuple[Episode, float]]:
+        """search()'s graph-aware counterpart; see rank_graph."""
+        order = self.rank_graph(query, store, hops=hops, graph_weight=graph_weight)
+        return [
+            (self.episodes[i], 1.0 / (self.rrf_k + pos + 1))
+            for pos, i in enumerate(order[:k])
+        ]
+
+    # -- opt-in: composition, decomposition + graph together ---------------- #
+    def rank_decomposed_graph(
+        self,
+        query: str,
+        backend: LLMBackend,
+        store: EpisodicStore,
+        max_subqueries: int = 2,
+        hops: int = 1,
+        graph_weight: float = 1.0,
+    ) -> list[int]:
+        """Decompose then graph-augment each sub-query (report section 4:
+        decomposition is the current best measured config, so the graph
+        signal composes with it rather than replacing it). Same one-LLM-call
+        bound as rank_decomposed; rank_graph itself makes zero further LLM
+        calls, so total cost is unchanged from rank_decomposed's.
+        """
+        base_order = self.rank_graph(query, store, hops=hops, graph_weight=graph_weight)
+        if not self.episodes:
+            return base_order
+        response = backend.complete(
+            DECOMPOSITION_SYSTEM, [{"role": "user", "content": query}]
+        )
+        sub_queries = _parse_subqueries(response, max_subqueries)
+        if not sub_queries:
+            return base_order
+        rankings = [base_order] + [
+            self.rank_graph(sq, store, hops=hops, graph_weight=graph_weight) for sq in sub_queries
+        ]
+        return rrf_fuse(rankings, k=self.rrf_k)
+
+    def search_decomposed_graph(
+        self,
+        query: str,
+        backend: LLMBackend,
+        store: EpisodicStore,
+        k: int = 6,
+        max_subqueries: int = 2,
+        hops: int = 1,
+        graph_weight: float = 1.0,
+    ) -> list[tuple[Episode, float]]:
+        """search()'s decompose+graph counterpart; see rank_decomposed_graph."""
+        order = self.rank_decomposed_graph(
+            query, backend, store, max_subqueries=max_subqueries, hops=hops, graph_weight=graph_weight
+        )
         return [
             (self.episodes[i], 1.0 / (self.rrf_k + pos + 1))
             for pos, i in enumerate(order[:k])

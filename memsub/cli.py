@@ -160,7 +160,7 @@ def _cmd_consolidate(args: argparse.Namespace) -> int:
             return 1
         actions = consolidate(
             store, backend=backend, config=cfg, run_id=args.run_id,
-            namespace=args.namespace, dry_run=True,
+            namespace=args.namespace, dry_run=True, enable_graph=args.graph,
         )
         for a in actions:
             extra = f" by={a.detail['by']}" if "by" in a.detail else ""
@@ -177,7 +177,7 @@ def _cmd_consolidate(args: argparse.Namespace) -> int:
         return 0
     actions = consolidate(
         store, backend=backend, config=cfg, run_id=args.run_id,
-        namespace=args.namespace, dry_run=args.dry_run,
+        namespace=args.namespace, dry_run=args.dry_run, enable_graph=args.graph,
     )
     for a in actions:
         extra = f" by={a.detail['by']}" if "by" in a.detail else ""
@@ -208,6 +208,34 @@ def _cmd_sleep(args: argparse.Namespace) -> int:
         print(f"  [inference conf={conf:.2f}] {ep.content}")
     label = "proposed (dry run)" if args.dry_run else "written"
     print(f"{len(result.all_memories)} memor{'y' if len(result.all_memories) == 1 else 'ies'} {label}")
+    store.close()
+    return 0
+
+
+def _cmd_graph_backfill(args: argparse.Namespace) -> int:
+    import time as _time
+
+    from .graph import graph_store
+
+    db = Path(args.db)
+    if not db.exists():
+        print(f"no store at {db}")
+        return 1
+    backend = None if args.backend == "none" else build_backend(prefer=args.backend, model=args.model)
+    store = EpisodicStore(db)
+    t0 = _time.time()
+    result = graph_store(
+        store, backend=backend, run_id=args.run_id, namespace=args.namespace, dry_run=args.dry_run,
+    )
+    elapsed = _time.time() - t0
+    label = "proposed (dry run)" if args.dry_run else "written"
+    print(
+        f"{result.episodes_processed} episode(s) processed, "
+        f"{result.entities_upserted} entit{'y' if result.entities_upserted == 1 else 'ies'} "
+        f"{label}, {result.links_created} link(s) {label}, "
+        f"{result.llm_calls} LLM call(s) ({elapsed:.2f}s)"
+    )
+    print(f"index totals: {store.entity_count()} entities, {store.entity_link_count()} links")
     store.close()
     return 0
 
@@ -531,6 +559,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_con.add_argument(
         "--vault", default=None, help="vault folder for --stage proposals"
     )
+    p_con.add_argument(
+        "--graph", action="store_true",
+        help="also populate the entity graph index (memsub graph backfill's "
+        "incremental write-path hook); off by default",
+    )
     p_con.set_defaults(func=_cmd_consolidate)
 
     p_sleep = sub.add_parser(
@@ -543,6 +576,27 @@ def build_parser() -> argparse.ArgumentParser:
     p_sleep.add_argument("--run-id", default=None, help="restrict to one run id")
     p_sleep.add_argument("--dry-run", action="store_true", help="print what would be written, write nothing")
     p_sleep.set_defaults(func=_cmd_sleep)
+
+    p_graph = sub.add_parser("graph", help="bipartite entity-episode graph index")
+    graph_sub = p_graph.add_subparsers(dest="graph_command", required=True)
+    g_backfill = graph_sub.add_parser(
+        "backfill",
+        help="rule-based entity extraction over all active episodes, populating "
+        "the entities/entity_links index (idempotent: already-indexed episodes "
+        "are skipped on rerun)",
+    )
+    g_backfill.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    g_backfill.add_argument(
+        "--backend", default="none", choices=["none", "auto", "api", "ollama", "cli", "mock"],
+        help="LLM backend for ambiguous entity-dedup pairs only (default: none, "
+        "rule-based extraction with zero LLM calls; near-misses become new "
+        "entities rather than being guessed at)",
+    )
+    g_backfill.add_argument("--model", default=None, help="model override for the backend")
+    g_backfill.add_argument("--namespace", default=None, help="restrict to one namespace (default: all)")
+    g_backfill.add_argument("--run-id", default=None, help="restrict to one run id")
+    g_backfill.add_argument("--dry-run", action="store_true", help="report what would be indexed, write nothing")
+    g_backfill.set_defaults(func=_cmd_graph_backfill)
 
     p_ns = sub.add_parser("ns", help="manage namespaces and per-agent permissions")
     p_ns.add_argument("--db", default=str(default_db_path()), help="SQLite store path")

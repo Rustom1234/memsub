@@ -46,6 +46,21 @@ CREATE TABLE IF NOT EXISTS extraction_checkpoints (
     ts REAL NOT NULL,
     memory_count INTEGER NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS entities (
+    id TEXT PRIMARY KEY,         -- namespace-scoped normalized entity text,
+                                  -- see memsub/graph.py's entity_id()
+    namespace TEXT NOT NULL,
+    entity_type TEXT NOT NULL,   -- PERSON | TOPIC (memsub/graph.py, rule-based)
+    first_seen REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_entities_namespace ON entities(namespace);
+CREATE TABLE IF NOT EXISTS entity_links (
+    entity_id TEXT NOT NULL REFERENCES entities(id),
+    episode_id TEXT NOT NULL REFERENCES episodes(id),
+    ts REAL NOT NULL,
+    PRIMARY KEY (entity_id, episode_id)
+);
+CREATE INDEX IF NOT EXISTS idx_entity_links_episode ON entity_links(episode_id);
 """
 
 # Events that end an episode's active life. The episode row is never deleted;
@@ -104,6 +119,20 @@ class Episode:
             ts=ts,
             id=ep_id,
         )
+
+
+@dataclass(frozen=True)
+class Entity:
+    """One row of the bipartite entity-episode graph index (memsub/graph.py).
+
+    id: namespace-scoped normalized entity text, see memsub.graph.entity_id.
+    entity_type: "PERSON" | "TOPIC", rule-based (memsub.graph.guess_entity_type).
+    """
+
+    id: str
+    namespace: str
+    entity_type: str
+    first_seen: float
 
 
 class EpisodicStore:
@@ -353,6 +382,85 @@ class EpisodicStore:
             self._conn.rollback()
             raise
         return written
+
+    # ------------------------------------------------------------------ #
+    # Graph layer: bipartite entity-episode index (memsub/graph.py owns the
+    # extraction/dedup logic; this class only owns the SQL, same split as
+    # every other module here).
+    # ------------------------------------------------------------------ #
+    def upsert_entity(self, entity_id: str, namespace: str, entity_type: str, ts: float) -> bool:
+        """Insert entity_id if new. Returns True iff a new row was created
+        (first_seen is never overwritten on a repeat call, same id)."""
+        cur = self._conn.execute(
+            "INSERT OR IGNORE INTO entities (id, namespace, entity_type, first_seen)"
+            " VALUES (?, ?, ?, ?)",
+            (entity_id, namespace, entity_type, ts),
+        )
+        self._conn.commit()
+        return cur.rowcount > 0
+
+    def get_entity(self, entity_id: str) -> Entity | None:
+        row = self._conn.execute(
+            "SELECT id, namespace, entity_type, first_seen FROM entities WHERE id = ?",
+            (entity_id,),
+        ).fetchone()
+        return Entity(*row) if row else None
+
+    def entities_in_namespace(self, namespace: str) -> list[Entity]:
+        rows = self._conn.execute(
+            "SELECT id, namespace, entity_type, first_seen FROM entities WHERE namespace = ?",
+            (namespace,),
+        ).fetchall()
+        return [Entity(*r) for r in rows]
+
+    def link_entity(self, entity_id: str, episode_id: str, ts: float) -> bool:
+        """Insert an entity<->episode link if new. Returns True iff created."""
+        cur = self._conn.execute(
+            "INSERT OR IGNORE INTO entity_links (entity_id, episode_id, ts) VALUES (?, ?, ?)",
+            (entity_id, episode_id, ts),
+        )
+        self._conn.commit()
+        return cur.rowcount > 0
+
+    def entities_for_episode(self, episode_id: str) -> list[Entity]:
+        rows = self._conn.execute(
+            "SELECT e.id, e.namespace, e.entity_type, e.first_seen FROM entities e"
+            " JOIN entity_links l ON l.entity_id = e.id WHERE l.episode_id = ?",
+            (episode_id,),
+        ).fetchall()
+        return [Entity(*r) for r in rows]
+
+    def episode_ids_for_entities(
+        self, entity_ids: "set[str] | list[str]", exclude_episode_id: str | None = None
+    ) -> list[str]:
+        """Episode ids linked to any of entity_ids (one SQL join, one hop)."""
+        entity_ids = list(entity_ids)
+        if not entity_ids:
+            return []
+        placeholders = ", ".join("?" * len(entity_ids))
+        query = f"SELECT DISTINCT episode_id FROM entity_links WHERE entity_id IN ({placeholders})"
+        params: list[Any] = list(entity_ids)
+        if exclude_episode_id is not None:
+            query += " AND episode_id != ?"
+            params.append(exclude_episode_id)
+        rows = self._conn.execute(query, params).fetchall()
+        return [r[0] for r in rows]
+
+    def entity_count(self, namespace: str | None = None) -> int:
+        if namespace is None:
+            return self._conn.execute("SELECT COUNT(*) FROM entities").fetchone()[0]
+        return self._conn.execute(
+            "SELECT COUNT(*) FROM entities WHERE namespace = ?", (namespace,)
+        ).fetchone()[0]
+
+    def entity_link_count(self, namespace: str | None = None) -> int:
+        if namespace is None:
+            return self._conn.execute("SELECT COUNT(*) FROM entity_links").fetchone()[0]
+        return self._conn.execute(
+            "SELECT COUNT(*) FROM entity_links l JOIN entities e ON e.id = l.entity_id"
+            " WHERE e.namespace = ?",
+            (namespace,),
+        ).fetchone()[0]
 
     def __iter__(self) -> Iterator[Episode]:
         return iter(self.all())

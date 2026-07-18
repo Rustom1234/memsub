@@ -55,7 +55,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from . import provenance
+from . import graph, provenance
 from .backends import LLMBackend
 from .embed import Embedder, HashingEmbedder
 from .sleep import _extract_entities
@@ -290,11 +290,19 @@ def consolidate(
     namespace: str | None = None,
     now: float | None = None,
     dry_run: bool = False,
+    enable_graph: bool = False,
 ) -> list[Action]:
     """Run the full consolidation pass. Returns the actions taken (or proposed).
 
     Consolidation never crosses namespace boundaries when namespace is given;
     with namespace=None it treats each namespace separately.
+
+    enable_graph: opt-in, off by default (byte-identical to the pre-graph-layer
+    behavior when omitted). When True, runs memsub.graph.graph_store after the
+    phases below to upsert entities/entity_links for any not-yet-graph-indexed
+    active episode. Same backend-optional contract as fusion/contradiction:
+    rule-based extraction always runs; the LLM is only spent on genuinely
+    ambiguous entity-dedup pairs, and only if a backend is given.
     """
     cfg = config or ConsolidationConfig()
     emb = embedder or HashingEmbedder()
@@ -308,6 +316,7 @@ def consolidate(
                 consolidate(
                     store, backend=backend, config=cfg, embedder=emb,
                     run_id=run_id, namespace=ns, now=now, dry_run=dry_run,
+                    enable_graph=enable_graph,
                 )
             )
         return actions
@@ -486,4 +495,14 @@ def consolidate(
                 # plus a "fused_into" event on each source, not a status change
                 # on an existing episode_id like supersede/forget/quarantine below.
             store.log_event(act.episode_id, _ACTION_EVENT[act.action], {"reason": act.reason, **act.detail})
+
+    # -- phase 5: graph (opt-in, off by default) ----------------------------- #
+    # Runs after supersede/forget/quarantine events are applied above so a
+    # dry_run pass reports Actions only, exactly like phases 0-4; graph_store
+    # itself is namespace-aware (WORKLOG.md assumption 5/6), so this single
+    # call, scoped to `namespace`, is enough even though consolidate()'s own
+    # namespace=None recursion already fans this call out per namespace.
+    if enable_graph:
+        graph.graph_store(store, backend=backend, run_id=run_id, namespace=namespace, dry_run=dry_run)
+
     return actions
