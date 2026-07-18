@@ -794,3 +794,65 @@ counter and context reconstruction. No new LLM answer/judge calls were made
 for Task 1 -- purely offline analysis of existing JSONL plus deterministic
 local retrieval (one local qwen3:8b decompose call per reconstructed
 context, not an answer or judge call).
+
+### Task 2: best-effort prompt, graph_decompose v2 re-run
+
+Added `ANSWER_SYSTEM_BEST_EFFORT` to `scripts/locomo_jscore_frontier_2026-07-18.py`
+(opt-in via `--prompt best_effort`, local to this script; `metrics_local.
+ANSWER_SYSTEM` untouched, local-answerer numbers stand as history).
+Re-ran `graph_decompose`, Sonnet, n=80, same blind judge, streamed to a new
+file (never mixed with v1): `results/locomo-jscore-frontier-v2-2026-07-18.jsonl`.
+Wall time 3183s (~53 min), zero retries, zero malformed/error records.
+
+**Result: 52.5% overall (was 43.75%), +8.75pp.** Per category: multi-hop
+45.0% (unchanged), temporal 30.0% (+5.0pp), open-domain 50.0% (+15.0pp),
+single-hop 85.0% (+15.0pp). Refusal rate on graph_decompose dropped from
+35.0% to 5.0%. **memsub + Sonnet v2 now beats memsub + qwen3:8b on the
+identical condition and slice (52.5% vs 51.25%)** -- round 1's
+counter-intuitive local-beats-frontier result is reversed by the prompt fix
+alone, no retrieval change. Full suite re-checked green (328) before and
+after the code change.
+
+### Task 3: temporal session-date surfacing flag, n=20 with vs. without
+
+Added `--with-dates` to the same script (opt-in, eval-path only, no
+`memsub` library default changed): `_context_for` now prefixes each packed
+episode with `[session date]` from `ep.provenance['session_date']` when
+present, via a new `_format_episode` helper. Confirmed working with a
+1-question check before the full run (context showed `[11 November 2022]
+Joanna: ...` prefixes as expected). Checked `memsub.bench.LocomoQA` for a
+question-asked-date field per the task's "include the question date if the
+protocol provides one" -- none exists (only conversation_id/question/
+answer/evidence/category), so that part is not applicable, noted not
+implemented.
+
+Re-ran temporal category only (n=20, `--category 2`), graph_decompose,
+Sonnet, Task 2's best-effort prompt, same blind judge, with `--with-dates`:
+`results/locomo-jscore-frontier-v2-temporal-dated-2026-07-18.jsonl`. Wall
+time 779s (~13 min), zero retries/errors.
+
+**Result: 45.0% accuracy with the date flag, vs. 30.0% for the same n=20
+temporal slice without it (from Task 2's v2 base run) -- a +15.0pp gain
+from surfacing session dates alone.** This is a direct, measured
+quantitative confirmation of Task 1's eye-read hypothesis (6/10 temporal
+failures were surfacing gaps), not just a directional one. The flag was
+only exercised on the temporal category in isolation this round (per task
+scope) -- not a library default, not re-run across the other 3 categories.
+Full suite re-checked green (328) before and after.
+
+### Round 2 headline, stated plainly
+
+memsub + Sonnet went from 43.75% (round 1, conservative prompt) to 52.5%
+(round 2, best-effort prompt, n=80) with zero retrieval changes, closing
+about half the gap to mem0's reproduced tier (-17.95pp -> -9.2pp). Adding
+temporal date surfacing (measured on temporal alone, n=20) closes a further
+15.0pp on that specific category. **Still short of mem0 (~61.7%) and Zep
+(75.14%) overall.** Single-hop now clearly beats mem0's reproduced number
+(+17.9pp, was +2.9pp); multi-hop is completely unchanged by both fixes
+(45.0% in both v1 and v2, still -6.2pp behind mem0) -- the one category
+neither intervention touched. Full tables and honest verdict:
+`docs/locomo-frontier-v2-2026-07-18.md`.
+
+Commits (all local, never pushed): Task 1 WORKLOG entry (914f8f4); Task 2
+script + v2 results (70fde43); Task 3 temporal-dated results (d8d147d);
+this final WORKLOG entry + report doc (next commit).
