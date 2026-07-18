@@ -610,3 +610,41 @@ judge, two Sonnet CLI calls plus one local decompose call) -- slower than
 the local-answerer runs (qwen3:8b answer calls were near-instant vs.
 Sonnet's CLI round-trip), budgeted accordingly with a 3h per-condition wall
 cap and exponential-backoff retry on CLI failure.
+
+### Full run result (all 3 conditions complete, 2026-07-18)
+
+All three conditions run to completion, each committed independently before
+the next started, zero retries needed (no CLI rate-limit hits). Full suite
+re-checked green (328 passed, unchanged) after all three runs.
+
+| condition | n_ok | accuracy | wall time |
+|---|---|---|---|
+| graph_decompose | 80/80 | 43.75% | 3108s (~52 min) |
+| naive_topk | 80/80 | 27.50% | 2858s (~48 min) |
+| no_memory | 77/80 (3 malformed) | 3.90% | 2975s (~50 min) |
+
+**Headline, stated plainly**: memsub + Sonnet does not beat mem0's
+2025-paper reproduced tier (~61.7%) or Zep's revised number (75.14%).
+**The more informative result**: memsub + Sonnet (graph_decompose, 43.75%)
+scored *lower* than memsub + qwen3:8b on the identical condition and slice
+measured the day before (51.25%, docs/graph-layer-2026-07-18.md) -- a 7.5pp
+drop in the direction opposite what swapping in a frontier answerer was
+expected to do. Category-level, the drop concentrates in temporal (-10pp)
+and single-hop (-10pp), not multi-hop (-5pp) -- categories where a
+confident guess is cheap to get right by chance, consistent with a
+working hypothesis (stated as a hypothesis, not proven) that Sonnet follows
+ANSWER_SYSTEM's "say you don't know" instruction more faithfully than
+qwen3:8b does, and an LLM judge gives no credit for a calibrated refusal
+over a lucky guess. memsub's own relative contribution (graph_decompose vs.
+naive_topk, answerer held fixed) held up and even grew slightly with the
+frontier answerer (+16.25pp vs +13.75pp locally) -- the answerer-side effect
+hits all three conditions, not memsub's retrieval specifically. Per-category
+against mem0's reproduced number (the closest apples-to-apples row):
+memsub+Sonnet edges mem0 on single-hop (70.0% vs 67.1%) and is within
+single-run noise on multi-hop (45.0% vs 51.2%); temporal (-30.5pp) and
+open-domain (-37.9pp) carry the real gap. Full analysis, tables, and the
+honest deviations list: docs/locomo-jscore-frontier-2026-07-18.md.
+
+Commits (all local, never pushed): script + sanity-check (d47ab4c);
+graph_decompose results (421492f); naive_topk results (feeebe9); no_memory
+results (1d671a7); this WORKLOG entry + final report doc (next commit).
