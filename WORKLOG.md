@@ -519,4 +519,47 @@ memory-sublayer-research/oss-source-dive/report-2026-07-18.md section 4.
   composition, tests, eval+docs); never `git push`; `memsub/vault_serve.py`
   untouched.
 
+### Answer-quality eval result (2026-07-18, honest)
+
+`scripts/graph_layer_eval.py`, n=74 multi-hop dev slice, qwen3:8b, budget
+1000: baseline mean F1 0.1964, graph 0.1828 (below baseline), graph_decompose
+0.1901 (still below baseline's F1, but the best of the two graph configs,
+and the only one to beat baseline's exact-substring rate: 0.0811 vs 0.0676).
+Neither graph condition beats the shipped baseline on mean token-F1 on this
+slice. graph_decompose carried forward to the J-score holdout run as "the
+best new config" per the task's step 6 instruction, not because it won --
+because it is the best of the two graph variants measured. Full table and
+verdict: docs/graph-layer-2026-07-18.md.
+
+### J-score holdout result (2026-07-18)
+
+`scripts/locomo_jscore_graph_2026-07-18.py`, n=80 LOCOMO holdout slice
+(conversations 4-10, seed 123), blind Sonnet-CLI judge, qwen3:8b local
+answerer. One run, wall 4006.5s (~67 min), not truncated. Result:
+memsub_hybrid_v2 (shipped baseline) 48.10% accuracy (n_ok=79/80, one
+malformed judge response excluded), graph_decompose 51.25% accuracy
+(n_ok=80/80) -- graph_decompose wins by +3.15pp absolute (+6.5% relative),
+multi-hop row specifically 47.37% -> 50.00%.
+
+This flips sign from the answer-quality (token-F1) eval above, where
+graph_decompose was 3.2% below baseline. Both numbers are real, from
+executed runs, streamed incrementally; the disagreement is reported as a
+metric-disagreement finding in docs/graph-layer-2026-07-18.md, not resolved
+by picking the flattering one. Recommendation: ship opt-in (already the
+case -- enable_graph/rank_graph/etc. are off by default), do not flip the
+shipped rank()/search() default on this evidence; the two small single runs
+(n=74, n=80) with a sign disagreement between metrics argue for more
+measurement before a default-path change, not for one now.
+
+Full suite after this session's work: 328 passed (was 309 at session start,
++19 new tests, zero existing tests touched or broken).
+
+Commits (all local, never pushed): schema+backfill+write-path+query-path+
+composition (memsub/store.py, memsub/graph.py, memsub/hybrid.py,
+memsub/consolidate.py, memsub/cli.py); tests (tests/test_graph.py,
+tests/test_graph_cli.py); answer-quality eval (scripts/graph_layer_eval.py,
+results/graph-layer-eval-2026-07-18.jsonl); this final commit (J-score
+script+results, docs/graph-layer-2026-07-18.md, this WORKLOG entry).
+memsub/vault_serve.py untouched throughout.
+
 ---
