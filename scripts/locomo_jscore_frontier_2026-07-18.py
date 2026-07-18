@@ -51,6 +51,29 @@ Usage:
   .venv/bin/python scripts/locomo_jscore_frontier_2026-07-18.py --condition graph_decompose [--limit N]
   .venv/bin/python scripts/locomo_jscore_frontier_2026-07-18.py --condition naive_topk
   .venv/bin/python scripts/locomo_jscore_frontier_2026-07-18.py --condition no_memory
+
+  --prompt {original,best_effort}  (default: original)
+      original    : metrics_local.ANSWER_SYSTEM, conservative "say you don't
+                    know" instruction, writes to RESULTS_PATH (v1 file, the
+                    numbers already reported in docs/locomo-jscore-frontier-
+                    2026-07-18.md).
+      best_effort : ANSWER_SYSTEM_BEST_EFFORT (v2, 2026-07-18), instructs a
+                    best-effort guess instead of refusal, per the LOCOMO/mem0
+                    protocol norm. Writes to RESULTS_PATH_V2
+                    (results/locomo-jscore-frontier-v2-2026-07-18.jsonl),
+                    never mixes with v1 data.
+
+  --with-dates          Task 3 (2026-07-18): opt-in, prefixes each packed
+                         episode with its LOCOMO session date
+                         (provenance['session_date']), eval-path only, no
+                         memsub library default change. With --prompt
+                         best_effort, writes to RESULTS_PATH_V2_DATED
+                         (results/locomo-jscore-frontier-v2-temporal-dated-
+                         2026-07-18.jsonl) instead of RESULTS_PATH_V2.
+  --category N           Filter the n=80 slice to one LOCOMO category
+                         (1=multi-hop, 2=temporal, 3=open-domain,
+                         4=single-hop) before answering, e.g. --category 2
+                         for the temporal-only n=20 re-run.
 """
 
 from __future__ import annotations
@@ -76,6 +99,22 @@ from memsub.store import EpisodicStore  # noqa: E402
 RESULTS_PATH = ROOT / "results" / "locomo-jscore-frontier-2026-07-18.jsonl"
 CONDITIONS = ["graph_decompose", "naive_topk", "no_memory"]  # priority order
 MAX_WALL_SECONDS = 3 * 3600  # generous, per-invocation (one condition per run)
+
+# v2 (2026-07-18): Task 1's refusal-count diagnosis (WORKLOG.md) found the
+# conservative "say you don't know" instruction in metrics_local.ANSWER_SYSTEM
+# only partially explains Sonnet's accuracy drop vs. the local answerer --
+# LOCOMO/mem0 protocol norm is best-effort answering, not calibrated refusal.
+# metrics_local.ANSWER_SYSTEM is left UNCHANGED (used by every local-answerer
+# run in this repo; those numbers stand as history). This is a separate
+# constant, opt-in via --prompt best_effort, used only by this script.
+ANSWER_SYSTEM_BEST_EFFORT = (
+    "Answer the question in one short sentence using the information in "
+    "CONTEXT. Be concise and direct. If CONTEXT does not clearly state the "
+    "answer, give your best guess based on what CONTEXT implies rather than "
+    "refusing -- but never invent a fact that has no support in CONTEXT."
+)
+RESULTS_PATH_V2 = ROOT / "results" / "locomo-jscore-frontier-v2-2026-07-18.jsonl"
+RESULTS_PATH_V2_DATED = ROOT / "results" / "locomo-jscore-frontier-v2-temporal-dated-2026-07-18.jsonl"
 
 
 class RetryingBackend:
@@ -112,11 +151,11 @@ class RetryingBackend:
         raise RuntimeError(f"{self._label} failed after {self._max_retries} attempts: {last_exc}") from last_exc
 
 
-def _load_existing_ok_keys() -> set[tuple]:
-    if not RESULTS_PATH.exists():
+def _load_existing_ok_keys(results_path: Path) -> set[tuple]:
+    if not results_path.exists():
         return set()
     keys = set()
-    for line in RESULTS_PATH.read_text(encoding="utf-8").splitlines():
+    for line in results_path.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
         rec = json.loads(line)
@@ -125,11 +164,11 @@ def _load_existing_ok_keys() -> set[tuple]:
     return keys
 
 
-def _all_question_records(condition: str) -> list[dict]:
-    if not RESULTS_PATH.exists():
+def _all_question_records(results_path: Path, condition: str) -> list[dict]:
+    if not results_path.exists():
         return []
     out = []
-    for line in RESULTS_PATH.read_text(encoding="utf-8").splitlines():
+    for line in results_path.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
         rec = json.loads(line)
@@ -161,7 +200,22 @@ def _build_system(condition: str, conv):
     return system, store
 
 
-def _context_for(condition: str, system, store, question: str, decompose_backend) -> str:
+def _format_episode(ep, with_dates: bool) -> str:
+    """Task 3 (2026-07-18): eval-path-only opt-in formatter. Prefixes an
+    episode's content with its LOCOMO session date (memsub.bench.load_locomo
+    stores this in provenance['session_date'], deliberately excluded from
+    packed content by default -- see bench.py's load_locomo docstring: 'the
+    packed content does not include it, the budget is not charged for
+    metadata'). No memsub library default changes -- this is local to this
+    script's --with-dates flag, used only by the temporal-category re-run."""
+    if with_dates:
+        session_date = (ep.provenance or {}).get("session_date", "")
+        if session_date:
+            return f"[{session_date}] {ep.content}"
+    return ep.content
+
+
+def _context_for(condition: str, system, store, question: str, decompose_backend, with_dates: bool = False) -> str:
     if system is None:
         return ""
     if condition == "naive_topk":
@@ -169,10 +223,17 @@ def _context_for(condition: str, system, store, question: str, decompose_backend
     else:  # graph_decompose
         order = system.rank_decomposed_graph(question, decompose_backend, store, max_subqueries=2)
         packed = pack_greedy([system.episodes[i] for i in order], BUDGET)
-    return "\n".join(ep.content for ep in packed)
+    return "\n".join(_format_episode(ep, with_dates) for ep in packed)
 
 
-def run_condition(condition: str, limit: int | None) -> int:
+def run_condition(
+    condition: str,
+    limit: int | None,
+    answer_system: str = ANSWER_SYSTEM,
+    results_path: Path = RESULTS_PATH,
+    with_dates: bool = False,
+    category_filter: int | None = None,
+) -> int:
     assert condition in CONDITIONS, condition
 
     # Retrieval/decomposition stays local (qwen3:8b) -- only the answerer
@@ -187,15 +248,17 @@ def run_condition(condition: str, limit: int | None) -> int:
 
     convs = holdout_convs()
     picked = sample(convs)
+    if category_filter is not None:
+        picked = [(ci, qi) for ci, qi in picked if convs[ci].qa[qi].category == category_filter]
     if limit is not None:
         picked = picked[:limit]
 
-    existing = _load_existing_ok_keys()
+    existing = _load_existing_ok_keys(results_path)
     t0 = time.time()
     truncated = False
 
-    RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with RESULTS_PATH.open("a", encoding="utf-8") as fh:
+    results_path.parent.mkdir(parents=True, exist_ok=True)
+    with results_path.open("a", encoding="utf-8") as fh:
         systems: dict[int, tuple] = {}
         for ci, qi in picked:
             conv = convs[ci]
@@ -211,12 +274,12 @@ def run_condition(condition: str, limit: int | None) -> int:
                 systems[ci] = _build_system(condition, conv)
             system, store = systems[ci]
 
-            ctx = _context_for(condition, system, store, q.question, decompose_backend)
+            ctx = _context_for(condition, system, store, q.question, decompose_backend, with_dates)
             prompt = f"CONTEXT:\n{ctx}\n\nQUESTION: {q.question}"
 
             t1 = time.perf_counter()
             try:
-                answer = answer_backend.complete(ANSWER_SYSTEM, [{"role": "user", "content": prompt}])
+                answer = answer_backend.complete(answer_system, [{"role": "user", "content": prompt}])
             except Exception as exc:  # noqa: BLE001 - never crash the run on one bad question
                 record = {
                     "record_type": "question",
@@ -271,7 +334,7 @@ def run_condition(condition: str, limit: int | None) -> int:
         if truncated:
             print("WALL-CLOCK CAP HIT: remaining questions skipped.")
 
-        rows = [r for r in _all_question_records(condition) if r["judge_status"] == "ok"]
+        rows = [r for r in _all_question_records(results_path, condition) if r["judge_status"] == "ok"]
         n = len(rows)
         by_cat = {}
         for cat, name in CATS.items():
@@ -285,7 +348,7 @@ def run_condition(condition: str, limit: int | None) -> int:
             "record_type": "summary",
             "condition": condition,
             "n_ok": n,
-            "n_total_records": len(_all_question_records(condition)),
+            "n_total_records": len(_all_question_records(results_path, condition)),
             "accuracy": round(mean(r["correct"] for r in rows), 4) if rows else None,
             "by_category": by_cat,
             "mean_answer_latency_s": round(mean(r["answer_latency_s"] for r in rows), 3) if rows else None,
@@ -296,7 +359,7 @@ def run_condition(condition: str, limit: int | None) -> int:
         print(f"== {condition} done: n_ok={n} accuracy={summary['accuracy']} "
               f"({time.time() - t0:.0f}s elapsed) ==", flush=True)
 
-    print(f"\nwrote {RESULTS_PATH}, wall {time.time() - t0:.1f}s, truncated={truncated}")
+    print(f"\nwrote {results_path}, wall {time.time() - t0:.1f}s, truncated={truncated}")
     return 1 if truncated else 0
 
 
@@ -309,7 +372,25 @@ def main() -> int:
     limit = None
     if "--limit" in args:
         limit = int(args[args.index("--limit") + 1])
-    return run_condition(condition, limit)
+    prompt_variant = "original"
+    if "--prompt" in args:
+        prompt_variant = args[args.index("--prompt") + 1]
+    with_dates = "--with-dates" in args  # Task 3: eval-path-only opt-in, no library default change
+    category_filter = None
+    if "--category" in args:
+        category_filter = int(args[args.index("--category") + 1])
+    if prompt_variant == "best_effort":
+        answer_system = ANSWER_SYSTEM_BEST_EFFORT
+        results_path = RESULTS_PATH_V2_DATED if with_dates else RESULTS_PATH_V2
+    elif prompt_variant == "original":
+        answer_system, results_path = ANSWER_SYSTEM, RESULTS_PATH
+    else:
+        print(f"unknown --prompt {prompt_variant!r}, expected 'original' or 'best_effort'")
+        return 1
+    return run_condition(
+        condition, limit, answer_system=answer_system, results_path=results_path,
+        with_dates=with_dates, category_filter=category_filter,
+    )
 
 
 if __name__ == "__main__":
