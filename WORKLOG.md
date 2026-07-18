@@ -563,3 +563,50 @@ script+results, docs/graph-layer-2026-07-18.md, this WORKLOG entry).
 memsub/vault_serve.py untouched throughout.
 
 ---
+
+## Frontier-answerer J-score run (2026-07-18)
+
+Ordered by Rustom: "i need to beat current top locomo score also" /
+"yes u can use a better model if need be (dont use api, use from my
+subscription)". Puts memsub on the same measurement axis as the competitor
+numbers in docs/improvement-plan-2026-07-17.md Part A by swapping the
+ANSWERER from local qwen3:8b to Sonnet via the `claude` CLI (subscription,
+no API key). Retrieval/decomposition stays local (qwen3:8b) so only the
+answerer variable changes. Script: scripts/locomo_jscore_frontier_2026-07-18.py,
+new file, reuses scripts/locomo_jscore_holdout.py's slice/sampling and
+scripts/locomo_jscore_graph_2026-07-18.py's graph_decompose system-building
+unchanged. Same n=80 LOCOMO holdout slice (conversations 4-10, seed 123) as
+both prior J-score runs. Three conditions, priority order, each run to
+completion and committed before the next: graph_decompose (memsub's best
+config), naive_topk (control), no_memory (floor). Results:
+results/locomo-jscore-frontier-2026-07-18.jsonl, streamed, resumable.
+
+### Sanity check: first 3 answers (graph_decompose), by eye before the full run
+
+1. Q: "What kind of beer does McGee's bar serve?" GOLD: "Stout, lager".
+   ANSWER: "McGee's bar serves stout, lager, and light beers." Judge:
+   correct=True. Reasonable -- gold facts are a subset of the answer, judge
+   correctly credits the paraphrase/superset.
+2. Q: "How many Prius has Evan owned?" GOLD: "two". ANSWER: "Evan has owned
+   one Prius, the new one that broke down after the mountain drive." Judge:
+   correct=False. Reasonable -- Sonnet is answering fluently and on-topic
+   from the retrieved context, but the retrieved context didn't surface
+   enough to get the count right; judge correctly marks it wrong rather than
+   crediting topic relevance.
+3. Q: "What places has Joanna submitted her work to?" GOLD: "film contest,
+   film festival." ANSWER: "I don't know -- the context doesn't specify
+   which places or publications Joanna submitted her work to." Judge:
+   correct=False. Reasonable -- Sonnet is correctly declining to guess when
+   the retrieved context doesn't contain the fact (ANSWER_SYSTEM's
+   instruction working as intended), judge correctly marks a non-answer
+   wrong rather than crediting the honesty.
+
+All three: answer format matches the local-answerer protocol exactly (one
+short sentence, CONTEXT-grounded), judge verdicts track gold vs. answer
+correctly in both directions (credit a superset paraphrase, penalize a wrong
+number and a non-answer). Pipeline confirmed sane; proceeding to the full
+n=80 run per condition. ~44s/question observed for graph_decompose (answer +
+judge, two Sonnet CLI calls plus one local decompose call) -- slower than
+the local-answerer runs (qwen3:8b answer calls were near-instant vs.
+Sonnet's CLI round-trip), budgeted accordingly with a 3h per-condition wall
+cap and exponential-backoff retry on CLI failure.
