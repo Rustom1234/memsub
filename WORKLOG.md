@@ -648,3 +648,149 @@ honest deviations list: docs/locomo-jscore-frontier-2026-07-18.md.
 Commits (all local, never pushed): script + sanity-check (d47ab4c);
 graph_decompose results (421492f); naive_topk results (feeebe9); no_memory
 results (1d671a7); this WORKLOG entry + final report doc (next commit).
+
+## 2026-07-18: Beat-the-score round 2 -- refusal diagnosis + best-effort prompt + temporal surfacing
+
+Continuation of "i need to beat current top locomo score also". Assumptions
+and success criteria stated before coding, per Karpathy rule 1:
+
+- **Assumption**: refusal-style answers ("I don't know" etc.) are scored
+  incorrect by the blind judge with ~0% credit, same as a wrong guess, so
+  they can only ever hurt accuracy relative to a guess with nonzero hit
+  probability -- this is checkable directly from the existing JSONL
+  (`correct` field conditioned on refusal-pattern match), no new LLM calls
+  needed.
+- **Success criteria**: (1) refusal counts per condition/category reported
+  as a table, verdict stated as "confirmed / partially confirmed / not
+  confirmed" with the quantitative split between refusal-count effect vs.
+  non-refusal answer-quality effect: (2) 10 temporal failures read by eye,
+  each labeled retrieval-miss or surfacing-gap or reasoning-gap; (3) if
+  surfacing-gap is real, a small opt-in flag change (not a library default
+  change) plus a temporal-only re-run with n=20 in both flag states; (4)
+  graph_decompose Sonnet re-run with a best-effort prompt on the full n=80
+  slice, same judge, resumable streaming to a v2 file.
+
+### Task 1: refusal-pattern count (no new runs)
+
+Regex over 13 refusal phrasings ("not mention", "don't know"/"do not know",
+"cannot/can't determine", "no information", "not specified/provided/
+stated/given/clear/available", "unable to determine/find/answer", "context
+does not contain/specify/mention/provide", "context is empty/doesn't",
+"unclear", "unknown", "i'm not sure"), case-insensitive, applied to the
+`answer` field of every `judge_status: "ok"` record in both
+`results/locomo-jscore-frontier-2026-07-18.jsonl` (Sonnet) and
+`results/locomo-jscore-2026-07-17.jsonl` + `results/locomo-jscore-2026-07-18.jsonl`
+(qwen3:8b, all conditions across both files).
+
+**Refusal rate by condition:**
+
+| condition | answerer | n | refusals | refusal rate |
+|---|---|---|---|---|
+| no_memory | Sonnet | 77 | 76 | 98.7% |
+| no_memory | qwen3:8b (07-17) | 79 | 69 | 87.3% |
+| naive_topk | Sonnet | 80 | 38 | 47.5% |
+| naive_topk | qwen3:8b (07-17) | 80 | 31 | 38.8% |
+| graph_decompose | Sonnet | 80 | 28 | 35.0% |
+| graph_decompose | qwen3:8b (07-18) | 80 | 24 | 30.0% |
+
+Direction holds in all three conditions: Sonnet refuses more often than
+qwen3:8b on identical retrieval, every time. Refusal-hypothesis direction
+**confirmed**.
+
+**Does refusal count fully explain the accuracy gap? Quantitative check on
+graph_decompose (the condition that matters for the headline number):**
+
+Across every refusal in graph_decompose for both models, `refusal_correct`
+summed to 0 (0/28 Sonnet, 0/24 qwen3:8b) -- refusals are never credited by
+the judge, confirming the zero-credit assumption exactly. So:
+
+- Sonnet: 80 - 28 = 52 non-refusal answers, 35 correct total, all 35 from
+  the non-refusal set -> non-refusal hit rate 35/52 = **67.3%**.
+- qwen3:8b: 80 - 24 = 56 non-refusal answers, 41 correct total, all 41 from
+  the non-refusal set -> non-refusal hit rate 41/56 = **73.2%**.
+
+Total gap: 41 - 35 = 6 questions (51.25% - 43.75% = 7.5pp). Refusal-count
+delta is only 4 (28 vs 24 = 5pp of n=80). Counterfactual: if Sonnet's 4
+extra refusals had instead been answered at Sonnet's own non-refusal hit
+rate (67.3%), expected +2.7 correct -> ~37.7/80 = 47.1%, narrowing the gap
+from 7.5pp to ~4.2pp. **Refusal hypothesis is PARTIALLY confirmed: it
+explains roughly 40-45% of the graph_decompose accuracy gap (about 3.3pp of
+7.5pp). The remaining ~55-60% (about 4.2pp) is a genuine non-refusal
+answer-quality gap** -- when Sonnet does commit to an answer, it is right
+less often than qwen3:8b is when qwen commits (67.3% vs 73.2%), not
+explained by calibration/guessing behavior at all. Do not oversell the
+refusal story as the whole explanation; it is a real but partial driver.
+
+### Temporal eye-read: 10 graph_decompose Sonnet temporal failures
+
+Reconstructed the exact retrieved context deterministically (same retrieval
++ decompose code path as the real run, `_build_system`/`_context_for` from
+`scripts/locomo_jscore_frontier_2026-07-18.py`, no new answer/judge LLM
+calls) for the first 10 of 15 temporal `graph_decompose` questions Sonnet
+got wrong. Read each context by eye against question/gold/answer:
+
+1. "When was Deborah in Bali?" gold "in 2022". Context: "Bali **last year**
+   was one of my favs." -- relative date present, no session date to
+   resolve it. Answer: "I don't know." **Surfacing gap.**
+2. "When did Jolene lose a lot of progress in her work?" gold "last week of
+   July 2023". Context contains "progress" but not the specific loss event
+   or any date phrase in the 3922-char packed context. **Retrieval miss.**
+3. "When did Audrey's ... training course ... take place?" gold "June,
+   2023". Context contains "training" (positive reinforcement techniques)
+   but not the specific course-date turn. **Retrieval miss.**
+4. "When did Nate take his turtles to the beach?" gold "10 November, 2022".
+   Context: "I took my turtles to the beach in Tampa **yesterday**!" --
+   relative date present and Sonnet actually used it ("the day before this
+   conversation snippet") but had no absolute date to convert it to; judged
+   incorrect against the absolute gold. **Surfacing gap**, and the clearest
+   example that Sonnet reasons over what's given when it does answer.
+5. "When did Nate win his fourth video game tournament?" gold "The Friday
+   before 10 July, 2022". Context: "I won my fourth video game tournament
+   **on Friday**!" -- relative date present, but Sonnet answered "I don't
+   know" without even surfacing "Friday". **Surfacing gap + a reasoning
+   miss on top** (didn't use the partial info it had).
+6. "When will John start his new job?" gold "In July, 2022". Context: "I'm
+   starting **next month**." Sonnet answered "John will start next month,"
+   directly lifting the relative phrase but never resolving it to an
+   absolute month -- judged incorrect against "July, 2022". **Surfacing
+   gap** (this is arguably the single cleanest example: the answer would
+   have been correct with a session-date anchor).
+7. "Where was James at on July 12, 2022?" gold "Toronto, Canada". No
+   "Toronto"/"Canada" anywhere in the packed context. **Retrieval miss**
+   (compounded by needing session-date-aware retrieval to find the right
+   session in the first place -- a harder, joint retrieval+temporal
+   problem, out of scope for the Task 3 flag).
+8. "When was Calvin's concert in Tokyo?" gold "last week of May 2023".
+   Context mentions the Tokyo concert three times but with no date phrase
+   attached to any of the three turns. **Retrieval miss** (the date-bearing
+   turn, if one exists, wasn't packed).
+9. "Which book did Jolene read in January 2023?" gold "Avalanche by Neal
+   Stephenson". Context: "**Two weeks ago** I read 'Avalanche' by Neal
+   Stephenson in one sitting!" -- the exact book and author are retrieved
+   correctly, relative date present, but Sonnet answered "I don't know"
+   rather than commit to an unconfirmed date-scoped claim. **Surfacing
+   gap**, textbook case: everything needed is present except the session
+   date to confirm "January 2023."
+10. "When did Evan announce his marriage to his extended family?" gold
+    "January 5, 2024". Context: "we told our extended fam about our
+    marriage **yesterday**." Relative date present, absolute date missing.
+    **Surfacing gap.**
+
+**Verdict: 6/10 are clear surfacing gaps** (relative date phrase retrieved
+correctly, no session-date anchor available to resolve it to the gold's
+absolute format) **and 4/10 are retrieval misses** (the date-relevant
+evidence turn was not in the packed context at all, a separate and harder
+problem out of scope for Task 3's surfacing flag). This is a strong,
+reproducible signal that session-date surfacing is real and worth fixing:
+proceeding with Task 3 (opt-in context-formatter flag), per the task's
+instruction to build it "if Task 1 showed dates are missing from context."
+The retrieval-miss cases are logged here but not addressed by Task 3 --
+flagged as a distinct follow-up (better temporal-aware retrieval, not
+covered by this round).
+
+Diagnostic scripts used (not committed, /tmp scratch, reproducible from the
+commands above and the repo's own `_build_system`/`_context_for`): refusal
+counter and context reconstruction. No new LLM answer/judge calls were made
+for Task 1 -- purely offline analysis of existing JSONL plus deterministic
+local retrieval (one local qwen3:8b decompose call per reconstructed
+context, not an answer or judge call).
