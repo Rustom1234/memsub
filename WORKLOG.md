@@ -370,3 +370,60 @@ docs/locomo-jscore-2026-07-17.md, results/locomo-jscore-2026-07-17.jsonl,
 docs/benchmark-external.md update), local only, not pushed.
 
 ---
+
+## Vault serve: browser viewer for the vault and markdown docs (2026-07-18)
+
+Rustom has no Obsidian on his Mac and works over SSH into this box, so
+`~/memsub-vault` (4334 notes) was unreadable except as raw markdown files.
+Added `memsub vault serve --vault DIR --port PORT` (new memsub/vault_serve.py,
+wired into cli.py's vault subcommand group).
+
+.venv has no markdown/mistune/yaml/web-framework library installed (checked
+before writing anything), so this is stdlib-only: `http.server` +
+`socketserver.ThreadingTCPServer`, a small line-based markdown-to-HTML
+renderer, and a permissive `key: "value"` frontmatter parser (not full YAML,
+matches exactly what memsub/vault.py's own `_frontmatter` writes). Read-only,
+binds 127.0.0.1 only, zero write endpoints.
+
+Features: index page (notes grouped by folder, server-side substring search
+over filenames+content, capped at 200 results); note pages with
+`[[wikilink]]` resolved to a real link or a visibly dead-link style (reddish,
+non-clickable) when the target note does not exist; frontmatter rendered as a
+small metadata block instead of raw YAML; ```` ```mermaid ```` code fences
+rendered as real diagrams via the mermaid CDN script (only loaded on pages
+that have one); dark, minimal, phone-friendly inline CSS. `--root` flag
+serves any markdown folder through the identical viewer (e.g. a project's
+docs/), documented as the same code path as vault mode.
+
+Path-traversal safety: every `/note/<path>` request is resolved against the
+served root and rejected with 404 if the resolved path is not under the
+root (`../`, absolute paths, and URL-encoded variants all covered).
+
+Tests: tests/test_vault_serve.py, 9 new tests -- wikilink-to-existing-note
+rendering, dead-link styling, frontmatter-as-metadata-block, mermaid block
+rendering (with html-escaped content and the CDN script present), search by
+content and by filename, path-traversal rejection (`../`, absolute,
+URL-encoded, nested), missing-file rejection, and an end-to-end HTTP smoke
+test (real ThreadingTCPServer on an ephemeral port, GET / and GET
+/note/<path> and a traversal attempt, then shutdown -- never leaves a server
+running).
+
+Smoke test against the real vault: started `memsub vault serve --vault
+~/memsub-vault --port 8766`, curled `/` (200, 714KB index of all 4334
+notes), curled a real note under claude-code/ (200, frontmatter rendered as
+a metadata block), curled `/?q=rustom` (200, search results), curled a
+traversal attempt (404), then killed the server and confirmed port 8766 was
+free again.
+
+Stayed out of memsub/store.py and memsub/consolidate.py entirely per
+instruction (another agent is touching those for a graph layer). No
+dependency added; no em dash in any new or touched file.
+
+Full suite: `pytest` now 309 passed (was 300; +9 for vault_serve, no
+existing test touched or broken).
+
+Commit: vault serve viewer (memsub/vault_serve.py, memsub/cli.py,
+tests/test_vault_serve.py, docs/vault-serve-2026-07-18.md), local only, not
+pushed.
+
+---

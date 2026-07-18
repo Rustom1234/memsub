@@ -411,6 +411,15 @@ def _cmd_vault_check(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_vault_serve(args: argparse.Namespace) -> int:
+    from .vault_serve import serve_vault
+
+    # --root and --vault point at the same viewer (see memsub/vault_serve.py
+    # module docstring); --root just overrides which folder is served.
+    root = Path(args.root) if args.root else Path(args.vault)
+    return serve_vault(root, port=args.port)
+
+
 def _cmd_wiki_ingest(args: argparse.Namespace) -> int:
     """Ingest a folder of markdown wiki pages into the store as claim episodes.
 
@@ -608,6 +617,22 @@ def build_parser() -> argparse.ArgumentParser:
     )
     v_check.add_argument("--vault", required=True, help="vault folder to scan")
     v_check.set_defaults(func=_cmd_vault_check)
+
+    v_serve = vault_sub.add_parser(
+        "serve",
+        help="read-only browser viewer for the vault (or any markdown folder "
+        "via --root), with [[wikilinks]] and mermaid diagrams rendered",
+    )
+    v_serve.add_argument(
+        "--vault", default=str(Path.home() / "memsub-vault"), help="vault folder to serve"
+    )
+    v_serve.add_argument(
+        "--root", default=None,
+        help="serve this markdown folder instead of --vault (same viewer, "
+        "e.g. a project's docs/ folder)",
+    )
+    v_serve.add_argument("--port", type=int, default=8766, help="port to bind (127.0.0.1 only)")
+    v_serve.set_defaults(func=_cmd_vault_serve)
 
     p_stats = sub.add_parser(
         "stats", help="store summary: episode/namespace counts, checkpoints, db size"
