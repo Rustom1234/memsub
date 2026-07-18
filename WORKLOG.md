@@ -330,3 +330,43 @@ poisoning_benchmark.py, docs/poisoning-provenance-2026-07-17.md,
 results/poisoning-provenance-2026-07-17.json), local only, not pushed.
 
 ---
+
+## LOCOMO holdout: LLM-judge (J-score) run (2026-07-17)
+
+Executed Part A's first fix from docs/improvement-plan-2026-07-17.md and closed bead vtr:
+ran the LOCOMO holdout slice (n=80, load_locomo(...)[3:], same slice behind the
+documented 0.152 F1 headline) through a Sonnet-CLI LLM judge (memsub/judge.py,
+same precedent as scripts/judge_capture_holdout.py), four conditions (no_memory,
+naive_topk, memsub_hybrid_v2, memsub_decompose -- the last adds today's opt-in
+query-time decomposition, docs/multihop-improvements-2026-07-17.md). Local
+qwen3:8b answerer throughout; judge blind to condition (sees only
+question/gold/answer).
+
+One run, wall time 7331.3s (~122 min), not truncated. Pre-run smoke test
+(n=2 x 4 conditions) confirmed pacing before committing to the full run;
+full-slice estimate (~1.7h from the smoke-test rate) stayed under the
+2.5h threshold so no seed-2026 subset was needed -- ran the full n=80 slice.
+
+Overall judge accuracy: no_memory 2.53% (n=79, 1 malformed judge response
+excluded per memsub/judge.py's never-guess policy), naive_topk 37.50%,
+memsub_hybrid_v2 47.50%, memsub_decompose 48.75%. Multi-hop row: no_memory
+0.0%, naive_topk 55.0%, memsub_hybrid_v2 50.0%, memsub_decompose 55.0%
+(n=20/category, one question is a 5-point swing -- directional, not precise).
+
+Full methodology, deviations from the official LOCOMO J-score protocol (local
+answerer vs competitors' frontier answerers, judge model family, slice size),
+and the competitor comparison table: docs/locomo-jscore-2026-07-17.md. Raw
+per-question records streamed incrementally to
+results/locomo-jscore-2026-07-17.jsonl (resumable, one line per
+condition/question). Script: scripts/locomo_jscore_holdout.py. Added a short
+pointer in docs/benchmark-external.md to the completed doc. Bead
+memory-sublayer-vtr closed.
+
+pytest: 300 passed, unchanged (this task added a script and two docs, no
+library code touched).
+
+Commit: LOCOMO holdout J-score run (scripts/locomo_jscore_holdout.py,
+docs/locomo-jscore-2026-07-17.md, results/locomo-jscore-2026-07-17.jsonl,
+docs/benchmark-external.md update), local only, not pushed.
+
+---
