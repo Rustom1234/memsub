@@ -454,9 +454,11 @@ memory-sublayer-research/oss-source-dive/report-2026-07-18.md section 4.
    ranking, only stored for future use).
 3. **Near-miss threshold**: `difflib.SequenceMatcher.ratio() >= 0.82` against
    an exact non-match. Stdlib-only per the report's explicit "no MinHash lib
-   needed" call. 0.82 is a starting point (catches "Melanie"/"Melany",
-   "Lisbon trip"/"the Lisbon trip"), tested directly in step 5, not tuned
-   against a labeled set (none exists) -- flagged as a knob, not a claim.
+   needed" call. 0.82 is a starting point (catches "Melanie"/"Melaine" at
+   0.857, "the lisbon trip"/"lisbon trip" at 0.846; "Melanie"/"Melany" was
+   tried and measured below threshold at 0.769, so it stays a clean miss,
+   not ambiguous), tested directly in step 5, not tuned against a labeled
+   set (none exists) -- flagged as a knob, not a claim.
 4. **Resolution cache is per-run, in-memory**, scoped to one
    `EntityResolver` instance (one `graph_store()` call = one backfill run or
    one `consolidate(..., enable_graph=True)` call). Satisfies "no pair asks
