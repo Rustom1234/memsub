@@ -974,3 +974,48 @@ fix, not touched -- flaky-looking hash-order assertions, out of Wave 1
 scope). This restoration is broader than Wave 1 items 1-3 as literally
 scoped, but was required to execute item 1 at all; flagged explicitly here
 rather than silently absorbed into the Wave 1 narrative.
+
+### Wave 1 results (items 1-3, all done)
+
+**Item 1 (v3 combined, budget 1000, n=80)**: 56.25% overall (up from
+round 2's 52.5%), matching round 2's flagged extrapolation almost exactly,
+now an actually measured run. multi-hop 45.0%, temporal 45.0% (+15pp vs
+round 2, matches the isolated n=20 measurement), open-domain 55.0%,
+single-hop 80.0%. `results/locomo-jscore-v3-2026-07-18.jsonl`. Wall
+3366s.
+
+**Item 2 (budget ablation, n=80 each)**: budget 1000 = item 1's 56.25%;
+budget 2000 = **63.75%** (+7.5pp, material, past the 2pp bar);
+budget 4000 = 62.5% (-1.25pp vs 2000, not a further material gain).
+**Budget 2000 is the new recommended default for this eval going
+forward** (noted in the report doc, not silently changed in
+`scripts/metrics_local.py`'s shared `BUDGET=1000`, which many other
+already-published evals in this repo depend on staying fixed). Token
+cost: roughly 2x packed context at budget 2000 vs 1000; no dollar cost
+(subscription `claude` CLI, not a metered API key); mean latency flat
+across all three budgets (~17.3-17.9s), so the real cost is prompt-window
+usage, not wall-clock or cash.
+`results/locomo-jscore-v3-2026-07-18-b2000.jsonl`,
+`results/locomo-jscore-v3-2026-07-18-b4000.jsonl`. Wall ~3400s each.
+
+**63.75% (budget 2000) beats mem0's reproduced tier (~61.7%) for the first
+time on this holdout slice**, +2.05pp overall. Wins outright on temporal
+(+14.5pp) and single-hop (+12.9pp) against mem0's reproduced numbers, near
+parity on multi-hop (-1.2pp, was -6.2pp two rounds ago), still trails on
+open-domain (-17.9pp, the one large gap none of today's fixes targeted).
+Still trails Zep's revised number (75.14%) by 11.39pp. One run per
+configuration, no repeated-trial variance estimate.
+
+**Item 3**: done and described above (blocker-fix section) --
+`memsub.store.format_episode` + `MemoryClient.inject(with_dates=...)`,
+5 new tests, eval script now imports the shared function instead of its
+own copy.
+
+Full report: `docs/locomo-v3-2026-07-18.md`. Commits (all local, never
+pushed): graph-layer restoration + item 3 productization (5f65ee8); item 1
+v3 run (8cf9af4); item 2 budget-2000 run (401abb7); item 2 budget-4000 run
+(fc8c03a); this WORKLOG entry + report doc (next commit).
+
+Suite at close: 322 collected, 319 passed, same 3 pre-existing unrelated
+`test_provenance.py` failures throughout (present before this session,
+untouched, out of scope).
