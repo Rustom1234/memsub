@@ -152,8 +152,17 @@ Before LongMemEval_S was selected as the external benchmark round's
 deliverable, a re-capture of the LOCOMO holdout (with answer text persisted
 for judge scoring, `scripts/judge_capture_holdout.py`) was run for two of
 three conditions (`results/holdout-judge-capture-no_memory.json`,
-`results/holdout-judge-capture-naive_topk.json`, n=80 each). The
-memsub_hybrid_v2 capture and the judge pass over those files were not run;
-no judge-scored LOCOMO numbers exist yet, and none are claimed. The captured
-files are kept because they follow the frozen holdout protocol and would be
-reused if that pass is completed (filed in the extensions queue).
+`results/holdout-judge-capture-naive_topk.json`, n=80 each). At the time this
+section was written, the memsub_hybrid_v2 capture and the judge pass over
+those files had not been run.
+
+**Update 2026-07-17**: the judge pass is now complete. See
+`docs/locomo-jscore-2026-07-17.md` for the full LOCOMO J-score (LLM-judge
+accuracy) run: no_memory 2.53%, naive_topk 37.50%, memsub_hybrid_v2 47.50%,
+memsub_decompose (opt-in decomposition) 48.75%, n=80 per condition, Sonnet-CLI
+judge, qwen3:8b local answerer. That doc also lines memsub's numbers up
+against the frontier-answerer competitor numbers quoted in
+`docs/improvement-plan-2026-07-17.md` Part A (mem0, Zep, Dakera, MIRIX) with
+every deviation stated explicitly -- read it before citing any of these
+numbers externally, the local-vs-frontier-answerer gap is large and easy to
+misrepresent. Bead `memory-sublayer-vtr` is closed.

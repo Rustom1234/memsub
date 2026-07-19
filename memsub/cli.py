@@ -16,6 +16,7 @@ import os
 import sys
 from pathlib import Path
 
+from . import provenance
 from .backends import build_backend
 from .consolidate import ConsolidationConfig, consolidate
 from .extraction import extract_file, file_content_hash, load_transcript
@@ -111,8 +112,13 @@ def _cmd_extract(args: argparse.Namespace) -> int:
             print(f"{f}: {len(candidates)} candidate(s), dry run: nothing written")
             continue
         session_id = args.session_id or Path(f).stem
+        # Extraction only ever produces observed claims (never kind="inference"),
+        # so every episode from this path is channel user_stated (memsub.provenance).
         episodes = [
-            c.to_episode(run_id=args.run_id, session_id=session_id, namespace=args.namespace)
+            provenance.tag_episode(
+                c.to_episode(run_id=args.run_id, session_id=session_id, namespace=args.namespace),
+                provenance.CHANNEL_USER_STATED,
+            )
             for c in candidates
         ]
         written = store.append_batch_with_checkpoint(episodes, f, content_hash)
@@ -154,7 +160,7 @@ def _cmd_consolidate(args: argparse.Namespace) -> int:
             return 1
         actions = consolidate(
             store, backend=backend, config=cfg, run_id=args.run_id,
-            namespace=args.namespace, dry_run=True,
+            namespace=args.namespace, dry_run=True, enable_graph=args.graph,
         )
         for a in actions:
             extra = f" by={a.detail['by']}" if "by" in a.detail else ""
@@ -171,7 +177,7 @@ def _cmd_consolidate(args: argparse.Namespace) -> int:
         return 0
     actions = consolidate(
         store, backend=backend, config=cfg, run_id=args.run_id,
-        namespace=args.namespace, dry_run=args.dry_run,
+        namespace=args.namespace, dry_run=args.dry_run, enable_graph=args.graph,
     )
     for a in actions:
         extra = f" by={a.detail['by']}" if "by" in a.detail else ""
@@ -202,6 +208,34 @@ def _cmd_sleep(args: argparse.Namespace) -> int:
         print(f"  [inference conf={conf:.2f}] {ep.content}")
     label = "proposed (dry run)" if args.dry_run else "written"
     print(f"{len(result.all_memories)} memor{'y' if len(result.all_memories) == 1 else 'ies'} {label}")
+    store.close()
+    return 0
+
+
+def _cmd_graph_backfill(args: argparse.Namespace) -> int:
+    import time as _time
+
+    from .graph import graph_store
+
+    db = Path(args.db)
+    if not db.exists():
+        print(f"no store at {db}")
+        return 1
+    backend = None if args.backend == "none" else build_backend(prefer=args.backend, model=args.model)
+    store = EpisodicStore(db)
+    t0 = _time.time()
+    result = graph_store(
+        store, backend=backend, run_id=args.run_id, namespace=args.namespace, dry_run=args.dry_run,
+    )
+    elapsed = _time.time() - t0
+    label = "proposed (dry run)" if args.dry_run else "written"
+    print(
+        f"{result.episodes_processed} episode(s) processed, "
+        f"{result.entities_upserted} entit{'y' if result.entities_upserted == 1 else 'ies'} "
+        f"{label}, {result.links_created} link(s) {label}, "
+        f"{result.llm_calls} LLM call(s) ({elapsed:.2f}s)"
+    )
+    print(f"index totals: {store.entity_count()} entities, {store.entity_link_count()} links")
     store.close()
     return 0
 
@@ -405,6 +439,15 @@ def _cmd_vault_check(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_vault_serve(args: argparse.Namespace) -> int:
+    from .vault_serve import serve_vault
+
+    # --root and --vault point at the same viewer (see memsub/vault_serve.py
+    # module docstring); --root just overrides which folder is served.
+    root = Path(args.root) if args.root else Path(args.vault)
+    return serve_vault(root, port=args.port)
+
+
 def _cmd_wiki_ingest(args: argparse.Namespace) -> int:
     """Ingest a folder of markdown wiki pages into the store as claim episodes.
 
@@ -545,6 +588,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_con.add_argument(
         "--vault", default=None, help="vault folder for --stage proposals"
     )
+    p_con.add_argument(
+        "--graph", action="store_true",
+        help="also populate the entity graph index (memsub graph backfill's "
+        "incremental write-path hook); off by default",
+    )
     p_con.set_defaults(func=_cmd_consolidate)
 
     p_sleep = sub.add_parser(
@@ -557,6 +605,27 @@ def build_parser() -> argparse.ArgumentParser:
     p_sleep.add_argument("--run-id", default=None, help="restrict to one run id")
     p_sleep.add_argument("--dry-run", action="store_true", help="print what would be written, write nothing")
     p_sleep.set_defaults(func=_cmd_sleep)
+
+    p_graph = sub.add_parser("graph", help="bipartite entity-episode graph index")
+    graph_sub = p_graph.add_subparsers(dest="graph_command", required=True)
+    g_backfill = graph_sub.add_parser(
+        "backfill",
+        help="rule-based entity extraction over all active episodes, populating "
+        "the entities/entity_links index (idempotent: already-indexed episodes "
+        "are skipped on rerun)",
+    )
+    g_backfill.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    g_backfill.add_argument(
+        "--backend", default="none", choices=["none", "auto", "api", "ollama", "cli", "mock"],
+        help="LLM backend for ambiguous entity-dedup pairs only (default: none, "
+        "rule-based extraction with zero LLM calls; near-misses become new "
+        "entities rather than being guessed at)",
+    )
+    g_backfill.add_argument("--model", default=None, help="model override for the backend")
+    g_backfill.add_argument("--namespace", default=None, help="restrict to one namespace (default: all)")
+    g_backfill.add_argument("--run-id", default=None, help="restrict to one run id")
+    g_backfill.add_argument("--dry-run", action="store_true", help="report what would be indexed, write nothing")
+    g_backfill.set_defaults(func=_cmd_graph_backfill)
 
     p_ns = sub.add_parser("ns", help="manage namespaces and per-agent permissions")
     p_ns.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
@@ -632,6 +701,22 @@ def build_parser() -> argparse.ArgumentParser:
     v_check.add_argument("--vault", required=True, help="vault folder to scan")
     v_check.set_defaults(func=_cmd_vault_check)
 
+    v_serve = vault_sub.add_parser(
+        "serve",
+        help="read-only browser viewer for the vault (or any markdown folder "
+        "via --root), with [[wikilinks]] and mermaid diagrams rendered",
+    )
+    v_serve.add_argument(
+        "--vault", default=str(Path.home() / "memsub-vault"), help="vault folder to serve"
+    )
+    v_serve.add_argument(
+        "--root", default=None,
+        help="serve this markdown folder instead of --vault (same viewer, "
+        "e.g. a project's docs/ folder)",
+    )
+    v_serve.add_argument("--port", type=int, default=8766, help="port to bind (127.0.0.1 only)")
+    v_serve.set_defaults(func=_cmd_vault_serve)
+
     p_stats = sub.add_parser(
         "stats", help="store summary: episode/namespace counts, checkpoints, db size"
     )
@@ -653,22 +738,6 @@ def build_parser() -> argparse.ArgumentParser:
     w_ingest.add_argument("--run-id", default="wiki", help="run id to file claims under")
     w_ingest.add_argument("--max-chars", type=int, default=12000, help="chunk size in characters")
     w_ingest.set_defaults(func=_cmd_wiki_ingest)
-
-    p_graph = sub.add_parser("graph", help="graph layer: entity-episode index over the store")
-    graph_sub = p_graph.add_subparsers(dest="graph_command", required=True)
-    g_backfill = graph_sub.add_parser(
-        "backfill", help="populate/update the entity-episode index (idempotent)"
-    )
-    g_backfill.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
-    g_backfill.add_argument(
-        "--backend", default="none", choices=["none", "auto", "api", "ollama", "cli", "mock"],
-        help="LLM backend for the rare ambiguous entity-dedup pair (default: none, rule-based only)",
-    )
-    g_backfill.add_argument("--model", default=None, help="model override for the backend")
-    g_backfill.add_argument("--namespace", default=None, help="restrict to one namespace (default: all)")
-    g_backfill.add_argument("--run-id", default=None, help="restrict to one run id")
-    g_backfill.add_argument("--dry-run", action="store_true", help="print what would be written, write nothing")
-    g_backfill.set_defaults(func=_cmd_graph_backfill)
 
     p_mcp = sub.add_parser("mcp", help="run the MCP stdio server (for claude mcp add)")
     p_mcp.add_argument("--db", default=None, help="SQLite store path (default: $MEMSUB_DB or ~/.memsub/memory.db)")

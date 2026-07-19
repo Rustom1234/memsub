@@ -28,6 +28,7 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 
+from . import provenance
 from .backends import LLMBackend
 from .store import Episode, EpisodicStore
 from .summarize import summarize_sessions
@@ -223,5 +224,14 @@ def sleep_store(
         for ep in candidates:
             store.log_event(ep.id, "slept", {"n_source": len(candidates)})
         for m in result.all_memories:
-            store.append(m)
+            # Inferences are the one thing this module produces that is not
+            # directly observed (kind="inference", memsub.consolidate's
+            # observed/inferred typing); summaries and links are structural
+            # derivations of what was actually said, not model conclusions.
+            channel = (
+                provenance.CHANNEL_LLM_INFERRED
+                if m.kind == "inference"
+                else provenance.CHANNEL_USER_STATED
+            )
+            store.append(provenance.tag_episode(m, channel))
     return result

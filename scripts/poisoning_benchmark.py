@@ -10,20 +10,29 @@ only computes them.
 
 Run: .venv/bin/python scripts/poisoning_benchmark.py
 Appends a results section to docs/poisoning-benchmark.md.
+
+--provenance re-run (2026-07-17, docs/poisoning-provenance-2026-07-17.md):
+re-runs the same two attacks against memsub.provenance's HMAC channel-trust
+defense (item 4/5 of docs/improvement-plan-2026-07-17.md Part B), instead of
+the content/kind heuristic. Run: .venv/bin/python scripts/poisoning_benchmark.py
+--provenance. Streams to results/poisoning-provenance-2026-07-17.json.
 """
 
 from __future__ import annotations
 
+import argparse
+import json
 import re
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 import memsub.consolidate as consolidate_mod  # noqa: E402
+from memsub import provenance  # noqa: E402
 from memsub.backends import MockBackend  # noqa: E402
 from memsub.bench import (  # noqa: E402
     NaiveTopKSystem,
@@ -228,6 +237,189 @@ def run_cell(attack_name: str, disguised: bool, system_name: str,
         consolidate_mod._is_inferred = orig
 
 
+# --------------------------------------------------------------------------- #
+# Provenance re-run (item 5, docs/poisoning-provenance-2026-07-17.md): the
+# same two attacks, against memsub.provenance's HMAC channel-trust defense
+# instead of the content/kind heuristic. No _is_inferred monkeypatching here:
+# the channel-trust ranking (memsub.consolidate._trust_rank) is the shipping
+# behavior of plain consolidate() once episodes carry a verified channel.
+# --------------------------------------------------------------------------- #
+
+# MemPoison's (arXiv:2607.14651) three difficulty tiers, quoted from the
+# paper: L1 "the adversary injects a single explicitly harmful memory record,
+# where malicious intent is detectable at write time"; L2 "the adversary
+# partitions the malicious payload across multiple individually plausible
+# memory records ... corruption manifests only when these fragments are
+# co-retrieved and composed"; L3 "the adversary plants memory entries that
+# are inert under normal conditions but activate malicious behavior only
+# when exposed to specific, natural trigger contexts."
+#
+# Mapping memsub's two attacks onto these tiers (self-defined by this
+# project, per the task's fallback instruction, from what MemPoison's own
+# text says -- not verified against the paper's own test-case labels, which
+# this project has no access to): both Attack A and Attack B inject exactly
+# ONE adversarial record per fact family, with no fragmentation across
+# multiple records (not L2) and no dormant/context-triggered activation (not
+# L3). By MemPoison's record-cardinality criterion, both are L1. The one
+# caveat worth flagging: MemPoison's own L1 text bundles in "detectable at
+# write time" as part of what makes L1 the easy tier; Attack B is built
+# specifically to defeat write-time content detectability while still being
+# a single record, so it is structurally L1 but adversarially harder than
+# MemPoison's L1 description implies. This mapping does not exercise L2/L3
+# at all -- a real limitation, stated plainly, not glossed over.
+MEMPOISON_TIER = "L1 (single-record corruption, self-defined mapping -- see script docstring)"
+
+# MemPoison also defines three *injection channels* (user_input, tool_return,
+# cross_agent) -- a different axis than memsub.provenance's *write channel*
+# (user_stated, llm_inferred, imported). Same word, unrelated concepts; never
+# conflate the two in the report.
+
+
+def poisoned_dataset_provenance(seed: int, disguised: bool, key: bytes):
+    """Same dataset as poisoned_dataset, but every episode is HMAC-signed
+    (memsub.provenance): legitimate facts as user_stated (the channel
+    extraction-derived observed claims actually get), the adversarial episode
+    as llm_inferred (Attack A) or imported (Attack B) -- the two channels an
+    attacker who has compromised extraction, but not a real user turn, can
+    actually reach. Disguising the payload's kind/content as an observed fact
+    (Attack B's old trick) no longer matters: the channel is bound by the
+    pipeline that wrote it, never by what the content claims to be."""
+    ds, adv_ids = poisoned_dataset(seed, disguised)
+    adv_id_set = set(adv_ids.values())
+    attacker_channel = provenance.CHANNEL_IMPORTED if disguised else provenance.CHANNEL_LLM_INFERRED
+    ds.episodes = [
+        provenance.tag_episode(
+            ep,
+            attacker_channel if ep.id in adv_id_set else provenance.CHANNEL_USER_STATED,
+            key=key,
+        )
+        for ep in ds.episodes
+    ]
+    return ds, adv_ids
+
+
+def run_cell_provenance(attack_name: str, disguised: bool, key: bytes) -> list[PoisonResultRow]:
+    """policy+cons under the channel-provenance defense: no rule toggling, no
+    monkeypatching -- plain consolidate() on channel-signed episodes."""
+    acc: dict[int, dict[str, float]] = {}
+    for seed in SEEDS:
+        ds, adv_ids = poisoned_dataset_provenance(seed, disguised, key)
+        adv_id_set = set(adv_ids.values())
+
+        store = EpisodicStore(":memory:")
+        for ep in ds.episodes:
+            store.append(ep)
+        actions = consolidate(
+            store,
+            backend=deterministic_judge(),
+            config=ConsolidationConfig(
+                dedup_threshold=TUNED["dedup_threshold"], decay_value_threshold=0.0
+            ),
+        )
+        defended = {
+            a.episode_id for a in actions
+            if a.action == "supersede" and a.episode_id in adv_id_set
+        }
+        active_eps = store.active()
+        store.close()
+        system = PolicySystem(
+            recency_weight=TUNED["recency_weight"],
+            recency_floor=TUNED["recency_floor"],
+            importance_floor=TUNED["importance_floor"],
+            dedup_threshold=TUNED["dedup_threshold"],
+            consolidated=False,
+        )
+        system._index.add(sorted(active_eps, key=lambda e: e.ts))
+
+        asr_success_ids = adv_id_set - defended
+
+        for budget in BUDGETS:
+            cell = acc.setdefault(budget, dict(
+                n=0, correct=0, clean=0, stale=0, tokens=0.0,
+                asr_num=0, asr_den=0, rsr_num=0, rsr_den=0,
+            ))
+            for qi, q in enumerate(ds.queries):
+                packed = system.inject(q.question, budget)
+                packed_ids = {ep.id for ep in packed}
+                text = "\n".join(ep.content for ep in packed)
+                gold_in = any(ep.id == q.gold_episode_id for ep in packed)
+                stale_in = any(s in text for s in q.stale)
+                cell["n"] += 1
+                cell["correct"] += int(gold_in)
+                cell["clean"] += int(gold_in and not stale_in)
+                cell["stale"] += int(stale_in and not gold_in)
+                cell["tokens"] += sum(approx_tokens(ep.content) + 1 for ep in packed)
+
+                adv_id = adv_ids[qi]
+                cell["asr_den"] += 1
+                asr_hit = adv_id in asr_success_ids
+                cell["asr_num"] += int(asr_hit)
+                if asr_hit:
+                    cell["rsr_den"] += 1
+                    cell["rsr_num"] += int(adv_id in packed_ids)
+
+    rows = []
+    for budget in BUDGETS:
+        c = acc[budget]
+        rows.append(PoisonResultRow(
+            attack=attack_name, system="policy+cons, provenance defense", budget=budget,
+            n=int(c["n"]), correct=int(c["correct"]), clean=int(c["clean"]),
+            stale_only=int(c["stale"]), avg_tokens_used=round(c["tokens"] / c["n"], 1),
+            asr_num=int(c["asr_num"]), asr_den=int(c["asr_den"]),
+            rsr_num=int(c["rsr_num"]), rsr_den=int(c["rsr_den"]),
+        ))
+    return rows
+
+
+def _row_dict(r: PoisonResultRow, defense: str, tier: str) -> dict:
+    d = asdict(r)
+    d.update(defense=defense, mempoison_tier=tier, recall=r.recall,
+             clean_recall=r.clean_recall, stale_rate=r.stale_rate, asr=r.asr, rsr=r.rsr)
+    return d
+
+
+def main_provenance() -> int:
+    """Re-run Attack A and Attack B against both defenses (old content
+    heuristic, new channel provenance) for a direct old-vs-new comparison.
+    Streams to results/poisoning-provenance-2026-07-17.json, rewriting the
+    full accumulated list after each completed cell so a crash mid-run loses
+    at most the cell in progress, never prior results."""
+    t0 = time.time()
+    results_path = ROOT / "results" / "poisoning-provenance-2026-07-17.json"
+    key = provenance.load_or_create_key()
+    attacks = [("A: inferred-marked", False), ("B: disguised-as-observed", True)]
+
+    all_rows: list[dict] = []
+
+    def _flush() -> None:
+        results_path.write_text(json.dumps(all_rows, indent=2) + "\n")
+
+    for attack_name, disguised in attacks:
+        tier = MEMPOISON_TIER
+        # old defense: naive-topk (no consolidation) and policy+cons with the
+        # content/kind heuristic (rule ON) -- reuses run_cell unchanged, on
+        # the plain (unsigned) dataset, so these numbers are the same
+        # computation as docs/poisoning-benchmark.md's existing table.
+        for system_name, consolidated, rule_enabled in [
+            ("naive-topk", False, True),
+            ("policy+cons, content heuristic (old defense)", True, True),
+        ]:
+            rows = run_cell(attack_name, disguised, system_name, consolidated, rule_enabled)
+            all_rows.extend(_row_dict(r, defense="content_heuristic", tier=tier) for r in rows)
+            _flush()
+            print(f"done: {attack_name} / {system_name} ({time.time() - t0:.1f}s)")
+
+        # new defense: channel provenance, on the channel-signed dataset.
+        rows = run_cell_provenance(attack_name, disguised, key)
+        all_rows.extend(_row_dict(r, defense="channel_provenance", tier=tier) for r in rows)
+        _flush()
+        print(f"done: {attack_name} / policy+cons, provenance defense ({time.time() - t0:.1f}s)")
+
+    print(f"wrote {len(all_rows)} rows to {results_path}")
+    print(f"wall {time.time() - t0:.1f}s")
+    return 0
+
+
 def main() -> int:
     t0 = time.time()
     attacks = [("A: inferred-marked", False), ("B: disguised-as-observed", True)]
@@ -271,4 +463,10 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--provenance", action="store_true",
+        help="run the channel-provenance defense re-run instead of the original round",
+    )
+    args = parser.parse_args()
+    sys.exit(main_provenance() if args.provenance else main())

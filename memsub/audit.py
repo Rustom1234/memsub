@@ -10,6 +10,8 @@ Event vocabulary (store.MemoryEvent.event):
   injected    the memory made it into injected context (detail: query, position, budget)
   superseded  a consolidation or update decision replaced it (detail: reason, by)
   forgotten   decay dropped it (detail: reason, value, age_days)
+  quarantined a write-channel signature failed verification (memsub.provenance,
+              memsub.consolidate): detail reason=signature_invalid, never deleted
 """
 
 from __future__ import annotations

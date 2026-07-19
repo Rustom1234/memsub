@@ -23,6 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from . import provenance
 from .backends import LLMBackend
 from .extraction import (
     WIKI_SYSTEM,
@@ -111,15 +112,21 @@ def ingest_wiki(
             )
             result.prior_superseded += 1
 
+        # A wiki page states its own claims directly (never marked inferred),
+        # so channel user_stated matches the existing observed/inferred typing
+        # (memsub.provenance, docs/poisoning-provenance-2026-07-17.md).
         episodes = [
-            Episode(
-                content=c.content,
-                run_id=run_id,
-                session_id=rel,
-                kind=c.kind,
-                importance=max(c.confidence, 0.05),
-                namespace=namespace,
-                provenance=_page_provenance(c.provenance, rel, page_hash),
+            provenance.tag_episode(
+                Episode(
+                    content=c.content,
+                    run_id=run_id,
+                    session_id=rel,
+                    kind=c.kind,
+                    importance=max(c.confidence, 0.05),
+                    namespace=namespace,
+                    provenance=_page_provenance(c.provenance, rel, page_hash),
+                ),
+                provenance.CHANNEL_USER_STATED,
             )
             for c in candidates
         ]

@@ -1019,3 +1019,103 @@ v3 run (8cf9af4); item 2 budget-2000 run (401abb7); item 2 budget-4000 run
 Suite at close: 322 collected, 319 passed, same 3 pre-existing unrelated
 `test_provenance.py` failures throughout (present before this session,
 untouched, out of scope).
+
+## 2026-07-19: git recovery incident, two chains reconciled
+
+### What went wrong
+
+Two independent lines of July 17-18 work existed and neither knew about the
+other. The wave-1 chain (this file's entries above, d016671 back through
+5f65ee8) reconstructed a graph layer from test-driven specs
+(`tests/test_graph.py`/`test_graph_cli.py`) and ran the LOCOMO v3 combined +
+budget-ablation evals (63.75% J-score at budget 2000, beating mem0's
+reproduced tier for the first time). Separately, `recovery-jul17-18` (tip
+dd5a262) held the *original* July 17-18 work this reconstruction was
+patching around: provenance signing (`memsub/provenance.py`, HMAC channel
+tags, quarantine-on-bad-signature), write-time fact fusion in
+`consolidate.py`, `vault_serve.py` + its CLI wiring, and its own
+independently-built graph layer.
+
+A prior reconciliation attempt tried to merge these and died mid-operation
+to a transient API error. It left `master` pointed at ed6c361 (the
+wave-1/recovery merge-base, i.e. master had been walked backwards off the
+wave-1 tip), `memsub/provenance.py` staged as a lone new file, and ~27
+July 17-18 docs/results/scripts/tests sitting untracked on disk with no
+`MERGE_HEAD` -- the merge itself had not actually been started.
+
+### Recovery
+
+1. The wave-1 chain's commits (d016671 down to 5f65ee8) were confirmed
+   still present as loose objects (`git fsck --unreachable`), just
+   unreferenced by any branch or reflog entry (not yet garbage collected).
+   `master` was hard-reset to `d016671`, restoring the full chain.
+2. Tagged `pre-merge-safety-2026-07-19` at `d016671` before touching
+   anything else.
+3. The 26 untracked survivors were verified byte-identical to their
+   `recovery-jul17-18` counterparts, then staged and committed as a
+   pre-merge checkpoint (`git reset --hard` only ever touches tracked
+   files, so this was needed before `git merge` could see them as
+   non-conflicting).
+4. Merged `recovery-jul17-18` into `master`. Most of the store proper
+   auto-merged cleanly (fusion phase, quarantine phase, provenance-aware
+   trust ranking in `consolidate.py` all combined without a marked
+   conflict). Six files had real conflicts, resolved as follows:
+   - `.beads/interactions.jsonl` / `WORKLOG.md`: both add/add conflicts
+     from independently-authored entries at the same tail position; kept
+     both (union, chronological order).
+   - `scripts/locomo_jscore_frontier_2026-07-18.py`: kept the wave-1
+     version (`--budget`/`--out` flags, shared `format_episode`) since it
+     is what actually produced the committed v3/budget-ablation result
+     files.
+   - `memsub/hybrid.py`: two independent reimplementations of the same
+     decompose/graph-query surface existed with no conflict-worthy
+     functional gap (recovery's had no provenance/fusion-specific
+     content). Kept the wave-1 version since it is what `tests/test_graph.py`
+     and the committed eval results were built and measured against.
+   - `memsub/store.py`: same two-reimplementations situation for the
+     entities/entity_links schema (`ts` vs `first_seen` column naming,
+     namespace-filter variants). Kept wave-1's schema/method signatures for
+     the same reason. **First attempt at this file used `git checkout
+     --ours`, which silently discarded auto-merged (non-conflicting)
+     content from recovery across the whole file** -- caught by rerunning
+     the true 3-way merge via `git merge-file` and diffing, which showed
+     the quarantine wiring (`TERMINAL_EVENTS` gaining `"quarantined"`,
+     `status()`/`active()` filtering it) had been dropped. Redone by hand,
+     resolving only the five actually-conflicting hunks and leaving the
+     auto-merged quarantine wiring intact.
+   - `memsub/consolidate.py`: one docstring-wording conflict (kept wave-1's
+     wording) and one real bug: the wave-1 side's action-apply loop
+     predated the fusion/quarantine action types and would have mislabeled
+     both as `"forgotten"` events (silently breaking newly-fused episodes
+     and unquarantining tampered ones). Took recovery's dispatch, which
+     uses the already-defined `_ACTION_EVENT` map and skips `"fuse"`
+     (applied inline in phase 3).
+   - `memsub/cli.py`: auto-merged with a duplicate `graph backfill`
+     subparser registration (both sides had independently added the same
+     command at different points in the file) -- `argparse` raised
+     `conflicting subparser: graph` at import time, caught by the full
+     test run. Removed the second, functionally-identical registration.
+5. Full suite: 333 passed (was 322 collected/319 passed baseline before
+   this merge -- the delta is `tests/test_provenance.py` and
+   `tests/test_vault_serve.py` joining from the recovery side, all green,
+   no more pre-existing failures).
+6. Eval artifacts verified present and intact:
+   `results/locomo-jscore-v3-2026-07-18.jsonl` (+`-b2000`/`-b4000`, 63.75%
+   J-score confirmed at budget 2000), `results/locomo-jscore-frontier*.jsonl`,
+   `results/poisoning-provenance-2026-07-17.json`,
+   `results/multihop-*.json*`, `results/graph-layer-eval-2026-07-18.jsonl`.
+
+### Policy going forward
+
+- Never `git checkout --ours`/`--theirs` a whole file during a real 3-way
+  merge conflict unless you have first confirmed (via `git merge-file` or
+  equivalent) that the only differences from the other side are inside the
+  marked conflict hunks. It silently discards any auto-merged content
+  elsewhere in the file.
+- When two independent sessions reconstruct or extend the same subsystem
+  from different starting points, treat both tips as first-class until
+  reconciled -- do not let a `git reset`/rebase mid-recovery silently
+  orphan one chain. Tag before any destructive-looking operation.
+- A merge is not done until the full test suite is green; `argparse`
+  duplicate-subparser and similar structural collisions do not show up as
+  `git` conflicts and only surface at import/collection time.

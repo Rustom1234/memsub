@@ -12,8 +12,11 @@ from memsub.store import Episode, EpisodicStore
 NOW = time.time()
 
 
-def _ep(content, ts, kind="fact", importance=1.0):
-    return Episode(content=content, run_id="r", session_id="s", kind=kind, importance=importance, ts=ts)
+def _ep(content, ts, kind="fact", importance=1.0, session_id="s"):
+    return Episode(
+        content=content, run_id="r", session_id=session_id, kind=kind,
+        importance=importance, ts=ts,
+    )
 
 
 def _store_with(*episodes):
@@ -133,6 +136,95 @@ def test_contradiction_only_same_kind():
     backend = _contradiction_backend(True)
     assert consolidate(store, backend=backend) == []
     assert backend.calls == []
+
+
+# --------------------------------------------------------------------------- #
+# Fusion (MIRIX-style write-time cross-session fact fusion)
+# --------------------------------------------------------------------------- #
+def _fusion_backend(content="Alice moved to Paris and started a job at Google."):
+    resp = json.dumps({"fuse": True, "content": content})
+    return MockBackend(responder=lambda s, m: resp)
+
+
+def test_fusion_creates_linked_entry_across_sessions():
+    store, (a, b) = _store_with(
+        _ep("Alice mentioned she moved to Paris.", NOW, session_id="s1"),
+        _ep("Alice said she started a new job at Google.", NOW + 10, session_id="s2"),
+    )
+    backend = _fusion_backend()
+    actions = consolidate(store, backend=backend)
+    fuse_actions = [act for act in actions if act.action == "fuse"]
+    assert len(fuse_actions) == 1
+    fused = store.get(fuse_actions[0].episode_id)
+    assert fused is not None
+    assert fused.kind == "fusion"
+    assert set(fused.provenance["fused_from"]) == {a.id, b.id}
+    assert fused.provenance["entity"] == "Alice"
+    # sources preserved: still active, never superseded or deleted
+    assert store.status(a.id) == "active"
+    assert store.status(b.id) == "active"
+    assert store.get(a.id) is not None and store.get(b.id) is not None
+    assert any(e.event == "fused_into" for e in store.events(episode_id=a.id))
+    assert any(e.event == "fused_into" for e in store.events(episode_id=b.id))
+
+
+def test_fusion_idempotent_on_rerun():
+    store, _ = _store_with(
+        _ep("Alice mentioned she moved to Paris.", NOW, session_id="s1"),
+        _ep("Alice said she started a new job at Google.", NOW + 10, session_id="s2"),
+    )
+    backend = _fusion_backend()
+    first = [a for a in consolidate(store, backend=backend) if a.action == "fuse"]
+    assert len(first) == 1
+    n_calls_after_first = len(backend.calls)
+    second = [a for a in consolidate(store, backend=backend) if a.action == "fuse"]
+    assert second == []  # no duplicate fused entry
+    assert len(backend.calls) == n_calls_after_first  # no new LLM call either
+    fusion_rows = [ep for ep in store.all() if ep.kind == "fusion"]
+    assert len(fusion_rows) == 1
+
+
+def test_fusion_skipped_without_backend():
+    store, _ = _store_with(
+        _ep("Alice mentioned she moved to Paris.", NOW, session_id="s1"),
+        _ep("Alice said she started a new job at Google.", NOW + 10, session_id="s2"),
+    )
+    actions = consolidate(store, backend=None)
+    assert [a for a in actions if a.action == "fuse"] == []
+    assert [ep for ep in store.all() if ep.kind == "fusion"] == []
+
+
+def test_fusion_requires_min_sessions():
+    """Same entity, same session: not a cross-session fusion candidate."""
+    store, _ = _store_with(
+        _ep("Alice mentioned she moved to Paris.", NOW, session_id="s1"),
+        _ep("Alice said she started a new job at Google.", NOW + 10, session_id="s1"),
+    )
+    backend = _fusion_backend()
+    actions = consolidate(store, backend=backend)
+    assert [a for a in actions if a.action == "fuse"] == []
+
+
+def test_fusion_respects_negative_verdict():
+    store, _ = _store_with(
+        _ep("Alice mentioned she moved to Paris.", NOW, session_id="s1"),
+        _ep("Alice said she started a new job at Google.", NOW + 10, session_id="s2"),
+    )
+    backend = MockBackend(responder=lambda s, m: json.dumps({"fuse": False, "content": ""}))
+    actions = consolidate(store, backend=backend)
+    assert [a for a in actions if a.action == "fuse"] == []
+    assert len(backend.calls) == 1  # still judged once, just not written
+
+
+def test_fusion_dry_run_writes_nothing():
+    store, _ = _store_with(
+        _ep("Alice mentioned she moved to Paris.", NOW, session_id="s1"),
+        _ep("Alice said she started a new job at Google.", NOW + 10, session_id="s2"),
+    )
+    backend = _fusion_backend()
+    actions = consolidate(store, backend=backend, dry_run=True)
+    assert len([a for a in actions if a.action == "fuse"]) == 1
+    assert [ep for ep in store.all() if ep.kind == "fusion"] == []
 
 
 # --------------------------------------------------------------------------- #
