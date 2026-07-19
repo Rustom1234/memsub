@@ -81,6 +81,15 @@ Usage:
                          (condition, prompt, dates flag, slice, judge) stays
                          fixed, so a run at --budget 2000 or --budget 4000
                          isolates the budget variable.
+  --hops N                Wave 2 items 4-5 (2026-07-19): graph co-mention
+                         hop count passed to rank_decomposed_graph (default
+                         1, unchanged for every existing caller). N=2 turns
+                         on second-hop graph traversal for the
+                         graph_decompose condition only.
+  --subqueries N         Wave 2 item 4 iteration 2 (2026-07-19): decomposition
+                         depth (max_subqueries passed to
+                         rank_decomposed_graph). Default 2, unchanged for
+                         every existing caller.
   --out FILENAME         Wave 1 items 1-2 (2026-07-18): write results to
                          results/FILENAME instead of the default path chosen
                          by --prompt/--with-dates. Used for the v3 combined
@@ -221,14 +230,16 @@ def _build_system(condition: str, conv):
 
 def _context_for(
     condition: str, system, store, question: str, decompose_backend, with_dates: bool = False,
-    budget: int = BUDGET,
+    budget: int = BUDGET, hops: int = 1, max_subqueries: int = 2,
 ) -> str:
     if system is None:
         return ""
     if condition == "naive_topk":
         packed = system.inject(question, budget)
     else:  # graph_decompose
-        order = system.rank_decomposed_graph(question, decompose_backend, store, max_subqueries=2)
+        order = system.rank_decomposed_graph(
+            question, decompose_backend, store, max_subqueries=max_subqueries, hops=hops
+        )
         packed = pack_greedy([system.episodes[i] for i in order], budget)
     # Wave 1 item 3 (2026-07-18): date-prefix formatting now lives in the
     # library (memsub.store.format_episode), shared with memsub.sdk.
@@ -244,6 +255,8 @@ def run_condition(
     with_dates: bool = False,
     category_filter: int | None = None,
     budget: int = BUDGET,
+    hops: int = 1,
+    max_subqueries: int = 2,
 ) -> int:
     assert condition in CONDITIONS, condition
 
@@ -286,7 +299,8 @@ def run_condition(
             system, store = systems[ci]
 
             ctx = _context_for(
-                condition, system, store, q.question, decompose_backend, with_dates, budget
+                condition, system, store, q.question, decompose_backend, with_dates, budget,
+                hops, max_subqueries,
             )
             prompt = f"CONTEXT:\n{ctx}\n\nQUESTION: {q.question}"
 
@@ -403,6 +417,19 @@ def main() -> int:
     budget = BUDGET
     if "--budget" in args:
         budget = int(args[args.index("--budget") + 1])
+    hops = 1
+    if "--hops" in args:
+        # Wave 2 item 4/5 (2026-07-19): graph co-mention hop count for
+        # rank_decomposed_graph (memsub/hybrid.py). Default 1, unchanged for
+        # every existing caller. Threaded through so an open-domain-only or
+        # multi-hop-only rerun can isolate the hops variable.
+        hops = int(args[args.index("--hops") + 1])
+    max_subqueries = 2
+    if "--subqueries" in args:
+        # Wave 2 item 4 iteration 2 (2026-07-19): decomposition depth
+        # (rank_decomposed_graph's max_subqueries). Default 2, unchanged
+        # for every existing caller.
+        max_subqueries = int(args[args.index("--subqueries") + 1])
     if "--out" in args:
         # Wave 1 items 1-2 (2026-07-18): explicit output path override, so a
         # full n=80 combined run (item 1) and budget-ablation runs (item 2)
@@ -413,7 +440,8 @@ def main() -> int:
         results_path = ROOT / "results" / args[args.index("--out") + 1]
     return run_condition(
         condition, limit, answer_system=answer_system, results_path=results_path,
-        with_dates=with_dates, category_filter=category_filter, budget=budget,
+        with_dates=with_dates, category_filter=category_filter, budget=budget, hops=hops,
+        max_subqueries=max_subqueries,
     )
 
 

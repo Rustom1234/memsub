@@ -1119,3 +1119,114 @@ July 17-18 docs/results/scripts/tests sitting untracked on disk with no
 - A merge is not done until the full test suite is green; `argparse`
   duplicate-subparser and similar structural collisions do not show up as
   `git` conflicts and only surface at import/collection time.
+
+## 2026-07-19: Wave 2 (items 4-6 of docs/improvement-plan-2026-07-18.md), start
+
+### Bead discrepancy noted, not fabricated
+
+The task referenced bead `memory-sublayer-jgp` as tracking this wave.
+`bd show memory-sublayer-jgp` and `bd list --all` (35 issues) both show no
+such bead exists -- the only open P3 beads are `cib` (LLM multi-hop query
+decomposition, already implemented per the graph layer work) and `vtr`
+(finish LOCOMO holdout judge pass). Proceeding on Rustom's direct
+instruction ("make a plan to improve each now, and then actually execute
+the full plan" / "i need to beat current top locomo score also") per the
+task's own note that this satisfies the ask-once gate; will close `vtr` at
+the end of this wave since its scope (LOCOMO judge pass) is what this wave
+completes, and file a fresh bead noting `jgp` was never found if one is
+needed for continuity.
+
+### Data check before autopsy: 9 wrong, not 11
+
+Re-read `results/locomo-jscore-v3-2026-07-18-b2000.jsonl`: 20 open-domain
+(category 3) question records, 0 duplicates, 11 correct / **9 wrong**
+(55.0%, matches the recorded summary `by_category.open-domain.accuracy =
+0.55`). The task text says "11/20 wrong" -- that is arithmetically
+inconsistent with the already-published 55.0% open-domain accuracy (55% of
+20 = 11 correct, so 9 wrong, not 11). Verified via a direct read of the
+JSONL, not assumed. Proceeding with the actual 9 wrong records; noting the
+discrepancy here rather than silently inflating the autopsy set to match
+the task text's number.
+
+### Assumptions stated before coding (Karpathy rule 1)
+
+1. Question records in the v3/b2000 file do not persist the packed context
+   string, so it must be reconstructed to do the autopsy. Reconstruction
+   reruns `_build_system`/`_context_for` from
+   `scripts/locomo_jscore_frontier_2026-07-18.py` with the same condition
+   (`graph_decompose`), budget (2000), and `with_dates=True` as the
+   original v3/b2000 run, on the same holdout slice/sample. This is a
+   read-only reconstruction (no answer/judge calls, so no cost and no risk
+   of changing the already-published record). Caveat: the decomposition
+   sub-query LLM call (`OllamaBackend(model="qwen3:8b")`) is not seeded to
+   a fixed temperature, so the exact 1-2 decomposed sub-queries may differ
+   slightly from the original run's; the base (non-decomposed) retrieval
+   ranking is deterministic (BM25+dense hybrid, no LLM), so this affects at
+   most the RRF-fused tail of the packed context, not its bulk. Documented
+   as an approximation, not treated as a discrepancy if noticed later.
+2. Classification taxonomy is exactly the task's four categories: (a)
+   retrieval miss, (b) present-but-unused, (c) answer-format/judge
+   artifact, (d) out of memory scope (needs world knowledge). Judged by
+   reading each question/gold/context/answer directly, not by a heuristic
+   script -- this is a qualitative call the task says to make by hand.
+3. Item 4 fix policy: apply the fix that matches whichever failure mode
+   dominates the count (retrieval -> raise k / 2-hop graph / decomposition
+   depth; present-but-unused -> answer-prompt phrasing; judge artifact ->
+   document judge-prompt gap vs LOCOMO's official wording, never silently
+   loosen the judge). At most 2 iterations on the open-domain category
+   (n=20) only, per the task's cap.
+4. Item 5 (multi-hop 2-hop push) is one bounded experiment: `hops=2` on
+   `rank_decomposed_graph` (the flag already exists,
+   `memsub/hybrid.py:257,281`), category-filtered to multi-hop (n=20),
+   budget 2000. No further tuning if flat/negative.
+5. Item 6 final run uses whatever config wins items 4-5 (or the standing
+   v3/b2000 config if neither wins), full n=80, one run.
+
+### Success criteria (Karpathy rule 4)
+
+- Item 4: classification table for all 9 actual open-domain failures
+  written to this file and to a docs file; a fix applied and re-measured on
+  n=20 open-domain; report the category delta honestly even if it is
+  zero or negative.
+- Item 5: multi-hop n=20 accuracy at hops=2 reported against the standing
+  50.0% (hops=1) baseline; no further work if the delta is not clearly
+  positive.
+- Item 6: one full n=80 run of the best surviving config, written to
+  `docs/locomo-final-2026-07-19.md` with the full ladder table, honest
+  deviations list, and claim language restricted to measured sentences.
+  README benchmark section synced if it cites older numbers. Bead cleanup
+  (see above). All runs stream JSONL incrementally to `results/` and are
+  resumable. Suite stays green (333 baseline, confirmed before starting).
+
+### Item 4 result: open-domain autopsy + two bounded retrieval fixes, both negative
+
+Full classification table and per-question evidence:
+`docs/locomo-open-domain-autopsy-2026-07-19.md`. Counts across the 9
+actual wrong open-domain records (v3/b2000): **(a) retrieval miss 5/9**,
+(b) present-but-unused 2/9 (one compounded with (d)), (c) judge/gold
+artifact 1/9, (d) out of memory scope 1/9 (+1 compounded). (a) dominates,
+so per the task's own rule the fix applied was retrieval, not prompt or
+judge-prompt changes.
+
+Two bounded retrieval experiments (2-iteration cap), both category 3
+(open-domain) only, n=20, budget 2000, best-effort prompt + dates,
+baseline 55.0%:
+
+| variant | flags | accuracy | delta |
+|---|---|---|---|
+| baseline (v3/b2000, hops=1, subqueries=2) | -- | 55.0% | -- |
+| iter 1: 2-hop graph | `--hops 2` | 50.0% | -5.0pp |
+| iter 2: deeper decomposition | `--hops 1 --subqueries 3` | 45.0% | -10.0pp |
+
+Both hurt, neither helped. Stopped at 2 iterations per the task's cap. The
+standing v3/b2000 config remains the best open-domain config found;
+item 6's final run uses it unchanged. Added `--hops`/`--subqueries` CLI
+flags to `scripts/locomo_jscore_frontier_2026-07-18.py` to run these
+(default values unchanged for every existing caller, verified: 333 tests
+still pass, script still imports clean). Raw records:
+`results/locomo-jscore-v4-opendomain-hops2-2026-07-19.jsonl`,
+`results/locomo-jscore-v4-opendomain-sq3-2026-07-19.jsonl`. Autopsy
+reconstruction records (packed context per failing question):
+`results/locomo-open-domain-autopsy-2026-07-19.jsonl`, produced by
+`scripts/locomo_open_domain_autopsy_2026-07-19.py` (read-only, no
+answer/judge calls).
