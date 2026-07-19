@@ -23,7 +23,7 @@ from .hybrid import HybridRetriever
 from .namespaces import NamespaceManager
 from .policy import approx_tokens
 from .retrieval import SemanticIndex
-from .store import Episode, EpisodicStore
+from .store import Episode, EpisodicStore, format_episode
 
 
 def default_db_path() -> Path:
@@ -154,10 +154,22 @@ class MemoryClient:
             )
         return packed
 
-    def inject(self, query: str, budget_tokens: int = 700, k: int = 24, namespace: str | None = None) -> str:
-        """The injection block: best memories that fit the hard budget."""
+    def inject(
+        self,
+        query: str,
+        budget_tokens: int = 700,
+        k: int = 24,
+        namespace: str | None = None,
+        with_dates: bool = False,
+    ) -> str:
+        """The injection block: best memories that fit the hard budget.
+
+        with_dates: opt-in (default False, output unchanged from before this
+        flag existed). When True, prefixes each memory with its session date
+        from provenance when present -- see memsub.store.format_episode.
+        """
         hits = self.search(query, k=k, namespace=namespace, budget_tokens=budget_tokens)
-        return "\n".join(h.episode.content for h in hits)
+        return "\n".join(format_episode(h.episode, with_dates=with_dates) for h in hits)
 
     def list(self, namespace: str | None = None, limit: int = 50) -> list[Episode]:
         ns = namespace or self.namespace

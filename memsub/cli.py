@@ -442,6 +442,35 @@ def _cmd_wiki_ingest(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_graph_backfill(args: argparse.Namespace) -> int:
+    """Populate the graph layer's entity-episode index over an existing
+    store (memsub/graph.py's graph_store, the same write path consolidate()'s
+    opt-in enable_graph flag uses). Idempotent: already-graphed episodes are
+    skipped on rerun. Rule-based extraction by default (--backend none,
+    zero LLM cost); an LLM is only spent on the rare ambiguous entity-dedup
+    pair when a real backend is given.
+    """
+    from .graph import graph_store
+
+    db = Path(args.db)
+    if not db.exists():
+        print(f"no store at {db}")
+        return 1
+    backend = None if args.backend == "none" else build_backend(prefer=args.backend, model=args.model)
+    store = EpisodicStore(db)
+    result = graph_store(
+        store, backend=backend, run_id=args.run_id, namespace=args.namespace, dry_run=args.dry_run,
+    )
+    label = "proposed (dry run)" if args.dry_run else "written"
+    print(
+        f"{result.episodes_processed} episode(s) processed, "
+        f"{result.entities_upserted} entit{'y' if result.entities_upserted == 1 else 'ies'} / "
+        f"{result.links_created} link(s) {label}, {result.llm_calls} LLM call(s)"
+    )
+    store.close()
+    return 0
+
+
 def _cmd_mcp(args: argparse.Namespace) -> int:
     from .mcp_server import serve
     from .sdk import MemoryClient
@@ -624,6 +653,22 @@ def build_parser() -> argparse.ArgumentParser:
     w_ingest.add_argument("--run-id", default="wiki", help="run id to file claims under")
     w_ingest.add_argument("--max-chars", type=int, default=12000, help="chunk size in characters")
     w_ingest.set_defaults(func=_cmd_wiki_ingest)
+
+    p_graph = sub.add_parser("graph", help="graph layer: entity-episode index over the store")
+    graph_sub = p_graph.add_subparsers(dest="graph_command", required=True)
+    g_backfill = graph_sub.add_parser(
+        "backfill", help="populate/update the entity-episode index (idempotent)"
+    )
+    g_backfill.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    g_backfill.add_argument(
+        "--backend", default="none", choices=["none", "auto", "api", "ollama", "cli", "mock"],
+        help="LLM backend for the rare ambiguous entity-dedup pair (default: none, rule-based only)",
+    )
+    g_backfill.add_argument("--model", default=None, help="model override for the backend")
+    g_backfill.add_argument("--namespace", default=None, help="restrict to one namespace (default: all)")
+    g_backfill.add_argument("--run-id", default=None, help="restrict to one run id")
+    g_backfill.add_argument("--dry-run", action="store_true", help="print what would be written, write nothing")
+    g_backfill.set_defaults(func=_cmd_graph_backfill)
 
     p_mcp = sub.add_parser("mcp", help="run the MCP stdio server (for claude mcp add)")
     p_mcp.add_argument("--db", default=None, help="SQLite store path (default: $MEMSUB_DB or ~/.memsub/memory.db)")

@@ -46,6 +46,20 @@ CREATE TABLE IF NOT EXISTS extraction_checkpoints (
     ts REAL NOT NULL,
     memory_count INTEGER NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS entities (
+    id TEXT PRIMARY KEY,
+    namespace TEXT NOT NULL,
+    entity_type TEXT NOT NULL,
+    ts REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_entities_namespace ON entities(namespace);
+CREATE TABLE IF NOT EXISTS entity_links (
+    entity_id TEXT NOT NULL,
+    episode_id TEXT NOT NULL,
+    ts REAL NOT NULL,
+    PRIMARY KEY (entity_id, episode_id)
+);
+CREATE INDEX IF NOT EXISTS idx_links_episode ON entity_links(episode_id);
 """
 
 # Events that end an episode's active life. The episode row is never deleted;
@@ -102,6 +116,37 @@ class Episode:
             ts=ts,
             id=ep_id,
         )
+
+
+@dataclass(frozen=True)
+class Entity:
+    """One node in the graph layer's bipartite entity-episode index
+    (memsub/graph.py). id is namespace-scoped (`f"{namespace}::{normalized}"`,
+    see memsub.graph.entity_id) so two namespaces' identically-named entities
+    never collide into one row."""
+
+    id: str
+    namespace: str
+    entity_type: str
+    ts: float = 0.0
+
+
+def format_episode(ep: Episode, with_dates: bool = False) -> str:
+    """Render an episode's content for context injection.
+
+    Opt-in (default False, byte-identical to `ep.content`): when True,
+    prefixes the content with `[session_date]` from `ep.provenance` when
+    present, e.g. "[11 November 2022] Joanna: ...". Falls back to plain
+    content when no session_date is recorded (most non-LOCOMO sources).
+    Shared by memsub.sdk.MemoryClient.inject and any eval/harness code that
+    needs the same date-surfacing format, so there is exactly one
+    implementation of this formatting rule.
+    """
+    if with_dates:
+        session_date = (ep.provenance or {}).get("session_date", "")
+        if session_date:
+            return f"[{session_date}] {ep.content}"
+    return ep.content
 
 
 class EpisodicStore:
@@ -349,6 +394,67 @@ class EpisodicStore:
             self._conn.rollback()
             raise
         return written
+
+    # ------------------------------------------------------------------ #
+    # Graph layer: entities + entity_links (memsub/graph.py's write path)
+    # ------------------------------------------------------------------ #
+    def upsert_entity(self, entity_id: str, namespace: str, entity_type: str, ts: float) -> bool:
+        """Insert entity_id if new. Returns True if newly created, False if
+        it already existed (idempotent, never overwrites entity_type)."""
+        if self.get_entity(entity_id) is not None:
+            return False
+        self._conn.execute(
+            "INSERT INTO entities (id, namespace, entity_type, ts) VALUES (?, ?, ?, ?)",
+            (entity_id, namespace, entity_type, ts),
+        )
+        self._conn.commit()
+        return True
+
+    def get_entity(self, entity_id: str) -> Entity | None:
+        row = self._conn.execute(
+            "SELECT id, namespace, entity_type, ts FROM entities WHERE id = ?", (entity_id,)
+        ).fetchone()
+        return Entity(id=row[0], namespace=row[1], entity_type=row[2], ts=row[3]) if row else None
+
+    def entities_in_namespace(self, namespace: str) -> list[Entity]:
+        rows = self._conn.execute(
+            "SELECT id, namespace, entity_type, ts FROM entities WHERE namespace = ?", (namespace,)
+        ).fetchall()
+        return [Entity(id=r[0], namespace=r[1], entity_type=r[2], ts=r[3]) for r in rows]
+
+    def entity_count(self) -> int:
+        return self._conn.execute("SELECT COUNT(*) FROM entities").fetchone()[0]
+
+    def link_entity(self, entity_id: str, episode_id: str, ts: float) -> bool:
+        """Insert an (entity, episode) link if new. Returns True if newly
+        created, False if it already existed (idempotent)."""
+        cur = self._conn.execute(
+            "INSERT OR IGNORE INTO entity_links (entity_id, episode_id, ts) VALUES (?, ?, ?)",
+            (entity_id, episode_id, ts),
+        )
+        self._conn.commit()
+        return cur.rowcount > 0
+
+    def entity_link_count(self) -> int:
+        return self._conn.execute("SELECT COUNT(*) FROM entity_links").fetchone()[0]
+
+    def episode_ids_for_entities(self, entity_ids: set[str] | list[str]) -> list[str]:
+        if not entity_ids:
+            return []
+        placeholders = ", ".join("?" for _ in entity_ids)
+        rows = self._conn.execute(
+            f"SELECT DISTINCT episode_id FROM entity_links WHERE entity_id IN ({placeholders})",
+            list(entity_ids),
+        ).fetchall()
+        return [r[0] for r in rows]
+
+    def entities_for_episode(self, episode_id: str) -> list[Entity]:
+        rows = self._conn.execute(
+            "SELECT e.id, e.namespace, e.entity_type, e.ts FROM entities e"
+            " JOIN entity_links l ON l.entity_id = e.id WHERE l.episode_id = ?",
+            (episode_id,),
+        ).fetchall()
+        return [Entity(id=r[0], namespace=r[1], entity_type=r[2], ts=r[3]) for r in rows]
 
     def __iter__(self) -> Iterator[Episode]:
         return iter(self.all())

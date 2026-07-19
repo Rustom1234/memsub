@@ -137,11 +137,18 @@ def consolidate(
     namespace: str | None = None,
     now: float | None = None,
     dry_run: bool = False,
+    enable_graph: bool = False,
 ) -> list[Action]:
     """Run the full consolidation pass. Returns the actions taken (or proposed).
 
     Consolidation never crosses namespace boundaries when namespace is given;
     with namespace=None it treats each namespace separately.
+
+    enable_graph: opt-in (default False, same gate as the LLM contradiction
+    pass -- backend=None). When True and dry_run is False, also runs
+    memsub.graph.graph_store() for this namespace after dedup/decay, so the
+    entity-episode index stays current. Off by default: consolidate()'s
+    behavior is unchanged unless a caller opts in.
     """
     cfg = config or ConsolidationConfig()
     emb = embedder or HashingEmbedder()
@@ -155,6 +162,7 @@ def consolidate(
                 consolidate(
                     store, backend=backend, config=cfg, embedder=emb,
                     run_id=run_id, namespace=ns, now=now, dry_run=dry_run,
+                    enable_graph=enable_graph,
                 )
             )
         return actions
@@ -263,4 +271,8 @@ def consolidate(
         for act in actions:
             event = "superseded" if act.action == "supersede" else "forgotten"
             store.log_event(act.episode_id, event, {"reason": act.reason, **act.detail})
+        if enable_graph:
+            from .graph import graph_store
+
+            graph_store(store, backend=backend, run_id=run_id, namespace=namespace)
     return actions
