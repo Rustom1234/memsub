@@ -1978,3 +1978,106 @@ Files touched, per the task's file boundary: `memsub/vault_serve.py`,
 `docs/screenshots/2026-07-20-brain/*.png`. Nothing in `memsub/store.py`,
 `hybrid.py`, `memory.py`, `cli.py`, or `scripts/` was read-modified or
 touched at all. No push to any remote.
+
+## 2026-07-20: Abstention calibration + tiny learned reranker
+
+Ordered directly: two builds, salvaged from `docs/research-salvage-2026-07-20.md`
+(MemGuard's abstention calibration; the ~3.6M-parameter learned-reranker
+lead) and grounded in `docs/locomo-frontier-v2-2026-07-18.md` (refusal
+findings: best-effort prompting fixed over-refusal, calibrated abstention is
+the honest remaining answer) and `docs/temporal-v1-2026-07-20.md` ("best
+prior config" = `rank_decomposed_graph` + `with_dates=True`, budget 2000, and
+the `base_order` pattern for fair paired comparisons). File boundary this
+round: `memsub/rerank.py`, `memsub/hybrid.py`, new `memsub/answer_policy.py`,
+`scripts/`, `results/`, `docs/`, `WORKLOG.md`, `tests/` only --
+`memsub/vault_serve.py`/`vault_graph.py`/`vault_notes.py`/`vault_similarity.py`
+and their tests belong to a concurrent agent, not touched or even
+read-modified here.
+
+### Assumptions (Karpathy rule 1, stated before coding)
+
+1. "Best prior config" (used as Task 3's baseline arm) is
+   `HybridSystem(**FROZEN).rank_decomposed_graph(query, backend, store)` +
+   `format_episode(with_dates=True)` + budget 2000 -- the exact condition
+   `docs/temporal-v1-2026-07-20.md` calls "baseline" and reports as the
+   standing config (temporal retrieval tied it, did not beat it).
+2. Task 1's abstention label ("answerable-from-retrieved") is computed
+   purely from gold-token overlap with the packed retrieved context, per the
+   task's own literal wording -- no answerer LLM call is needed to build the
+   dev-slice calibration set, only retrieval (one `graph_decompose` call per
+   question, local qwen3:8b, zero cloud calls). This label doubles as the
+   proxy ground truth for "would the answerer have gotten this right", made
+   explicit and documented as a proxy, not a real judged accuracy number.
+3. The evidence-sufficiency score itself (used at inference/query time) is
+   built ONLY from query-side and retrieval-side signals (RRF/cosine top-1
+   and margin, query-entity coverage across the top-k retrieved text,
+   per-item agreement) -- it never sees the gold answer, so calibrating its
+   threshold against gold-overlap labels on dev is a legitimate offline fit,
+   not circular.
+4. Task 2's reranker training labels come from LOCOMO's own `evidence`
+   dia_ids (exact ground truth for "is this episode gold-supporting"),
+   joined against the (conversation_id, question) pairs found by scanning
+   existing `results/*.jsonl` files -- not from re-deriving labels via text
+   overlap. Restricted to DEV conversations only (`conv-26`, `conv-30`,
+   `conv-41` -- `data/locomo10.json` indices 0-2, confirmed by direct
+   inspection), even though several `results/` files were themselves run on
+   HOLDOUT conversations (`conv-42/43/44/47/48/49/50`) -- those holdout rows
+   are excluded from training to keep Task 3's holdout judged comparison
+   uncontaminated. Exactly which source files/rows contributed will be
+   logged in `docs/rerank-abstain-2026-07-20.md`.
+5. Both the reranker's candidate-level features and the abstention score's
+   aggregate features are built from ONE new `HybridRetriever.candidate_features()`
+   method (`memsub/hybrid.py`, opt-in, `rank()`/`rank_graph()` etc. untouched)
+   over the plain `rank()` pool (BM25, dense cosine, RRF-derived reciprocal
+   rank, entity overlap via `memsub.sleep._extract_entities` reused the same
+   way `memsub/graph.py` already does, recency, temporal-window match via
+   `memsub.temporal`, graph-boost via `memsub.graph.graph_episode_order`
+   with `backend=None`, which degrades to zero LLM calls per that module's
+   own documented contract). Building this pool needs no LLM call at all
+   (rank()/graph_episode_order are both deterministic) -- only Task 1's
+   calibration run needs local ollama, for the one `graph_decompose` call
+   per question needed to match "best prior config".
+6. A tiny generic logistic-regression trainer (pure numpy, standardized
+   features, gradient descent) lives once in `memsub/rerank.py`
+   (`train_logistic`/`apply_logistic`) and is reused by both
+   `memsub/answer_policy.py` (4 aggregate features -> P(answerable)) and the
+   reranker training script (7 candidate features -> P(gold-supporting)) --
+   one implementation, two independent feature vectors/weight files, no
+   sklearn dependency (not installed; repo ethos is dependency-free per
+   `memsub/hybrid.py`'s own docstring).
+7. Trained weights are data, not library code, so they live under
+   `results/` (`results/reranker-weights-2026-07-20.json`,
+   `results/abstain-weights-2026-07-20.json`), not a new file under
+   `memsub/` -- the task's file boundary only grants three specific
+   `memsub/` files.
+
+### Success criteria (stated before coding)
+
+- **Task 1 (abstention)**: on the dev-slice calibration set (LOCOMO dev
+  conversations, categories 1-4, `graph_decompose` + `with_dates`, budget
+  2000), the calibrated threshold makes >=70% of abstained questions ones
+  that were "would-have-been-wrong" by the gold-overlap proxy, while
+  sacrificing <=5% of "would-have-been-right" questions (abstaining on
+  them). If the simple heuristic/logistic score cannot jointly satisfy both
+  on this dev set, that will be reported honestly as a miss, not silently
+  loosened.
+- **Task 2 (reranker)**: trains in local seconds-to-minutes off parsed
+  `results/` + LOCOMO evidence labels; dev-slice eval (Recall@k / MRR over a
+  shared base-order candidate pool, base-vs-reranked, same pattern as
+  `docs/temporal-v1-2026-07-20.md`'s `base_order` fairness fix) reported
+  honestly whichever way it lands.
+- **Task 3 (bounded judged check)**: n=20 mixed holdout slice (seed 2026: 10
+  multi-hop, 5 open-domain, 5 temporal), best prior config vs
+  best-prior-config + reranker + abstention, Sonnet CLI judge, streamed to
+  `results/rerank-abstain-2026-07-20.jsonl`, hard cap 40 judge calls total
+  for this whole task (this is the only place Sonnet is called anywhere in
+  this round). `docs/rerank-abstain-2026-07-20.md` reports honest verdicts
+  per component, explicitly not overclaiming past what n=20 can show.
+- Full existing suite (410 baseline, confirmed by collection count before
+  starting) stays green; new tests added for `answer_policy.py`, the
+  `rerank.py` logistic trainer, and `hybrid.py`'s new
+  `candidate_features`/`rank_reranked` methods.
+- Every run that produces results streams to a git-tracked JSONL under
+  `results/` incrementally (durable-output rule), and each checkpoint is
+  committed with a `git log -1 HEAD` verification per the task's rules; no
+  `git push` at any point.
