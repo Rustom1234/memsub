@@ -2081,3 +2081,132 @@ read-modified here.
   `results/` incrementally (durable-output rule), and each checkpoint is
   committed with a `git log -1 HEAD` verification per the task's rules; no
   `git push` at any point.
+
+## 2026-07-20: Second brain Layers 1 + 4 (distillation + idea capture)
+
+Ordered directly: implement `docs/second-brain-spec-2026-07-20.md` Layer 1
+(distillation, the librarian) and Layer 4 (deliberate idea capture), the
+second of the two agent rounds that spec's "Build order" section lays out
+(Layer 2/3 already shipped, see the entry above). File boundary this round:
+new `memsub/distill.py`, `memsub/cli.py` (additive subcommands), `scripts/`,
+`~/scripts/install-durable-capture.sh` (cron line only), `docs/`, `tests/`,
+`WORKLOG.md`. Forbidden: `memsub/rerank.py`, `memsub/hybrid.py`,
+`memsub/answer_policy.py` and their tests/scripts (a concurrent agent owns
+these -- confirmed uncommitted changes to `hybrid.py`/`rerank.py` present in
+the working tree at task start, left untouched). The vault_serve family
+(`vault_serve.py`/`vault_notes.py`/`vault_graph.py`/`vault_similarity.py`) is
+finished work from the round above: read-only reuse, minimal additive hooks
+only where this task specifically requires one.
+
+### Assumptions (Karpathy rule 1, stated before coding)
+
+1. **Clustering**: entity co-occurrence graph, built from
+   `store.entities_for_episode()` over active episodes (all namespaces,
+   `namespace=None`, matching every other maintenance command's default --
+   the live store currently has one namespace, `claude-code`, but nothing
+   here hardcodes that). Entities that co-occur with more than `HUB_CAP`
+   (30) other episodes are excluded from edge-formation (not from the
+   vault-facing graph, just from clustering): a generic entity like a
+   frequent speaker name would otherwise chain unrelated episodes into one
+   giant component, the same "index.md pollution" failure class
+   `memsub/vault_notes.py::is_content_note` and `vault_graph.py`'s hub-cap
+   already document and guard against elsewhere in this codebase. Connected
+   components (union-find) over the filtered entity graph are candidate
+   topics; candidates larger than `REFINE_THRESHOLD` (8) are refined
+   (split, never merged across candidates) by a lexical-similarity graph
+   (Jaccard over `memsub.lexical.tokenize` token sets, threshold tuned by
+   inspection against the real store, not a labeled set) intersected with
+   candidate membership. A topic needs >=3 members after refinement;
+   smaller remainders are dropped, not surfaced as noise topics.
+2. **LLM usage**: local qwen3:8b only
+   (`memsub.backends.build_backend(prefer="ollama")`), exactly one call per
+   *changed* topic (title + overview + per-member fact rewrite + open
+   questions, one JSON object). The timeline section is built deterministically
+   from each member's `valid_from`/`valid_to` (temporal upgrade fields) with
+   no LLM call -- asking a local model to reproduce dates it was already
+   given as structured input is unnecessary risk for zero benefit. Every
+   wikilink in a topic note is assembled deterministically by
+   index-position mapping from the fixed member list, never parsed out of
+   LLM prose -- the LLM never controls which note a fact links to, only how
+   the fact is phrased, mirroring `memsub/sleep.py::generate_inferences`'s
+   own pattern of cross-validating LLM output against real ids rather than
+   trusting it.
+3. **Idempotence**: `member_hash` = first 16 hex chars of
+   `sha256(sorted(episode_ids))`, written to each topic note's frontmatter.
+   Episodes are immutable once written (the store is append-only, and
+   `memsub/vault.py::content_hash` already documents this same invariant
+   for episode notes), so the member id set alone is a sufficient content
+   fingerprint -- no separate per-member content hash needed. An unchanged
+   topic costs zero LLM calls and is not even opened for a write
+   (`_write_if_changed`-style skip), so a resumed/rerun distillation pass
+   after a crash or limit-hit redoes zero work, satisfying the durable/
+   resumable requirement without needing separate checkpoint bookkeeping --
+   the vault file itself is the checkpoint.
+4. **Human sovereignty**: every topic note's body carries one fixed
+   HTML-comment-delimited machine block (`<!-- memsub:distill:begin -->`
+   ... `<!-- memsub:distill:end -->`); on regeneration only the text between
+   those markers is replaced, text outside is preserved byte-for-byte
+   (prepended/appended human prose, added sections, anything). A note whose
+   frontmatter carries `verdict: reject` is deleted outright ("kills a
+   topic note", the spec's own words) rather than regenerated -- mirrors
+   `memsub/vault.py::apply_vault`'s existing `verdict: reject` semantics for
+   episode notes. `human_verified: true`, once present in frontmatter, is
+   never removed or overwritten by a later machine regeneration.
+5. **Idea badge**: `memsub idea` writes its episode with `kind="idea"`.
+   `memsub/vault.py::render_note` already writes `frontmatter_fields["kind"]
+   = ep.kind` unconditionally, and `memsub/vault_serve.py::_render_kind_badges`
+   already renders any non-default `kind` value as a small chip. Result: the
+   "distinct badge in vault" requirement is met with **zero changes** to
+   `vault.py` or the vault_serve family -- reuse over invention (Karpathy
+   rule 2). Verified by a live check, not just an assumption, before this is
+   trusted.
+6. **Idea topic/entity echo**: "cheap" is read literally -- rule-based
+   entity extraction only (`memsub.graph.extract_episode_entities`, reused
+   unchanged), matched against `store.entities` by exact normalized id (no
+   difflib fuzzy pass, no LLM dedup call), plus a plain-text scan of
+   `vault/topics/*.md` frontmatter (if a vault path is known) for topics
+   whose `entities` list intersects. No embedding call, no LLM call, at
+   idea-write time.
+7. **Vault UI wiring**: `vault/topics/` is a plain folder under vault root;
+   `vault_serve.py::build_index` already walks `root.rglob("*.md")` with no
+   folder allowlist, so topics render with zero code change -- to be
+   confirmed by a live smoke test after the real run, not assumed. Topic
+   notes carry `namespace: topics` + `created` frontmatter so
+   `vault_notes.is_content_note()` recognizes them as content notes (graph/
+   search inclusion) with zero code change there either. Whether topic
+   nodes get styled as large/accent in `/graph` is decided during
+   implementation per the task's own explicit fallback: a minimal additive
+   hook in `vault_graph.py` if it is genuinely small, else documented as a
+   follow-up rather than deep-editing that module.
+8. **Prerequisite**: `store.entity_count()` is 0 against the live
+   `~/.memsub/memory.db` (checked directly) -- `memsub graph backfill` has
+   never been run against it. Running it first (`--backend none`, zero LLM
+   calls, an existing, already-tested, idempotent command, not a new
+   mechanism) is an in-scope prerequisite for entity-seeded clustering.
+
+### Success criteria (stated before coding)
+
+- `memsub distill` runs end-to-end against the real store + vault (backup
+  `vault/topics/` to `/tmp` first) and produces >=1 topic with 3+ members;
+  every topic note matches the fixed structure (prose title, one-paragraph
+  overview, key-fact bullets each ending in a wikilink to its source note,
+  a timeline section when any member carries a `valid_from` window, open
+  questions). Rerunning immediately after is fully idempotent: 0 LLM calls,
+  0 files touched (checked by mtime).
+- `memsub idea "..."` writes a `channel="user_stated"`, signature-verified
+  episode and prints which known entities/topics it attached to; a
+  `remember` shell alias is documented in `docs/`.
+- New tests green (clustering determinism, idempotence, the sovereignty
+  merge, the idea write path); full existing suite (434 baseline, confirmed
+  by `pytest --collect-only` before starting) stays green throughout.
+- No em dash in any file touched.
+- Commits land per checkpoint, only this round's own paths staged
+  explicitly, `git log -1 HEAD` checked immediately after each (concurrent
+  commits from the rerank/abstention agent are expected on the same branch
+  and left untouched).
+- `git bundle create ~/repo-bundles/memory-sublayer-<timestamp>.bundle --all`
+  at the end; no `git push` anywhere in this round.
+- `docs/distillation-2026-07-20.md` reports the real topic count, quotes 3
+  sample topic notes in full, and gives an honest hand-graded quality check
+  of 10 random topic notes against the Zettelkasten bar -- weak clusters
+  named plainly, not smoothed over.
