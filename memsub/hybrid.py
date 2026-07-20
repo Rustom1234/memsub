@@ -22,6 +22,7 @@ from __future__ import annotations
 import json
 import re
 from collections import Counter
+from datetime import date, datetime
 
 import numpy as np
 
@@ -30,6 +31,7 @@ from .embed import Embedder, HashingEmbedder
 from .graph import graph_episode_order
 from .lexical import BM25Index, rrf_fuse, tokenize
 from .store import Episode, EpisodicStore
+from .temporal import classify_intent, episode_matches_date, ordinal_direction, parse_absolute_date, resolve_relative
 
 DECOMPOSE_SYSTEM_TEMPLATE = (
     "Break the QUESTION into up to {n} short standalone sub-questions whose "
@@ -309,6 +311,125 @@ class HybridRetriever:
     ) -> list[tuple[Episode, float]]:
         order = self.rank_decomposed_graph(
             query, backend, store, max_subqueries=max_subqueries, hops=hops
+        )
+        return [
+            (self.episodes[i], 1.0 / (self.rrf_k + pos + 1))
+            for pos, i in enumerate(order[:k])
+        ]
+
+    # -- temporal layer (opt-in, memsub/temporal.py's query-time intent) --- #
+    def _now_reference(self) -> date:
+        """'Now' for resolving a relative expression inside a query itself:
+        the most recent ingested episode's session_date (or its ts), since
+        most sources (including LOCOMO) carry no explicit question-asked
+        timestamp. A heuristic, not a ground truth -- see WORKLOG.md."""
+        if not self.episodes:
+            return date.today()
+        last = self.episodes[-1]
+        session_date = (last.provenance or {}).get("session_date", "")
+        if session_date:
+            parsed = parse_absolute_date(session_date)
+            if parsed is not None:
+                return parsed
+        return datetime.fromtimestamp(last.ts).date() if last.ts else date.today()
+
+    def _temporal_match_order(self, query: str, ref: date) -> list[int] | None:
+        target = parse_absolute_date(query) or resolve_relative(query, ref)
+        if target is None:
+            return None
+        matches = [i for i, ep in enumerate(self.episodes) if episode_matches_date(ep, target)]
+        if not matches:
+            return None
+        return sorted(matches, key=lambda i: -self.episodes[i].ts)
+
+    def _apply_temporal(
+        self, base_order: list[int], query: str, intent: str, temporal_weight: float, ordinal_pool: int,
+    ) -> list[int]:
+        if not base_order:
+            return base_order
+        if intent == "ordinal":
+            direction = ordinal_direction(query)
+            pool, rest = base_order[:ordinal_pool], base_order[ordinal_pool:]
+            pool_sorted = sorted(
+                pool,
+                key=lambda i: (self.episodes[i].valid_from or self.episodes[i].ts),
+                reverse=(direction == "latest"),
+            )
+            return pool_sorted + rest
+        if intent in ("point_in_time", "range"):
+            match_order = self._temporal_match_order(query, self._now_reference())
+            if match_order is not None:
+                return rrf_fuse([base_order, match_order], k=self.rrf_k, weights=[1.0, temporal_weight])
+        return base_order
+
+    def rank_temporal(
+        self,
+        query: str,
+        intent: str | None = None,
+        backend: LLMBackend | None = None,
+        temporal_weight: float = 2.0,
+        ordinal_pool: int = 30,
+    ) -> list[int]:
+        """Opt-in temporal-aware ranking (docs/temporal-v1-2026-07-20.md).
+        Base rank() fused with a valid-window/session-date time-match signal
+        for point_in_time/range intents; a pure chronological re-sort of the
+        base candidates for ordinal intents. current_state/atemporal degrade
+        to plain rank(), unchanged -- rank() itself is never touched."""
+        base_order = self.rank(query)
+        intent = intent or classify_intent(query, backend)
+        return self._apply_temporal(base_order, query, intent, temporal_weight, ordinal_pool)
+
+    def search_temporal(
+        self, query: str, k: int = 6, intent: str | None = None, backend: LLMBackend | None = None,
+        temporal_weight: float = 2.0, ordinal_pool: int = 30,
+    ) -> list[tuple[Episode, float]]:
+        order = self.rank_temporal(
+            query, intent=intent, backend=backend, temporal_weight=temporal_weight, ordinal_pool=ordinal_pool
+        )
+        return [
+            (self.episodes[i], 1.0 / (self.rrf_k + pos + 1))
+            for pos, i in enumerate(order[:k])
+        ]
+
+    # -- composition: graph + decompose, then temporal on top -------------- #
+    def rank_decomposed_graph_temporal(
+        self,
+        query: str,
+        backend: LLMBackend,
+        store: EpisodicStore,
+        intent: str | None = None,
+        temporal_backend: LLMBackend | None = None,
+        max_subqueries: int = 2,
+        hops: int = 1,
+        temporal_weight: float = 2.0,
+        ordinal_pool: int = 30,
+    ) -> list[int]:
+        """Step 5 of the temporal layer: rank_decomposed_graph's existing
+        decompose+graph composition, then the same temporal boost/reorder
+        rank_temporal applies, folded on top. Degrades to
+        rank_decomposed_graph(query) unchanged for current_state/atemporal
+        intents."""
+        base_order = self.rank_decomposed_graph(query, backend, store, max_subqueries=max_subqueries, hops=hops)
+        intent = intent or classify_intent(query, temporal_backend)
+        return self._apply_temporal(base_order, query, intent, temporal_weight, ordinal_pool)
+
+    def search_decomposed_graph_temporal(
+        self,
+        query: str,
+        backend: LLMBackend,
+        store: EpisodicStore,
+        k: int = 6,
+        intent: str | None = None,
+        temporal_backend: LLMBackend | None = None,
+        max_subqueries: int = 2,
+        hops: int = 1,
+        temporal_weight: float = 2.0,
+        ordinal_pool: int = 30,
+    ) -> list[tuple[Episode, float]]:
+        order = self.rank_decomposed_graph_temporal(
+            query, backend, store, intent=intent, temporal_backend=temporal_backend,
+            max_subqueries=max_subqueries, hops=hops, temporal_weight=temporal_weight,
+            ordinal_pool=ordinal_pool,
         )
         return [
             (self.episodes[i], 1.0 / (self.rrf_k + pos + 1))

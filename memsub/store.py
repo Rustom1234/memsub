@@ -26,7 +26,9 @@ CREATE TABLE IF NOT EXISTS episodes (
     content TEXT NOT NULL,
     importance REAL NOT NULL DEFAULT 1.0,
     provenance TEXT NOT NULL DEFAULT '{}',
-    namespace TEXT NOT NULL DEFAULT 'default'
+    namespace TEXT NOT NULL DEFAULT 'default',
+    valid_from REAL,
+    valid_to REAL
 );
 CREATE INDEX IF NOT EXISTS idx_episodes_namespace ON episodes(namespace, ts);
 CREATE INDEX IF NOT EXISTS idx_episodes_run ON episodes(run_id, ts);
@@ -103,6 +105,13 @@ class Episode:
     namespace: str = "default"
     ts: float = 0.0
     id: str = ""
+    # Bi-temporal fields (memsub/temporal.py, additive, opt-in): "world time"
+    # the fact described in `content` is/was valid, as opposed to `ts` (the
+    # "transaction time" this episode was recorded). None means unknown/
+    # unresolved -- the default for every episode unless something explicitly
+    # calls memsub.temporal.annotate_episode(s) before store.append().
+    valid_from: float | None = None
+    valid_to: float | None = None
 
     def with_defaults(self) -> "Episode":
         ep_id = self.id or uuid.uuid4().hex
@@ -117,6 +126,8 @@ class Episode:
             namespace=self.namespace,
             ts=ts,
             id=ep_id,
+            valid_from=self.valid_from,
+            valid_to=self.valid_to,
         )
 
 
@@ -185,11 +196,15 @@ class EpisodicStore:
                 "ALTER TABLE episodes ADD COLUMN namespace TEXT NOT NULL DEFAULT 'default'"
             )
             self._conn.commit()
+        if "valid_from" not in cols:
+            self._conn.execute("ALTER TABLE episodes ADD COLUMN valid_from REAL")
+            self._conn.execute("ALTER TABLE episodes ADD COLUMN valid_to REAL")
+            self._conn.commit()
 
     def _insert_episode(self, ep: Episode) -> None:
         self._conn.execute(
-            "INSERT INTO episodes (id, ts, run_id, session_id, kind, content, importance, provenance, namespace)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO episodes (id, ts, run_id, session_id, kind, content, importance, provenance, namespace, valid_from, valid_to)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 ep.id,
                 ep.ts,
@@ -200,6 +215,8 @@ class EpisodicStore:
                 ep.importance,
                 json.dumps(ep.provenance, sort_keys=True),
                 ep.namespace,
+                ep.valid_from,
+                ep.valid_to,
             ),
         )
 
@@ -211,7 +228,7 @@ class EpisodicStore:
 
     def get(self, episode_id: str) -> Episode | None:
         row = self._conn.execute(
-            "SELECT id, ts, run_id, session_id, kind, content, importance, provenance, namespace"
+            "SELECT id, ts, run_id, session_id, kind, content, importance, provenance, namespace, valid_from, valid_to"
             " FROM episodes WHERE id = ?",
             (episode_id,),
         ).fetchone()
@@ -225,7 +242,7 @@ class EpisodicStore:
     ) -> list[Episode]:
         """Episodes in insertion (timestamp) order, oldest first."""
         query = (
-            "SELECT id, ts, run_id, session_id, kind, content, importance, provenance, namespace"
+            "SELECT id, ts, run_id, session_id, kind, content, importance, provenance, namespace, valid_from, valid_to"
             " FROM episodes WHERE 1=1"
         )
         params: list[Any] = []
@@ -311,7 +328,7 @@ class EpisodicStore:
         """Episodes with no terminal event, oldest first."""
         placeholders = ", ".join("?" * len(TERMINAL_EVENTS))
         query = (
-            "SELECT id, ts, run_id, session_id, kind, content, importance, provenance, namespace"
+            "SELECT id, ts, run_id, session_id, kind, content, importance, provenance, namespace, valid_from, valid_to"
             " FROM episodes WHERE id NOT IN"
             f" (SELECT episode_id FROM memory_events WHERE event IN ({placeholders}))"
         )
@@ -466,6 +483,14 @@ class EpisodicStore:
     def close(self) -> None:
         self._conn.close()
 
+    def set_valid_to(self, episode_id: str, valid_to: float) -> None:
+        """Additive bi-temporal update (memsub.temporal /
+        memsub.consolidate's contradiction-supersede): closes an existing
+        row's validity window without touching any other column. Only ever
+        closes an already-open window, never invents or deletes content."""
+        self._conn.execute("UPDATE episodes SET valid_to = ? WHERE id = ?", (valid_to, episode_id))
+        self._conn.commit()
+
     @staticmethod
     def _row_to_episode(row: tuple) -> Episode:
         return Episode(
@@ -478,4 +503,6 @@ class EpisodicStore:
             importance=row[6],
             provenance=json.loads(row[7]),
             namespace=row[8] if len(row) > 8 else "default",
+            valid_from=row[9] if len(row) > 9 else None,
+            valid_to=row[10] if len(row) > 10 else None,
         )

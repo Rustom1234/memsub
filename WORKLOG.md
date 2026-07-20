@@ -1689,3 +1689,78 @@ doc/results files, no `memsub/` library code changed). Regression-checked the
 original L1 `--provenance` round still reproduces byte-identical output
 (`git diff results/poisoning-provenance-2026-07-17.json` empty after re-running
 it). No em dash in any new or touched file.
+
+## 2026-07-20: Temporal upgrade (bi-temporal fields + query-time temporal intent)
+
+Ordered directly: "do the temporal upgrade", strict limit frugality, execute
+without pausing for approval. Design sources: docs/research-salvage-2026-07-20.md
+(TSM semantic timelines + temporal intent at retrieval, REMem time-qualified
+facts, Zep bi-temporal edges) and docs/locomo-frontier-v2-2026-07-18.md (LOCOMO
+temporal category: 30% without a date flag, 45% with one surfaced, n=20 --
+this build is the next step past display-only surfacing).
+
+### Assumptions (stated before coding, Karpathy rule 1)
+
+1. Bi-temporal columns store epoch floats (`valid_from`/`valid_to`), same unit
+   as `Episode.ts`, nullable, appended as new trailing dataclass fields (after
+   `id`) so no existing positional `Episode(...)` call in the codebase breaks
+   (grepped: every caller uses kwargs, but trailing-with-defaults is the safe
+   convention already used for `ts`/`id` themselves).
+2. "Populated at write time" means an explicit opt-in helper
+   (`memsub.temporal.annotate_episodes`) a caller invokes before
+   `store.append()`, not a change to `EpisodicStore.append()`'s signature or
+   behavior. This keeps the default write path byte-identical without a new
+   boolean flag threaded through the store -- nobody calling the new helper
+   is equivalent to the flag being off.
+3. `consolidate()`'s contradiction-supersede sets `valid_to` on the loser only
+   when BOTH sides already carry `valid_from` (temporal scope). This is a
+   data-gated no-op, not a new `consolidate()` kwarg: since nothing populates
+   `valid_from` unless `annotate_episodes` was explicitly called upstream, the
+   default `consolidate()` path is unaffected without adding an
+   `enable_temporal` flag. Only phase 2 (contradiction) gets this; phase 1
+   (dedup/duplicate) does not, per the literal task wording.
+4. Query-time "now" for resolving a relative expression in the query itself
+   (e.g. "what did I do last March?") is the most recent episode's
+   session_date (or its `ts` if no session_date), since LOCOMO and most
+   memsub sources have no explicit "question asked" timestamp (confirmed
+   absent in docs/locomo-frontier-v2-2026-07-18.md's own investigation of
+   `LocomoQA`). Documented as a heuristic, not a ground truth.
+5. New retrieval methods only (`rank_temporal`, `rank_decomposed_graph_temporal`,
+   and `search_*` wrappers), mirroring the existing `rank_graph`/
+   `rank_decomposed_graph` pattern -- `rank()`/`rank_decomposed_graph()`
+   themselves are never touched, which is the simplest way to guarantee the
+   default path stays byte-identical (matches "mirroring how graph/
+   decomposition gates work" in the brief).
+6. Relative-date grammar is pure Python (stdlib `datetime`/`calendar`), not
+   the `python-dateutil` package -- "dateutil-style rules" read as "in the
+   style of", matching this repo's existing zero-dependency posture
+   (memsub/hybrid.py's own docstring: "product-grade and dependency-free").
+7. Intent classification's one ambiguous-case LLM escalation only fires when
+   a temporal marker word is present (`when`/`before`/`after`/etc.) but rules
+   cannot decide point_in_time vs range vs ordinal vs current_state; a query
+   with zero temporal markers is atemporal at zero cost, no backend call ever
+   needed for the (expected) majority case.
+
+### Success criteria (stated before coding)
+
+- Migration: old DB rows read back with `valid_from=valid_to=None`; round trip
+  for freshly written temporal-tagged episodes.
+- Date resolution: a dozen-case table (yesterday, tomorrow, today, N days/
+  weeks/months ago, in N days/weeks/months, next/last week/month/year,
+  last/next `<Month>`, plus 2 absolute cases) resolves correctly via pure
+  rules, zero LLM calls; one detected-but-unresolvable case (e.g. bare
+  "recently") escalates to exactly one backend call, cached on repeat.
+- Intent classification: at least one rule-based case per of the 5 intents,
+  plus one ambiguous case that escalates to a mocked backend.
+- Boost correctness: `rank_temporal` puts a time-window-matching episode
+  first over an equally-relevant-but-wrong-date one; ordinal intent reorders
+  candidates chronologically in the requested direction.
+- Default-path byte-identical regression: full existing suite (339 baseline)
+  still green unchanged, plus one explicit test that `rank()`'s output is
+  identical whether or not episodes carry `valid_from` (since `rank()` never
+  reads those columns).
+- Eval: dev-slice (local qwen, token-F1, no judge) shows temporal retrieval
+  >= the with-dates baseline on temporal-category dev questions before
+  spending any judge calls; the n=20 holdout judged comparison uses ~40
+  total Sonnet CLI calls (20 baseline + 20 temporal judge calls), nothing
+  larger, no other cloud calls anywhere in this task.

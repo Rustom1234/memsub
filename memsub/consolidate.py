@@ -406,12 +406,21 @@ def consolidate(
             loser, winner = old, new
             if trust[new.id] < trust[old.id]:
                 loser, winner = new, old
+            detail = {"by": winner.id, "judge_model": backend.model}
+            # Bi-temporal (memsub/temporal.py, additive): when BOTH sides
+            # already carry a resolved valid_from (temporal scope), the
+            # loser's validity window is closed at the winner's valid_from
+            # -- the point the newer fact took over. A no-op whenever
+            # nothing upstream called memsub.temporal.annotate_episode(s),
+            # since valid_from defaults to None for every episode.
+            if old.valid_from is not None and new.valid_from is not None:
+                detail["valid_to"] = winner.valid_from
             actions.append(
                 Action(
                     action="supersede",
                     episode_id=loser.id,
                     reason="contradiction",
-                    detail={"by": winner.id, "judge_model": backend.model},
+                    detail=detail,
                 )
             )
             removed.add(loser.id)
@@ -494,6 +503,8 @@ def consolidate(
                 # plus a "fused_into" event on each source, not a status change
                 # on an existing episode_id like supersede/forget/quarantine below.
             store.log_event(act.episode_id, _ACTION_EVENT[act.action], {"reason": act.reason, **act.detail})
+            if act.action == "supersede" and "valid_to" in act.detail:
+                store.set_valid_to(act.episode_id, act.detail["valid_to"])
 
     # -- phase 5: graph (opt-in, off by default) ----------------------------- #
     # Runs after supersede/forget/quarantine events are applied above so a
