@@ -233,15 +233,23 @@ def test_classify_atemporal():
     assert classify_intent("What is Alice's favorite color?") == "atemporal"
 
 
+def test_classify_bare_when_is_point_in_time_by_rule_no_backend_call():
+    # The dominant LOCOMO temporal-question phrasing ("When did X happen?")
+    # is unambiguous by rule -- never escalated, see WORKLOG.md 2026-07-20.
+    backend = MockBackend(responder=lambda s, m: '{"intent": "ordinal"}')
+    assert classify_intent("When did that happen?", backend=backend) == "point_in_time"
+    assert len(backend.calls) == 0
+
+
 def test_classify_ambiguous_escalates_to_backend():
     backend = MockBackend(responder=lambda s, m: '{"intent": "range"}')
-    result = classify_intent("When did that happen?", backend=backend)
+    result = classify_intent("It happened recently, tell me more", backend=backend)
     assert result == "range"
     assert len(backend.calls) == 1
 
 
 def test_classify_ambiguous_no_backend_defaults_conservatively():
-    assert classify_intent("When did that happen?", backend=None) == "point_in_time"
+    assert classify_intent("It happened recently, tell me more", backend=None) == "point_in_time"
 
 
 def test_ordinal_direction():
@@ -400,6 +408,32 @@ def test_rank_unaffected_by_valid_from_presence():
     hy_plain.ingest([a_plain, b_plain])
     query = "What does Alice like?"
     assert hy_temporal.rank(query) == hy_plain.rank(query)
+
+
+def test_rank_temporal_accepts_precomputed_base_order():
+    a = _turn("Alice: I like pottery.", 1, "a", valid_from=_epoch(date(2020, 1, 1)))
+    b = _turn("Bob: I like painting.", 2, "b", valid_from=_epoch(date(2026, 1, 1)))
+    hy = HybridRetriever(temporal=False, speaker_boost=0.0, session_weight=0.0)
+    hy.ingest([a, b])
+    query = "What does Alice like?"
+    fixed_base = list(reversed(hy.rank(query)))  # a deliberately "wrong" base order
+    got = hy.rank_temporal(query, intent="atemporal", base_order=fixed_base)
+    assert got == fixed_base  # atemporal is a no-op on top of whatever base_order was given
+
+
+def test_rank_decomposed_graph_temporal_accepts_precomputed_base_order():
+    store = EpisodicStore(":memory:")
+    a = store.append(_turn("Alice: I like pottery.", 1, "a"))
+    b = store.append(_turn("Bob: I like painting.", 2, "b"))
+    hy = HybridRetriever(temporal=False, speaker_boost=0.0, session_weight=0.0)
+    hy.ingest([a, b])
+    backend = MockBackend(responder=lambda s, m: "[]")
+    query = "What does Alice like?"
+    fixed_base = [1, 0]
+    got = hy.rank_decomposed_graph_temporal(query, backend, store, intent="atemporal", base_order=fixed_base)
+    assert got == fixed_base
+    assert len(backend.calls) == 0  # no decompose call made: base_order skipped recomputation
+    store.close()
 
 
 def test_rank_decomposed_graph_temporal_falls_back_for_atemporal():

@@ -250,12 +250,21 @@ def annotate_episodes(episodes: list[Episode], backend: LLMBackend | None = None
 INTENTS = ("point_in_time", "range", "ordinal", "current_state", "atemporal")
 
 _ORDINAL_RE = re.compile(
-    r"\b(earliest|initially|most recent|finally)\b|"
+    r"\b(earliest|initially|most recent|latest|finally)\b|"
     r"\b(last|first)\b(?!\s+(?:" + _MONTH_RE + r"|day|week|month|year)s?\b)",
     re.IGNORECASE,
 )
 _CURRENT_RE = re.compile(r"\b(still|currently|these days|at present)\b", re.IGNORECASE)
 _RANGE_MARKER_RE = re.compile(r"\b(between|since|until|before|after)\b", re.IGNORECASE)
+# Bare "when" (LOCOMO's dominant temporal-question phrasing, "When did X
+# happen?") is unambiguously point_in_time-shaped once ordinal/range/current
+# have already had first crack at it above -- resolved by rule, not the LLM
+# escalation below, both for frugality and because it is genuinely not
+# ambiguous (dev-slice iteration, docs/temporal-v1-2026-07-20.md: routing
+# bare "when" to the LLM occasionally misclassified it as ordinal, which
+# always reorders retrieval by raw timestamp and corrupted relevance for
+# plain point-in-time questions with no ordinal signal at all).
+_WHEN_RE = re.compile(r"\bwhen\b", re.IGNORECASE)
 _ANY_TEMPORAL_RE = re.compile(
     r"\b(when|before|after|last|first|still|yesterday|tomorrow|today|ago|since|"
     r"until|recently|currently|now|earliest|latest|initially|finally|" + _MONTH_RE + r")\b",
@@ -298,6 +307,8 @@ def classify_intent(query: str, backend: LLMBackend | None = None) -> str:
         return "ordinal"
     if _CURRENT_RE.search(query):
         return "current_state"
+    if _WHEN_RE.search(query):
+        return "point_in_time"
     if not _ANY_TEMPORAL_RE.search(query):
         return "atemporal"
     return _llm_classify(query, backend) if backend is not None else "point_in_time"

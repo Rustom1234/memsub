@@ -369,13 +369,20 @@ class HybridRetriever:
         backend: LLMBackend | None = None,
         temporal_weight: float = 2.0,
         ordinal_pool: int = 30,
+        base_order: list[int] | None = None,
     ) -> list[int]:
         """Opt-in temporal-aware ranking (docs/temporal-v1-2026-07-20.md).
         Base rank() fused with a valid-window/session-date time-match signal
         for point_in_time/range intents; a pure chronological re-sort of the
         base candidates for ordinal intents. current_state/atemporal degrade
-        to plain rank(), unchanged -- rank() itself is never touched."""
-        base_order = self.rank(query)
+        to plain rank(), unchanged -- rank() itself is never touched.
+
+        base_order: pass a previously computed rank() result to skip
+        recomputing it (e.g. an eval comparing "plain" vs "plain+temporal"
+        against the exact same base ranking rather than two independent
+        calls -- rank() is deterministic so this rarely matters here, unlike
+        rank_decomposed_graph_temporal below)."""
+        base_order = self.rank(query) if base_order is None else base_order
         intent = intent or classify_intent(query, backend)
         return self._apply_temporal(base_order, query, intent, temporal_weight, ordinal_pool)
 
@@ -403,13 +410,26 @@ class HybridRetriever:
         hops: int = 1,
         temporal_weight: float = 2.0,
         ordinal_pool: int = 30,
+        base_order: list[int] | None = None,
     ) -> list[int]:
         """Step 5 of the temporal layer: rank_decomposed_graph's existing
         decompose+graph composition, then the same temporal boost/reorder
         rank_temporal applies, folded on top. Degrades to
         rank_decomposed_graph(query) unchanged for current_state/atemporal
-        intents."""
-        base_order = self.rank_decomposed_graph(query, backend, store, max_subqueries=max_subqueries, hops=hops)
+        intents.
+
+        base_order: pass a previously computed rank_decomposed_graph(...)
+        result to skip recomputing it. Matters here specifically because
+        rank_decomposed_graph's one decompose LLM call is NOT deterministic
+        (a local model's sampling varies run to run) -- an eval comparing
+        "baseline" vs "baseline+temporal" that calls rank_decomposed_graph
+        independently for each condition is comparing two different
+        decompositions, not isolating the temporal variable (found during
+        this task's dev-slice iteration, see WORKLOG.md 2026-07-20)."""
+        base_order = (
+            self.rank_decomposed_graph(query, backend, store, max_subqueries=max_subqueries, hops=hops)
+            if base_order is None else base_order
+        )
         intent = intent or classify_intent(query, temporal_backend)
         return self._apply_temporal(base_order, query, intent, temporal_weight, ordinal_pool)
 
