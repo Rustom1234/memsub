@@ -48,6 +48,7 @@ from pathlib import Path
 from .store import EpisodicStore, TERMINAL_EVENTS
 from .vault_graph import (
     DEFAULT_NODE_LIMIT,
+    MAX_NODE_LIMIT,
     build_graph_index,
     filter_and_cap,
     linked_neighbors,
