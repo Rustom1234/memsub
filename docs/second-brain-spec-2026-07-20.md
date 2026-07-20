@@ -9,6 +9,25 @@ second brain but i want it with summarised high quality notes."
 Capture is already live (cron sweep + extraction + recall hook, installed
 2026-07-20). This spec covers the four layers on top.
 
+## Layer 0: Readability first (user-reported, 2026-07-20)
+
+Rustom's reaction to a raw note page: "something like this is not readable,
+i dont understand shit here." The raw-note presentation must be rebuilt
+before anything else ships, because even the archive tier gets read:
+
+- Title is the memory's first sentence in plain prose, never the slug.
+- The content IS the page: big, first, readable measure.
+- Everything else (id, hashes, run ids, session paths, turn spans, backend,
+  audit) collapses into one closed "details" disclosure at the bottom;
+  visible metadata is at most: a provenance badge (observed/inferred/
+  human-verified), a relative date ("6 days ago"), and the project it came
+  from, in words.
+- Link soup ("shares entity Chat with <slug>" x8) becomes one grouped line:
+  "Related: 8 notes about Chat in continuServeStuff", expandable, titles
+  rendered as prose not slugs.
+- No internal jargon anywhere a reader looks by default: kind/type/status
+  become at most small badges with hover text.
+
 ## Layer 1: Distillation (the librarian)
 
 The core fix for "a mess of claude notes". A nightly cron pass (local qwen3:8b
