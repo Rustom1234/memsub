@@ -1,0 +1,27 @@
+{
+  "n_val_questions": 20,
+  "baseline": {
+    "recall_at_5": 0.6,
+    "recall_at_10": 0.6,
+    "mrr": 0.4224
+  },
+  "reranked": {
+    "recall_at_5": 0.65,
+    "recall_at_10": 0.65,
+    "mrr": 0.3702
+  },
+  "source_files": {
+    "results/graph-layer-eval-2026-07-18.jsonl": 222,
+    "results/multihop-answer-quality-2026-07-17.jsonl": 222,
+    "results/temporal-dev-eval-2026-07-20.jsonl": 60
+  },
+  "dev_conv_ids": [
+    "conv-26",
+    "conv-30",
+    "conv-41"
+  ],
+  "pool_size": 50,
+  "n_train_candidate_rows": 4200,
+  "n_val_candidate_rows": 1000,
+  "train_positive_rate": 0.0233
+}
