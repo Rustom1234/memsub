@@ -2345,3 +2345,107 @@ these are fine, edits are not.
    checked after every commit (concurrent commits from the other two
    agents on this branch are expected and left untouched). No `git bundle`
    (a later agent bundles). Never `git push`. No em dash anywhere.
+
+## 2026-07-20: Belief-revision ripple engine (memsub/ripple.py)
+
+Ordered directly, the product's hero feature: when a memory is superseded,
+rejected, or corrected, compute everything downstream that derived from it,
+so the user sees "changing your mind about X touches these N things."
+File boundary this round: new `memsub/ripple.py`, `tests/test_ripple.py`,
+`scripts/ripple_demo.py`, `docs/ripple-2026-07-20.md`, `WORKLOG.md`.
+Forbidden (three concurrent agents own them): `memsub/vault_serve.py` and
+all `vault_*` modules, `memsub/ask.py`, `memsub/cli.py`, `memsub/distill.py`,
+`memsub/hybrid.py`, `memsub/rerank.py`, `memsub/answer_policy.py`,
+`~/scripts/install-durable-capture.sh`. Read-only imports from those paths
+are fine; no edits. UI wiring is a later pass -- this round builds the
+engine and makes it callable, nothing more.
+
+### Assumptions (Karpathy rule 1, stated before coding)
+
+1. **Derivation edges, four tiers, from strongest to weakest signal**:
+   (a) fusion: `memsub.consolidate` phase 3 logs a `fused_into` event on
+   each source episode with `detail={"by": <fused_id>, "entity": ...}`
+   (confirmed by reading `consolidate.py` and querying the live store: 72
+   `fused_into` events, 12 fusion episodes) -- this is an indexed,
+   O(1)-per-node lookup via `store.events(episode_id=X, event="fused_into")`,
+   no need to scan every episode's `fused_from` provenance list. (b) topic
+   notes: `memsub/distill.py` (read only) writes `vault/topics/<slug>.md`
+   with each member cited as `[[<slug>--<id[:8]>]]` inside the machine
+   block (`note_wikilink`, `memsub/vault.py`) -- membership is a regex scan
+   of `vault/topics/*.md` for that 8-hex-char id suffix, not a frontmatter
+   member-id list (the spec sketch assumed one; the real code cites members
+   by wikilink in the body, confirmed by reading `render_machine_block` and
+   `topic_frontmatter` -- frontmatter only carries `member_count`/
+   `member_hash`, no id list). (c) supersede chains, both directions: a
+   memory can be the loser (`store.events(episode_id=X, event="superseded")`,
+   detail `by` = winner) or the winner (no reverse index exists, so a
+   single `store.events(event="superseded")` scan, 141 rows on the live
+   store, fetched once per `ripple()` call and passed down, not re-queried
+   per BFS node). (d) associative: entity-share neighbors via
+   `entities_for_episode` + `episode_ids_for_entities`, weighted by count of
+   shared entities, capped to the top 10 neighbors so the weakest tier
+   cannot dominate a report -- computed once from the root memory only,
+   never expanded across hops (chaining the weakest signal would explode
+   the graph and dilute the "derived" tiers' meaning).
+2. **Hop walk**: BFS over tiers (a)+(b)+(c) only (associative is root-only,
+   see above), `max_hops` bounds the walk (default 2): hop 1 = "derived
+   directly", hop >= 2 = "derived transitively". Visited-set dedup means an
+   id is reported in the strongest tier it is first reached by; the walk
+   never revisits a node. Deterministic by construction: every edge
+   collector sorts its output before traversal, and the one non-indexed
+   scan (supersede winners) is fetched once, not re-ordered per call site.
+3. **Impact score**: per-item, tier-weighted (`derived_directly`=3.0,
+   `derived_transitively`=1.5, `associatively_related`=0.5 x shared-entity
+   count) -- a report's `total_impact_score` is the sum, so "count-weighted
+   by tier" holds at both the item and report level. No LLM calls anywhere
+   in this module (pure graph walking over `store.py`/`graph.py`'s existing
+   indexes and a vault directory scan).
+4. **Vault path default**: `Path.home() / "memsub-vault"`, matching every
+   `cli.py` vault subcommand's own default -- `ripple()` takes an optional
+   `vault_path` override and degrades cleanly (empty topic tier, no error)
+   when the directory or `topics/` subfolder does not exist yet (true today
+   on the live vault: Layer 1 distillation has not been run against the
+   real store yet, confirmed by `find ~/memsub-vault/topics -iname '*.md'`
+   returning zero files -- the topic-note tier is exercised by unit tests
+   against a synthetic vault, and will start surfacing real hits on the
+   live store the first time `memsub distill` runs).
+5. **Real demo cases**: found by querying the live store's audit trail
+   directly (`memory_events` where `event='superseded'`), not invented.
+   The OpenClaw-attribution correction chain the task brief named is real:
+   episode `0054af99...` ("Rustom has experience as an ML engineer working
+   with ... OpenClaw ...") was superseded with `reason: human_correction`
+   by `bc7731e1...` (same sentence, OpenClaw removed) -- the only
+   `human_correction` event in the store. A second real case is a 6-hop
+   duplicate-collapse chain ending at the currently-active episode
+   `cce2b5f1...` (also OpenClaw-adjacent professional-experience wording).
+   Exact ids and full reports are logged in `docs/ripple-2026-07-20.md`
+   after the demo script runs against the real store.
+
+### Success criteria (Karpathy rule 4, stated before coding)
+
+- `ripple(store, memory_id, max_hops=2)` returns a `RippleReport`
+  (JSON-serializable via `dataclasses.asdict`) with items grouped into
+  exactly three tiers, each item carrying a prose title, a type
+  (memory/fused/topic/idea), a plain-words edge-path explanation, and an
+  impact score.
+- `ripple_on_event(store, event)` is a one-line wrapper over `ripple()`
+  keyed on `event.episode_id` (the loser/affected episode), ready for
+  future event-wiring to call directly.
+- Zero LLM calls, runs against the real ~5.4k-episode / ~2.6k-event live
+  store in comfortably under 100ms (measured, not assumed).
+- Deterministic: two calls against the same store state produce
+  byte-identical JSON.
+- `tests/test_ripple.py` covers all four edge tiers in isolation, hop
+  bounding (`max_hops=1` vs `2`), determinism (two calls, same output),
+  and the empty case (a memory with zero derivation edges still returns a
+  well-formed report). Full suite (`pytest -q`) stays green.
+- `scripts/ripple_demo.py` runs three real cases against the live store
+  (found via the audit trail, not fabricated) and prints human-readable
+  reports; `docs/ripple-2026-07-20.md` carries the feature pitch, the
+  honest associative-tier caveat, and one verbatim report.
+- Commit per checkpoint (`memsub/ripple.py` + `tests/test_ripple.py`
+  first, then `scripts/ripple_demo.py` + `docs/` + the real-case log),
+  `git log -1 HEAD` checked after every commit (concurrent commits from
+  the other agents on this branch are expected and left untouched, and my
+  commits must land and remain ancestors). No `git bundle`. Never
+  `git push`. No em dash anywhere.
