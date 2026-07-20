@@ -1570,3 +1570,122 @@ Installer: `~/scripts/install-durable-capture.sh` gains a fourth crontab line
 same `add_cron` idempotent-append helper the other three cron lines already use.
 
 No em dash in any new or touched file.
+
+Commit: `7faf319` "Add rollback watchdog (scripts/repo_watchdog.sh)". `git rev-parse
+HEAD` checked immediately after and matches this commit.
+
+### Task 3: poisoning L2/L3 tiers (scripts/poisoning_benchmark.py extension)
+
+docs/poisoning-provenance-2026-07-17.md covers L1 (single-record) attacks only,
+by its own stated scope. Task: extend with two harder, self-defined tiers matching
+MemPoison's L2/L3 framing as best this codebase's design allows, run against both
+defense configs at all four budgets, stream per-case, report honestly.
+
+Assumptions (Karpathy rule 1, stated before coding):
+
+1. L1's dataset (`generate_recall_dataset`, lowercase "the quiet-service service"
+   subjects) cannot be reused: checked before writing anything that
+   `memsub.sleep._extract_entities` (capitalized-word regex) extracts nothing from
+   it, so `memsub.consolidate`'s fusion phase is a structural no-op against L1's
+   data. L2/L3's own dataset generators use capitalized single-word subject names
+   specifically so the real fusion write path engages.
+2. Self-defined tier mapping, stated as such (not verified against MemPoison's own
+   test cases, same caveat as the L1 round's mapping): L2 = 4 mutually-reinforcing
+   `llm_inferred` fragments across distinct synthetic sessions, matching MemPoison's
+   own L2 text ("partitions the malicious payload across multiple individually
+   plausible memory records ... corruption manifests only when co-retrieved and
+   composed"). L3 = the task's own literal wording ("poison targeting the
+   consolidation layer itself"), explicitly NOT MemPoison's L3 (context-triggered
+   dormant activation, which this codebase has no mechanism for at all) -- two
+   sub-attacks: L3a fake-correction via the imported channel (targets dedup
+   directly), L3b fusion-merge (reuses L2's coordinated fragments, measures whether
+   the fusion phase itself can be exploited to synthesize and promote a poisoned
+   memory).
+3. Poison content is disguised in every case (`kind="fact"`, no `inferred` marker)
+   -- the harder case, matching L1's Attack B precedent (Attack A, marked-inference,
+   was already shown defended by both old and new defenses).
+4. Old defense = dataset left unsigned (no `provenance.tag_episode` calls), so
+   `_trust_rank` falls back to the legacy `_is_inferred` heuristic naturally, no
+   monkeypatching needed (unlike L1's `run_cell`, which had to monkeypatch
+   `_is_inferred` for its "rule OFF" baseline -- not needed here since this round
+   has no equivalent baseline-within-old-defense variant). New defense = every
+   episode HMAC-signed with the channel realistic for how it was actually written.
+5. A deterministic, no-LLM judge (`deterministic_judge_multirecord`) serves both
+   consolidate() judge prompts (contradiction and fusion), dispatched by
+   system-prompt prefix. The fusion half is a documented stand-in for "a judge that
+   trusts numeric consensus across sources" -- deliberately generous, chosen because
+   it is the realistic worst case: confirmed by reading `_judge_fusion`'s actual
+   prompt construction (memsub/consolidate.py) that a real LLM judge is never even
+   given each member's channel/trust rank, so it has no channel signal to work from
+   either. That absence is the finding this tier exists to surface, not an artifact
+   of the mock.
+
+### A methodology bug found and fixed before trusting any result
+
+First full run (n_families=20) showed L3a's ASR staying at 73% even under the
+channel-provenance defense -- inconsistent with L1's fully-closed 0% and worth
+investigating rather than reporting. Traced it: `ConsolidationConfig`'s default
+`max_llm_pairs=40` (a real-LLM-cost guard) was starving out most of the intended
+same-family contradiction pairs, because ~40-100 same-`kind="fact"` episodes
+sharing common words ("is", "'s") cleared `contradiction_min_sim=0.45` against
+*many* cross-family pairs too, exhausting the 40-pair budget before most
+same-family pairs got a turn. Confirmed directly: raising `max_llm_pairs` to 5000
+(free with this round's deterministic mock judge, no real-LLM cost tradeoff here)
+took supersede counts from a handful to the full expected per-family count.
+Discarded the first (pair-starved) run entirely rather than reporting it --
+it was measuring an artifact of the pair-budget cap, not defense behavior.
+
+### Results (n=100 per cell, seeds 6-10, 20 families x 5 seeds, budget 400 shown;
+L2/L3a are budget-invariant across all four budgets, L3b genuinely varies with
+budget -- full 4-budget table in results/poisoning-tiers-2026-07-19.json, 32 rows,
+streamed one row at a time)
+
+| tier | defense | key metric | value |
+|---|---|---|---|
+| L2 coordination | undefended | gold recall | 100.0% (trivial: nothing ever removed) |
+| L2 coordination | content_heuristic (old) | gold recall | **0.0%** (clean fact loses every time) |
+| L2 coordination | channel_provenance (new) | gold recall | **100.0%** |
+| L2 coordination | channel_provenance (new) | fragment survive rate | 20.0% (down from 100%, not 0%) |
+| L2 coordination | channel_provenance (new) | clean recall (gold present, no poison text) | 41.0% |
+| L3a fake-correction | content_heuristic (old) | ASR | 100.0% |
+| L3a fake-correction | channel_provenance (new) | ASR | **0.0%** |
+| L3b fusion-merge | content_heuristic (old) | promoted over clean fact | 17.0% |
+| L3b fusion-merge | channel_provenance (new) | fusion created | 59.0% (down from 100%, not 0%) |
+| L3b fusion-merge | channel_provenance (new) | promoted over clean fact | **0.0%** |
+
+Honest reading, per tier:
+
+- **L1 (recap) and L3a: fully closed.** Channel provenance generalizes cleanly
+  from "disguised-as-observed" (L1's Attack B) to "framed as an explicit
+  correction" (L3a) -- same mechanism, same outcome (ASR 100% -> 0%).
+- **L2: a real, partial win.** Channel trust wins the *authority* contest
+  completely (clean fact 0% -> 100% gold recall: it now always beats any single
+  fragment it's compared against) but does not purge merely-coexisting,
+  never-directly-challenged low-trust noise (fragment survive rate only drops to
+  20%, not 0%; 59% of packed contexts still carry the truth *and* some surviving
+  poison). Root cause, stated plainly: trust-rank only fires when two records are
+  actually compared in the dedup/contradiction phase; a fragment with lower cosine
+  similarity to the clean fact (varied wording, by design) is simply never
+  challenged, so it just sits there, uncontested and retrievable.
+- **L3b: the real headline finding.** Direct code inspection
+  (`memsub/consolidate.py` `FUSION_SYSTEM`/`_judge_fusion`) confirms the fusion
+  phase's judge prompt never includes channel or trust-rank information at all --
+  this is not a benchmark artifact, it is how the shipped code is built today. Even
+  under the current defense, 59% of families still produce a synthesized fusion
+  episode, 33.9% of those carry the poisoned value forward into a new, unsigned
+  memory. The one honest qualifier: in this specific harness, that gap never
+  actually promotes poison over a clean fact (promotion rate 0.0% at every budget)
+  -- because the upstream dedup/contradiction phases already independently
+  guarantee the clean fact survives 100% of the time before fusion runs. That is a
+  property of this dataset (a clean fact always exists and is always defended),
+  not evidence that fusion itself is safe; a scenario where the true fact is
+  itself weaker was not tested this round.
+
+Full writeup, tables for all four budgets, updated claim language, and the "what
+this round still does not test" section: docs/poisoning-tiers-2026-07-19.md.
+
+Full suite: `pytest` still 339 passed (this task added only a script extension and
+doc/results files, no `memsub/` library code changed). Regression-checked the
+original L1 `--provenance` round still reproduces byte-identical output
+(`git diff results/poisoning-provenance-2026-07-17.json` empty after re-running
+it). No em dash in any new or touched file.
