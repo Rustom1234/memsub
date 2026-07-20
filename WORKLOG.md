@@ -2449,3 +2449,22 @@ engine and makes it callable, nothing more.
   the other agents on this branch are expected and left untouched, and my
   commits must land and remain ancestors). No `git bundle`. Never
   `git push`. No em dash anywhere.
+
+### Result
+
+All success criteria met. `scripts/ripple_demo.py` ran 3 real cases against
+the live store (`~/.memsub/memory.db`, ~5.4k episodes / ~2.6k events),
+found via the audit trail, not invented: (1) the OpenClaw-attribution human
+correction (`0054af99...` -> `bc7731e1...`, 1 derived item, impact 3.0), (2)
+the first loser in the 6-hop OpenClaw-adjacent duplicate-collapse chain
+(`bf35552f...`, 2 derived items across both hops at `max_hops=2`, impact
+4.5), (3) an ILS-optimization fusion source with 10 associative neighbors
+(`cf4855a8...`, both the fusion and associative tiers lit up, impact 8.0) --
+the one case exercising two tiers at once on real data. Measured latency
+~30-35ms per call against the live store, comfortably under the 100ms
+target. `tests/test_ripple.py`: 15 tests, all four edge tiers in isolation,
+hop bounding, determinism (including a JSON-string equality check, not just
+dataclass `==`), the empty case, an unknown-id `ValueError`, and the
+`ripple_on_event` wrapper. Full suite: 493 passed. Full verbatim Case 1
+report and the honest associative-tier-is-correlation caveat are in
+`docs/ripple-2026-07-20.md`.

@@ -390,6 +390,45 @@ def ripple(
     )
 
 
+TIER_LABELS = {
+    TIER_DIRECT: "Derived directly",
+    TIER_TRANSITIVE: "Derived transitively",
+    TIER_ASSOCIATIVE: "Associatively related (correlation, not derivation)",
+}
+
+
+def render_report(report: RippleReport) -> str:
+    """Plain-text rendering for a CLI/demo surface (mirrors memsub.audit's
+    render_audit style: one function, reused everywhere a human reads a
+    report instead of a UI panel consuming the JSON directly)."""
+    lines = [
+        f"ripple: {report.memory_title}",
+        f"  memory_id:    {report.memory_id}",
+        f"  status:       {report.memory_status}",
+        f"  max_hops:     {report.max_hops}",
+        f"  total impact: {report.total_impact_score}  "
+        f"({report.counts['total']} affected item(s))",
+    ]
+    for tier in (TIER_DIRECT, TIER_TRANSITIVE, TIER_ASSOCIATIVE):
+        items = report.tiers.get(tier, [])
+        lines.append(f"\n  {TIER_LABELS[tier]} ({len(items)}):")
+        if not items:
+            lines.append("    (none)")
+            continue
+        for item in items:
+            co = ""
+            if item.co_occurrence:
+                plural = "entity" if item.co_occurrence == 1 else "entities"
+                co = f", shares {item.co_occurrence} {plural}"
+            lines.append(
+                f"    [{item.type}] {item.title}  "
+                f"(impact {item.impact_score}{co}, status: {item.status or 'n/a'})"
+            )
+            for step in item.path:
+                lines.append(f"        -> {step}")
+    return "\n".join(lines)
+
+
 def ripple_on_event(
     store: EpisodicStore,
     event: MemoryEvent,
