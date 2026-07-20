@@ -209,3 +209,149 @@ the concrete diff from the prior plain viewer:
   pass; no third-party dependency was added.
 - Screenshots (390x844 and 1280x800, dashboard / search-in-action / note
   with provenance card / review queue): `docs/screenshots/2026-07-19/`.
+
+## What changed 2026-07-20: second brain Layers 0/2/3
+
+Ordered directly by Rustom (docs/second-brain-spec-2026-07-20.md): "i never
+wanna forget an idea and i want to be linked up to other ideas... i wanna
+see the obsidian graph... i want the second brain but i want it with
+summarised high quality notes", plus a direct readability complaint about a
+raw note page: "not readable, i dont understand shit here." This round ships
+Layer 0 (readability), Layer 2 (the graph), Layer 3 (connections), and the
+"more informative website" dashboard upgrades. Layer 1 (nightly distillation
+into evergreen topic notes) and Layer 4 (deliberate idea capture) are out of
+scope for this round -- a different agent's work, on files this build never
+touches (`memsub/store.py`, `hybrid.py`, `memory.py`, `cli.py`, `scripts/`).
+
+Three new read-only helper modules, all imported by `vault_serve.py`, none
+opening a database or writing anything:
+
+- **`memsub/vault_notes.py`** -- the single source of truth for "what does
+  this note look like to a human": `note_title()` (first sentence of the
+  `## Content` section, never the slug -- used everywhere a title appears:
+  search results, folder listings, graph node labels, related-ideas panels,
+  wikilink hover preview, connection-of-the-day), `split_note_sections()`,
+  `group_related_entities()` (collapses "shares entity X with Y" x8 into one
+  expandable "Related: 8 notes about X" line), `is_content_note()` (see the
+  index.md finding below).
+- **`memsub/vault_graph.py`** -- Layer 2. Builds a node/edge graph by
+  parsing vault markdown text directly (wikilinks + `shares entity **X**
+  with [[Y]]` lines already written by `memsub/vault.py`'s `render_note`) --
+  no SQLite access, so the graph works identically in vault-only mode. Node
+  kinds: `note` (small, dim) and `hub` (large, accent -- the top 40 biggest
+  entities; no `topic` tier yet since Layer 1 hasn't run against this
+  vault). Built once at server start, filtered/capped per request
+  (`filter_and_cap`, namespace + this-week/this-month + a connectivity-based
+  cap with an honest "showing top N of M" count) or reduced to one note's
+  immediate neighborhood (`note_constellation`, embedded inline on every
+  note page, no extra request).
+- **`memsub/vault_similarity.py`** -- Layer 3. Pure TF-IDF cosine over each
+  note's `## Content` text, computed once at startup (no persisted
+  per-episode embedding exists in the schema to reuse, checked first --
+  this is genuinely TF-IDF, never called "embeddings" anywhere in the UI).
+  `build_similarity_index` excludes any pair that already shares a wikilink
+  or entity (`vault_graph.linked_neighbors`), so the top-5 result per note
+  is the discovery set, not a restatement of what's already linked.
+  `connection_of_the_day` picks deterministically from a date-seeded pool
+  of the best unlinked pairs -- same pair all day, no LLM.
+
+### Layer 0: note pages, rebuilt
+
+The fix is literal, matching Rustom's own example (`AUTH constraint: Claude
+subscription...`, 8 "shares entity" lines): title is now the plain-prose
+first sentence ("AUTH constraint: Claude subscription must be used for all
+Claude calls..."), the `## Content` body renders big and first, and a thin
+meta strip (provenance badge + relative date + "from claude code" + small
+kind/status chips) replaces the old flat key/value dump. Every machine field
+(id, hashes, run id, session path, turn span, backend, model, the full audit
+log) now lives inside one closed `<details>` at the bottom. The old
+`- shares entity **Chat** with [[slug]]` x8 list is gone from the page;
+in its place, one expandable `Related: 8 notes about Chat` line with real
+prose titles when opened. Same title treatment (never a slug) now applies
+everywhere a title is shown: search results, folder listings, the review
+queue, the wikilink hover preview, graph node labels, and the related-ideas
+panel.
+
+### Layer 2: `/graph`
+
+An interactive force-directed canvas graph, vanilla JS (no CDN library --
+canvas + a small hand-rolled physics loop was enough at this scale and kept
+the "prefer vanilla canvas" constraint). Drag, wheel-zoom, pan (via Pointer
+Events, so touch and mouse share one code path -- phone-capable by
+construction). Tap a node once for a preview card (title + an open/search
+link), tap again (or the card's link) to navigate. A search box fades
+non-matching nodes/edges instead of removing them. Namespace and
+this-week/this-month filters re-fetch `/api/graph.json` and re-run the
+layout. The simulation runs a bounded settle phase (~220 frames) then
+freezes -- battery-cheap, matching the rest of this UI's animation
+philosophy, and re-heats briefly on drag. Every note page also gets a small
+"Constellation" -- the same canvas renderer, fed the note's immediate
+1-hop neighborhood inline (no extra request).
+
+**A real-data finding worth recording**: the first pass against the live
+vault put `claude-code/index.md` at the top of the connectivity ranking
+with degree 4,331 -- `memsub/vault.py`'s `render_namespace_index` writes a
+table-of-contents page linking to literally every note in the namespace,
+which is a navigation aid, not a memory relationship. Same problem for the
+root `index.md`, `review-queue.md`, and `templates/*`. Fixed with
+`vault_notes.is_content_note()` (a note qualifies only if its frontmatter
+has both `namespace` and `created` -- true for every `render_note()`
+output, false for all four structural page types) and applied in both
+`vault_graph.build_graph_index` and `vault_similarity.build_similarity_index`
+(the same index.md would otherwise have flooded the TF-IDF corpus with one
+giant degenerate document of wikilink slugs). After the fix, the top of the
+real vault's connectivity ranking is genuinely interesting entities/notes
+(Kumo, User, API, Claude, CSV, ARIMAX...), not one navigation artifact.
+
+### Layer 3: connections
+
+Every note page gets a "Related ideas" panel split into two labeled groups:
+**Already linked** (the Layer 0 grouped-entity prose, reused directly -- one
+component serves both the readability fix and the "what's already
+connected" half of Layer 3) and **Similar but unlinked** (top 5, TF-IDF
+cosine, each with a one-line "why: shares X, Y, Z" from the top shared
+terms). Verified against the real vault: the "AUTH constraint: Claude
+subscription..." note's discovery set surfaced other Anthropic-API-key
+notes it has no wikilink or entity link to -- genuinely useful, not noise.
+The dashboard's **connection of the day** picks one high-similarity
+unlinked pair per day (date-seeded, deterministic, same pair all day) and
+shows both prose titles plus the one-line why, linking through to both.
+
+### Dashboard: "more informative"
+
+Four additions, all read from the same vault-text/graph/similarity sources
+above (no store access beyond what the dashboard already had), existing
+stat tiles/donut/sparkline untouched:
+
+- **What your brain knows**: top 10 entities as tappable chips (`Kumo 138`,
+  `User 121`, ...) -- tap runs a search for that term.
+- **Projects**: namespace/source-project counts in prose ("claude code --
+  4,330 note(s)"), vault-text-derived so it works in vault-only mode too.
+- **Recent activity**: 5 newest notes, prose titles, relative dates.
+- **Connection of the day**: described above.
+
+### Endpoints added (all read-only, GET, JSON where noted)
+
+- `GET /graph` -- the full graph page.
+- `GET /api/graph.json?namespace=&period=&limit=` -- filtered/capped graph
+  payload (`{nodes, edges, total_notes, shown_notes, truncated}`).
+
+No write endpoint exists anywhere in this round; the one Layer 3 action the
+spec explicitly allows to defer ("link these", writing a wikilink) was not
+built -- deferred to the later distillation agent, per the task's own scope
+line.
+
+### Verify
+
+Full suite: 410 passed (383 baseline + 19 new module tests +
+8 new `vault_serve` integration tests), no third-party dependency added,
+no em dash in any new or touched file. Live-tested read-only against the
+real `~/memsub-vault` (4,334 notes) + `~/.memsub/memory.db` on
+`127.0.0.1:8767` (host-b's `8766` instance untouched); own instance killed
+and port confirmed free after. Screenshots (390x844 and 1280x900, plus two
+taller captures to show connection-of-the-day without scrolling):
+`docs/screenshots/2026-07-20-brain/`. One iteration applied after looking at
+the first screenshot pass: `recent activity`'s relative-date column used
+`float: right`, which misaligned against wrapped long titles -- switched
+`.prose-list li` to flexbox (`justify-content: space-between`) so the
+timestamp stays right-aligned regardless of title length.

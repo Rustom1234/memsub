@@ -1865,3 +1865,116 @@ agent's active files -- not touched, not even read-modified.
   many-entity-link note (readability proof), and connection-of-the-day;
   looked at, iterated once on anything that reads badly; committed to
   `docs/screenshots/2026-07-20-brain/`.
+
+### Result
+
+Built exactly the three modules and endpoints planned. One real-data finding
+along the way: `claude-code/index.md` (a namespace table-of-contents page
+`memsub/vault.py` already writes) links to all 4,330 notes and dominated
+the graph's connectivity ranking + would have flooded the TF-IDF corpus
+before `vault_notes.is_content_note()` excluded it and the three other
+structural page types (root `index.md`, `review-queue.md`,
+`templates/*`). Documented in docs/vault-serve-2026-07-18.md's "What
+changed 2026-07-20" section in full.
+
+**Performance** (real vault, 4,334 notes, measured standalone before
+wiring HTTP): `build_index` 1.42s, `build_graph_index` 0.17s (4,334 note
+nodes, 40 hubs, 23,625 edges), `linked_neighbors` 0.01s,
+`build_similarity_index` 0.63s. ~2.3s total one-time startup cost, in line
+with the existing "no live reload" contract. Per-request
+`filter_and_cap`/`note_constellation`/`related_ideas`/
+`connection_of_the_day` are all O(1)-ish lookups into the precomputed
+structures, no per-request re-scan.
+
+**Layer 0** (note pages): title is now the plain-prose first sentence of
+`## Content`, never the slug, applied consistently everywhere a title
+appears (search results, folder listings, review queue, wikilink hover
+preview, graph node labels, related-ideas panel). Machine fields (id,
+hashes, run/session ids, turn spans, backend, model, audit log) collapse
+into one closed `<details>`. The literal "shares entity **Chat** with
+[[slug]]" x8 list is gone, replaced by one expandable "Related: 8 notes
+about Chat" line with real prose titles. Verified directly against
+Rustom's own example note
+(`claude-code/auth-constraint-claude-subscription-must-be-used-f--727009c1.md`,
+8 entity-share lines) -- screenshot: `note-1280x900.png` /
+`note-390x844.png`.
+
+**Layer 2** (`/graph`): force-directed canvas, vanilla JS (Pointer Events
+for unified mouse/touch, wheel zoom, drag, pan), namespace + this-week/
+this-month filters, search-fade, "showing top N of M" with a limit
+selector (150/300/600/1000). Bounded settle-then-freeze physics (~220
+frames) keeps it battery-cheap. Every note page also gets a small
+constellation (1-hop neighborhood, embedded inline, no extra request).
+Screenshot: `graph-1280x900.png` / `graph-390x844.png`.
+
+**Layer 3** (connections): TF-IDF cosine (stated honestly as TF-IDF, never
+"embeddings" -- no persisted per-episode embedding exists in the schema),
+top 5 unlinked-similar per note excluding anything sharing a wikilink or
+entity, plus a one-line "why" from top shared terms. Verified: the AUTH
+constraint note's discovery set surfaced other Anthropic-API-key notes it
+has no existing link to. Connection of the day (date-seeded, deterministic)
+found a genuinely interesting near-duplicate pair on the real vault
+(`the-king-of-thorns-fragment...` / `the-morning-star-fragment...`, "why:
+shares roll, fragment, frag, bookdna"). Screenshot:
+`dashboard-connection-of-day-1280.png` / `dashboard-connection-of-day-390.png`
+(tall captures, no scroll needed to see it).
+
+**Dashboard**: "what your brain knows" (top-10 entity chips, tap = search),
+"projects" (namespace counts in prose), "recent activity" (5 newest, prose
+titles, relative dates), connection of the day -- all additive, existing
+stat tiles/donut/sparkline untouched. Screenshot: `dashboard-1280x900.png`
+/ `dashboard-390x844.png`.
+
+**Iteration after looking at screenshots**: `recent activity`'s relative-date
+column used `float: right`, which misaligned against wrapped long note
+titles (visible in the first `dashboard-1280x900.png` pass). Fixed by
+switching `.prose-list li` to flexbox (`justify-content: space-between`,
+`.when` `flex-shrink: 0`) so the timestamp stays right-aligned regardless
+of title length -- re-screenshotted, confirmed clean.
+
+**Endpoints added**: `GET /graph` (page), `GET
+/api/graph.json?namespace=&period=&limit=` (JSON, filtered/capped graph
+payload). No write endpoint anywhere; Layer 3's "link these" action was
+explicitly out of scope for this round (deferred to the later distillation
+agent per the task brief) and was not built.
+
+**Suite**: 410 passed (383 baseline + 27 new: 8 `vault_notes`, 6
+`vault_graph`, 5 `vault_similarity`, 8 `vault_serve` integration tests
+covering readability, the details collapse, the related panel, the graph
+page/endpoint, and traversal safety on the existing `/note/` route). No em
+dash in any new or touched file.
+
+**Live smoke test**: `127.0.0.1:8767` against the real vault + db,
+read-only (`--db` flag only ever opens an existing file). Confirmed
+`/api/graph.json` limit/namespace filters, dashboard sections, note page
+readability, and the connection-of-the-day pick all work against real
+data. Own instance killed after (`pkill -f "memsub.cli vault serve"`),
+port 8767 confirmed free. Spruce's 8766 instance was never touched (never
+started, never queried).
+
+**Commits** (`git log -1 HEAD` checked immediately after each, matched):
+
+1. `14f8954` -- plan (this file, before any code).
+2. `3403510` -- `vault_notes.py`/`vault_graph.py`/`vault_similarity.py` +
+   `vault_serve.py` wiring (Layer 0 note-page rewrite, dashboard/graph
+   plumbing) + unit tests for the three new modules.
+3. `bb8b1af` -- `/graph` + `/api/graph.json` endpoints, `MAX_NODE_LIMIT`
+   import fix, `vault_serve` integration tests (readability, related
+   panel, graph page/endpoint smoke test).
+4. `5160f65` -- `is_content_note()` fix for the index.md-pollution finding
+   in both `vault_graph.py` and `vault_similarity.py`; recent-activity
+   timestamp-alignment fix from the screenshot iteration.
+
+Screenshots (not yet committed as of the commits above -- committed
+separately per the task's own step ordering, "verify first, then commit
+screenshots"): `docs/screenshots/2026-07-20-brain/{dashboard,graph,note}-{390x844,1280x900}.png`
+plus `dashboard-connection-of-day-{390,1280}.png`.
+
+Files touched, per the task's file boundary: `memsub/vault_serve.py`,
+`memsub/vault_notes.py` (new), `memsub/vault_graph.py` (new),
+`memsub/vault_similarity.py` (new), `tests/test_vault_notes.py` (new),
+`tests/test_vault_graph.py` (new), `tests/test_vault_similarity.py` (new),
+`tests/test_vault_serve.py`, `docs/vault-serve-2026-07-18.md`, `WORKLOG.md`,
+`docs/screenshots/2026-07-20-brain/*.png`. Nothing in `memsub/store.py`,
+`hybrid.py`, `memory.py`, `cli.py`, or `scripts/` was read-modified or
+touched at all. No push to any remote.
