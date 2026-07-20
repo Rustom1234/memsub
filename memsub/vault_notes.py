@@ -147,6 +147,19 @@ def note_title(relpath: str, idx) -> str:
     return _humanize_stem(relpath)
 
 
+def is_content_note(relpath: str, idx) -> bool:
+    """True for a real memsub-generated memory note, false for structural
+    pages (namespace/root index.md, review-queue.md, templates/*) that have
+    no `namespace`+`created` frontmatter pair. Found live: `claude-code/
+    index.md` links to all 4,330 notes in the vault (memsub/vault.py's
+    render_namespace_index -- a table of contents, not a memory relationship)
+    and was dominating both the graph's connectivity ranking and the TF-IDF
+    corpus before this filter. Both memsub/vault_graph.py and
+    memsub/vault_similarity.py use this to exclude structural pages."""
+    fields = idx.frontmatter.get(relpath)
+    return bool(fields) and "namespace" in fields and "created" in fields
+
+
 def namespace_in_words(namespace: str) -> str:
     """'claude-code' -> 'claude code'. Prose, not a slug."""
     return namespace.replace("-", " ").replace("_", " ").strip() or namespace

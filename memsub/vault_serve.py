@@ -1065,9 +1065,10 @@ ul.related-list.discovery { display: grid; gap: 0.4rem; }
 .entity-chip:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
 .entity-chip .n { color: var(--text-faint); margin-left: 0.3rem; }
 .prose-list { list-style: none; margin: 0; padding: 0; font-size: 0.88rem; }
-.prose-list li { padding: 0.3rem 0; border-bottom: 1px solid var(--border); }
+.prose-list li { padding: 0.3rem 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; }
 .prose-list li:last-child { border-bottom: none; }
-.prose-list .when { color: var(--text-faint); float: right; font-size: 0.78rem; }
+.prose-list li a { flex: 1 1 auto; min-width: 0; }
+.prose-list .when { color: var(--text-faint); font-size: 0.78rem; white-space: nowrap; flex-shrink: 0; }
 .cod-card { background: var(--bg-card); border: 1px solid var(--accent); border-radius: 10px; padding: 0.8rem 1rem; }
 .cod-card .pair { display: flex; flex-direction: column; gap: 0.3rem; margin: 0.4rem 0; }
 .cod-card .why { color: var(--text-dim); font-size: 0.82rem; margin-top: 0.4rem; }

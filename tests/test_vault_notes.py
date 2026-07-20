@@ -117,11 +117,14 @@ def test_namespace_in_words_replaces_dashes():
     assert namespace_in_words("outreach_desk") == "outreach desk"
 
 
+_FM = '---\nnamespace: "claude-code"\ncreated: "2026-07-19T00:00:00"\n---\n\n'
+
+
 def test_graph_index_builds_from_vault_text_only(tmp_path):
     _write(tmp_path, "note.md", STANDARD_NOTE)
-    _write(tmp_path, "other-note.md", "# Other\n\n## Content\n\nOther note body.\n")
-    _write(tmp_path, "third-note.md", "# Third\n\n## Content\n\nThird note body.\n")
-    _write(tmp_path, "old-note.md", "# Old\n\n## Content\n\nOld note body.\n")
+    _write(tmp_path, "other-note.md", _FM + "# Other\n\n## Content\n\nOther note body.\n")
+    _write(tmp_path, "third-note.md", _FM + "# Third\n\n## Content\n\nThird note body.\n")
+    _write(tmp_path, "old-note.md", _FM + "# Old\n\n## Content\n\nOld note body.\n")
     idx = build_index(tmp_path)
     graph = build_graph_index(idx)
     assert "note.md" in graph.notes

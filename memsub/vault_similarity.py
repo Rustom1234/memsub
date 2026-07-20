@@ -21,7 +21,7 @@ import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 
-from .vault_notes import note_title, split_note_sections
+from .vault_notes import is_content_note, note_title, split_note_sections
 
 _TOKEN_RE = re.compile(r"[a-zA-Z][a-zA-Z'-]{2,}")
 
@@ -74,7 +74,11 @@ def build_similarity_index(
     `candidate_pool` scoring neighbors and filter out anything in
     linked_sets[relpath] before capping to top_k. One-time cost at server
     start; note pages do an O(1) dict lookup afterward."""
-    relpaths = list(idx.notes.keys())
+    # Structural pages (index.md, review-queue.md, templates) are excluded --
+    # same "index.md links to every note" finding vault_graph.py's docstring
+    # explains; here it would also flood the TF-IDF corpus with a single
+    # giant degenerate document of wikilink slugs.
+    relpaths = [rel for rel in idx.notes if is_content_note(rel, idx)]
     n_docs = len(relpaths)
     term_counts: dict[str, Counter] = {}
     df: Counter = Counter()

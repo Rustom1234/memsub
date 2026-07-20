@@ -74,10 +74,17 @@ def _resolve(target: str, idx) -> str | None:
 def build_graph_index(idx, top_entities: int = DEFAULT_TOP_ENTITIES) -> GraphIndex:
     graph = GraphIndex()
 
-    # note nodes, from the same source the rest of vault_serve uses
-    from .vault_notes import note_title
+    # note nodes, from the same source the rest of vault_serve uses.
+    # Structural pages (namespace/root index.md, review-queue.md, templates)
+    # are excluded via is_content_note -- found live against the real vault:
+    # claude-code/index.md links to all 4,330 notes (a table of contents,
+    # not a memory relationship) and dominated connectivity ranking before
+    # this filter (WORKLOG.md 2026-07-20, "index.md pollution" finding).
+    from .vault_notes import is_content_note, note_title
 
-    for rel in idx.notes:
+    content_notes = {rel for rel in idx.notes if is_content_note(rel, idx)}
+
+    for rel in content_notes:
         fields = idx.frontmatter.get(rel, {})
         ts = _parse_iso(fields.get("created", ""))
         graph.notes[rel] = GraphNode(
@@ -94,17 +101,18 @@ def build_graph_index(idx, top_entities: int = DEFAULT_TOP_ENTITIES) -> GraphInd
     pair_weight: Counter[tuple[str, str]] = Counter()
     entity_notes: dict[str, set[str]] = defaultdict(set)
 
-    for rel, text in idx.notes.items():
+    for rel in content_notes:
+        text = idx.notes[rel]
         for m in _WIKILINK_TARGET_RE.finditer(text):
             resolved = _resolve(m.group(1), idx)
-            if resolved is None or resolved == rel:
+            if resolved is None or resolved == rel or resolved not in content_notes:
                 continue
             pair_weight[tuple(sorted((rel, resolved)))] += 1
         for m in _SHARES_ENTITY_RE.finditer(text):
             entity, target = m.group(1), m.group(2)
             resolved = _resolve(target, idx)
             entity_notes[entity].add(rel)
-            if resolved is not None:
+            if resolved is not None and resolved in content_notes:
                 entity_notes[entity].add(resolved)
 
     for (a, b), weight in pair_weight.items():

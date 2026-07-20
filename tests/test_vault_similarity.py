@@ -14,13 +14,16 @@ def _write(root, relpath, text):
     path.write_text(text, encoding="utf-8")
 
 
+_FM = '---\nnamespace: "work"\ncreated: "2026-07-19T00:00:00"\n---\n\n'
+
+
 def _vault(tmp_path):
     # a and b share vocabulary (rockets, orbit, launch) and are NOT linked.
     # a and c are linked via a wikilink but share no vocabulary with a/b.
-    _write(tmp_path, "a.md", "## Content\n\nRockets reach orbit after a successful launch sequence. [[c]]\n")
-    _write(tmp_path, "b.md", "## Content\n\nOrbit is reached by rockets after a clean launch today.\n")
-    _write(tmp_path, "c.md", "## Content\n\nCompletely unrelated gardening notes about tomatoes.\n")
-    _write(tmp_path, "d.md", "## Content\n\nMore gardening: tomatoes, soil, and watering schedules.\n")
+    _write(tmp_path, "a.md", _FM + "## Content\n\nRockets reach orbit after a successful launch sequence. [[c]]\n")
+    _write(tmp_path, "b.md", _FM + "## Content\n\nOrbit is reached by rockets after a clean launch today.\n")
+    _write(tmp_path, "c.md", _FM + "## Content\n\nCompletely unrelated gardening notes about tomatoes.\n")
+    _write(tmp_path, "d.md", _FM + "## Content\n\nMore gardening: tomatoes, soil, and watering schedules.\n")
     return build_index(tmp_path)
 
 
