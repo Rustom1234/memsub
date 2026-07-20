@@ -2210,3 +2210,42 @@ only where this task specifically requires one.
   sample topic notes in full, and gives an honest hand-graded quality check
   of 10 random topic notes against the Zettelkasten bar -- weak clusters
   named plainly, not smoothed over.
+
+### Progress checkpoint: library + tests
+
+`memsub/distill.py` (new): `cluster_topics`/`_entity_components`/
+`_refine_component` (clustering), `generate_topic_content` (one qwen3:8b
+call per changed topic, deterministic fallback), `distill` (idempotent
+write loop, marker-based sovereignty merge, `verdict: reject` kill),
+`write_idea`/`match_entities_and_topics` (Layer 4). `memsub/cli.py`:
+additive `distill` and `idea` subcommands, `_cmd_distill`/`_cmd_idea`. No
+changes to `memsub/vault.py` or the vault_serve family were needed --
+`kind="idea"` already flows through `render_note`'s existing `kind`
+frontmatter field and `vault_serve.py`'s existing kind-badge chip renderer
+(assumption 5, confirmed rather than just assumed: see the live check
+below).
+
+`tests/test_distill.py` (new, 19 tests): clustering forms the expected
+3-member cluster and is deterministic; hub-entity exclusion (35 episodes
+sharing one over-cap entity stay unclustered); lexical refinement splits an
+artificially large entity-linked component into its two genuinely distinct
+lexical halves; topic-note structure (frontmatter, machine markers,
+key-fact wikilinks covering every member, open questions); timeline section
+present iff a member carries `valid_from`, absent otherwise; fallback
+content with `backend=None` still covers every member; idempotent rerun (0
+LLM calls, 0 file writes, byte-identical, mtime unchanged); sovereignty
+(human text outside markers preserved, unknown frontmatter fields and the
+original `created` preserved, across a real regeneration triggered by a 4th
+member changing `member_hash`); `verdict: reject` deletes the note;
+dry-run writes nothing to disk; `write_idea` channel/signature verified;
+`match_entities_and_topics` finds a known entity and, once a real vault
+exists, the topic it belongs to; CLI end-to-end for both `distill` and
+`idea`.
+
+Full suite: 455 passed (434 baseline + 19 new here + 2 from the concurrent
+rerank/abstention agent's own uncommitted work, confirmed by `git status`
+showing only `memsub/cli.py` modified and `memsub/distill.py`/
+`tests/test_distill.py` new among my own changes; `memsub/hybrid.py`/
+`memsub/rerank.py` and untracked `results/`/`scripts/` files belonging to
+that agent were left untouched and unstaged). No em dash in any file
+touched.

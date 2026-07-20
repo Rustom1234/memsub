@@ -240,6 +240,59 @@ def _cmd_graph_backfill(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_distill(args: argparse.Namespace) -> int:
+    """Layer 1: cluster active memories into topics and write/update
+    vault/topics/<slug>.md for each (idempotent: unchanged topics cost zero
+    LLM calls). See memsub/distill.py's module docstring and WORKLOG.md's
+    2026-07-20 "Second brain Layers 1 + 4" entry for the full design."""
+    from .distill import distill
+
+    db = Path(args.db)
+    if not db.exists():
+        print(f"no store at {db}")
+        return 1
+    backend = None if args.backend == "none" else build_backend(prefer=args.backend, model=args.model)
+    store = EpisodicStore(db)
+    try:
+        result = distill(
+            store, args.vault, backend=backend, namespace=args.namespace,
+            min_size=args.min_size, dry_run=args.dry_run,
+        )
+    finally:
+        store.close()
+    label = "would write" if args.dry_run else "written"
+    print(
+        f"{result.topics_found} topic(s) found, {result.topics_written} {label}, "
+        f"{result.topics_skipped_unchanged} unchanged (skipped), "
+        f"{result.topics_killed} killed (verdict: reject), "
+        f"{result.llm_calls} LLM call(s) -> {args.vault}/topics/"
+    )
+    return 0
+
+
+def _cmd_idea(args: argparse.Namespace) -> int:
+    """Layer 4: instant deliberate capture, bypassing the 30-min extraction
+    wait. Writes a user_stated, provenance-signed episode immediately and
+    echoes which already-known entities/topics it attached to (cheap,
+    LLM-free match)."""
+    from .distill import match_entities_and_topics, write_idea
+
+    db = Path(args.db)
+    db.parent.mkdir(parents=True, exist_ok=True)
+    store = EpisodicStore(db)
+    try:
+        ep = write_idea(store, args.text, namespace=args.namespace)
+        entities, topics = match_entities_and_topics(
+            store, args.text, args.namespace, vault_path=args.vault
+        )
+    finally:
+        store.close()
+    print(f"captured idea {ep.id[:8]}")
+    print(f"  entities: {', '.join(entities) if entities else '(none matched)'}")
+    print(f"  topics: {', '.join(topics) if topics else '(none matched)'}")
+    return 0
+
+
 def _cmd_ns(args: argparse.Namespace) -> int:
     from .namespaces import NamespaceManager
 
@@ -708,6 +761,44 @@ def build_parser() -> argparse.ArgumentParser:
     g_backfill.add_argument("--run-id", default=None, help="restrict to one run id")
     g_backfill.add_argument("--dry-run", action="store_true", help="report what would be indexed, write nothing")
     g_backfill.set_defaults(func=_cmd_graph_backfill)
+
+    p_distill = sub.add_parser(
+        "distill",
+        help="Layer 1: cluster active memories into topics, write/update "
+        "vault/topics/<slug>.md for each (idempotent, local qwen3:8b only). "
+        "Run `memsub graph backfill` first so entity_links exist to cluster from.",
+    )
+    p_distill.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    p_distill.add_argument(
+        "--vault", default=str(Path.home() / "memsub-vault"), help="vault folder (topics/ written under it)"
+    )
+    p_distill.add_argument(
+        "--backend", default="auto", choices=["none", "auto", "api", "ollama", "cli", "mock"],
+        help="LLM backend for topic title/overview/facts/open-questions (default: auto, "
+        "prefers a local ollama qwen3:8b daemon; --backend none skips the LLM call "
+        "entirely and falls back to deterministic content for every topic)",
+    )
+    p_distill.add_argument("--model", default=None, help="model override for the backend")
+    p_distill.add_argument("--namespace", default=None, help="restrict to one namespace (default: all)")
+    p_distill.add_argument(
+        "--min-size", type=int, default=3, help="minimum members for a cluster to become a topic (default 3)"
+    )
+    p_distill.add_argument("--dry-run", action="store_true", help="report what would be written, write nothing")
+    p_distill.set_defaults(func=_cmd_distill)
+
+    p_idea = sub.add_parser(
+        "idea",
+        help="Layer 4: instant deliberate capture -- writes a user_stated, "
+        "provenance-signed episode immediately, no LLM call, echoes matched entities/topics",
+    )
+    p_idea.add_argument("text", help="the idea, in your own words")
+    p_idea.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    p_idea.add_argument(
+        "--vault", default=str(Path.home() / "memsub-vault"),
+        help="vault folder to check for matching topic notes (read-only; skipped if missing)",
+    )
+    p_idea.add_argument("--namespace", default=os.environ.get("MEMSUB_NAMESPACE", "default"))
+    p_idea.set_defaults(func=_cmd_idea)
 
     p_ns = sub.add_parser("ns", help="manage namespaces and per-agent permissions")
     p_ns.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
