@@ -2249,3 +2249,99 @@ showing only `memsub/cli.py` modified and `memsub/distill.py`/
 `memsub/rerank.py` and untracked `results/`/`scripts/` files belonging to
 that agent were left untouched and unstaged). No em dash in any file
 touched.
+
+## 2026-07-20: "Ask your brain" chat panel (memsub/ask.py + /ask page)
+
+### Plan (stated before coding)
+
+Scope: additive only. New `memsub/ask.py` (core flow), additive route +
+UI in `memsub/vault_serve.py` (my one allowed edit surface), tests, docs.
+Forbidden this round: `memsub/cli.py`, `memsub/distill.py`,
+`memsub/rerank.py`, `memsub/hybrid.py`, `memsub/answer_policy.py` and their
+tests/scripts (concurrent agents own them) -- read-only imports from any of
+these are fine, edits are not.
+
+1. **Retrieval**: `memsub.sdk.MemoryClient.search(question, k=8,
+   budget_tokens=1200)`, the public read API, unchanged. The live store
+   (`~/.memsub/memory.db`) has one namespace today (`claude-code`,
+   confirmed live) but `ask.py`'s entrypoint takes a list of `MemoryClient`
+   (one per namespace found in the served vault's frontmatter, via the
+   existing `_namespace_breakdown`-style scan) and merges+re-sorts hits, so
+   a future multi-namespace vault is not silently half-searched. Each
+   client is built once at server start (`serve_vault`) and reused --
+   `HybridRetriever` is expensive to rebuild per request (BM25 + embedding
+   index over ~5k episodes), so per-request latency is retrieval-cheap and
+   dominated only by the LLM call.
+2. **Sufficiency gate (self-contained, in ask.py)**: `hybrid.py`'s
+   `search()` score is rank-derived (`1/(rrf_k+pos+1)`), not a calibrated
+   relevance score -- confirmed by reading `HybridRetriever.search`'s own
+   docstring ("not comparable across queries"), so it cannot alone tell
+   "good top hit" from "garbage top hit" the way `answer_policy.py`'s
+   logistic model does. Given the explicit instruction not to import
+   `answer_policy` while that agent owns it, the gate here is deliberately
+   simpler and documented as a known-weaker stand-in: query-term coverage
+   (via `memsub.lexical.tokenize`, stemmed/stopworded, already used by BM25
+   in this repo -- reuse over reinventing) as the primary signal, a light
+   capitalized-phrase "entity" substring-coverage check as a secondary
+   signal, and a top-score floor (>0, i.e. at least one hit at all) as the
+   literal instruction's third leg, even though it is weak by itself.
+   Thresholds are picked by hand against the 6 real test questions below
+   and written down with their reasoning, not guessed once and left alone.
+   **Future merge note**: once `answer_policy.py` lands, its calibrated
+   `AbstentionPolicy` should replace this gate wholesale -- tracked here so
+   it is not forgotten.
+3. **Composition**: `memsub.backends.build_backend(prefer="ollama",
+   model="qwen3:8b")` -- hardcoded `prefer="ollama"`, never `"auto"`,
+   because `"auto"` prefers a cloud API key if `ANTHROPIC_API_KEY` happens
+   to be set, which would violate "ALL inference local, zero cloud" for
+   this feature specifically regardless of environment. Backend
+   unreachable/erroring degrades to a clear UI error, never a crash and
+   never a silent cloud fallback. System prompt: only the numbered
+   memories, mandatory per-sentence `[n]` citation markers, no invented
+   facts, partial answers state what is missing rather than guessing, no
+   separate sources section (rendered separately, server-side), no
+   meta-preamble. `strip_think_blocks` (existing, `backends.py`) handles
+   qwen3's `<think>` blocks; a small additional regex strips a couple of
+   observed preamble patterns after live testing.
+4. **Citations**: evidence index `[n]` maps 1:1 to the merged/sorted hit
+   list. Episode -> vault relpath via `memsub.vault.namespace_dirname` +
+   `note_filename` (existing, read-only import); title via
+   `memsub.vault_notes.note_title(relpath, idx)` when the note is already
+   vault-synced, else a plain first-sentence-of-content fallback (most
+   recent episodes may not be vault-synced yet -- verified live: vault
+   sync runs on its own cadence, some very recent episodes have no note
+   file yet). `[n]` markers in the model's answer are regex-replaced (after
+   `html.escape`) with anchor chips linking to a `#src-n` sources list
+   below the answer; out-of-range citation numbers (a possible model
+   hallucination) render as plain bracket text, not a broken link, and are
+   surfaced in test assertions so a hallucinated index is caught, not
+   swallowed.
+5. **UI**: `/ask` GET renders the page shell (dark aesthetic, existing
+   `_page()`/`_CSS`, one new small CSS block) with sample question chips
+   built from `graph.hubs` top entities (same source `_render_brain_section`
+   already uses) styled as "what did I decide about {entity}". `POST
+   /api/ask` (new `do_POST` on the existing stdlib `Handler` -- none exists
+   yet) runs the flow synchronously and returns pre-rendered HTML
+   fragments as JSON; `ThreadingTCPServer` already gives one thread per
+   connection so a multi-second local LLM call does not block other
+   requests. Client JS: plain `fetch`, await, spinner text while waiting
+   (qwen3:8b latency is seconds per the task brief -- polling/chunking
+   would be complexity with no payoff here), conversation history appended
+   client-side only, nothing persisted server-side. Header nav gets one new
+   `ask` link.
+6. **Tests**: gate cases (sufficient/insufficient, empty query, entity
+   miss vs term miss), citation parsing/rendering (in-range, out-of-range,
+   adjacent `[1][2]`, escaping), route smoke (GET /ask, POST /api/ask
+   end-to-end over real HTTP with a MockBackend, no network). Then 6 real
+   questions against the live store with the real qwen3:8b backend,
+   logged verbatim (Q/A/citations/latency) in this file, each citation
+   hand-verified against the actual cited note content -- any hallucination
+   found gets the prompt tightened and the before/after logged, not
+   quietly fixed.
+7. Commit per checkpoint (library+tests, then vault_serve wiring, then
+   real-question log + screenshots), `memsub/ask.py` + `tests/test_ask.py`
+   + my `memsub/vault_serve.py` hunk + `tests/test_vault_serve.py`
+   additions + `docs/` staged explicitly each time, `git log -1 HEAD`
+   checked after every commit (concurrent commits from the other two
+   agents on this branch are expected and left untouched). No `git bundle`
+   (a later agent bundles). Never `git push`. No em dash anywhere.
