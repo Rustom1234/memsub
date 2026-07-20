@@ -40,6 +40,8 @@ def test_wikilink_to_missing_note_gets_dead_style(tmp_path):
 
 
 def test_frontmatter_shown_as_metadata_block_not_raw(tmp_path):
+    # Layer 0 (2026-07-20): raw machine fields (id, namespace, etc.) collapse
+    # into one closed <details> block at the bottom, never a flat dump.
     _write(
         tmp_path,
         "note.md",
@@ -48,11 +50,13 @@ def test_frontmatter_shown_as_metadata_block_not_raw(tmp_path):
     idx = build_index(tmp_path)
 
     page = render_note_page("note.md", idx).decode("utf-8")
-    assert '<div class="meta">' in page
+    assert '<details class="note-details">' in page
     assert "abc123" in page
     assert "namespace" in page
     # raw frontmatter fence must not leak into the rendered body
     assert "---\nid:" not in page
+    # provenance badge still shown prominently, outside the details block
+    assert '<span class="badge badge-observed">observed</span>' in page
 
 
 def test_mermaid_block_rendered_as_pre_mermaid_with_cdn_script(tmp_path):

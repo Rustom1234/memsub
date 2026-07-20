@@ -46,6 +46,22 @@ from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
 from .store import EpisodicStore, TERMINAL_EVENTS
+from .vault_graph import (
+    DEFAULT_NODE_LIMIT,
+    build_graph_index,
+    filter_and_cap,
+    linked_neighbors,
+    note_constellation,
+)
+from .vault_notes import (
+    NoteSections,
+    group_related_entities,
+    namespace_in_words,
+    note_title,
+    parse_editorial_links,
+    split_note_sections,
+)
+from .vault_similarity import build_similarity_index, connection_of_the_day, related_ideas
 
 MERMAID_CDN = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"
 SEARCH_CAP = 200
@@ -357,14 +373,14 @@ def supersede_chain(relpath: str, idx: VaultIndex, max_hops: int = 20) -> list[s
     return chain
 
 
-def _render_supersede_timeline(chain: list[str], current: str) -> str:
+def _render_supersede_timeline(chain: list[str], current: str, idx: VaultIndex) -> str:
     if len(chain) <= 1:
         return ""
     nodes = []
     for rel in chain:
         href = "/note/" + urllib.parse.quote(rel)
         cls = "timeline-node current" if rel == current else "timeline-node"
-        nodes.append(f'<li class="{cls}"><a href="{href}">{html.escape(Path(rel).stem)}</a></li>')
+        nodes.append(f'<li class="{cls}"><a href="{href}">{html.escape(note_title(rel, idx))}</a></li>')
     return (
         '<div class="timeline"><h3>Supersede chain</h3>'
         f'<ul class="timeline-list">{"".join(nodes)}</ul></div>'
@@ -412,7 +428,7 @@ def search_results(idx: VaultIndex, query: str, cap: int = SEARCH_CAP) -> list[d
         folder = str(Path(rel).parent) if Path(rel).parent != Path(".") else "(root)"
         out.append({
             "relpath": rel,
-            "title": Path(rel).stem,
+            "title": note_title(rel, idx),
             "folder": folder,
             "snippet_html": _snippet_html(text, q),
         })
@@ -665,7 +681,77 @@ def _tile_text(label: str, text: str) -> str:
     )
 
 
-def _render_dashboard(idx: VaultIndex, db_path: Path | None) -> str:
+def _namespace_breakdown(idx: VaultIndex) -> list[tuple[str, int]]:
+    """Namespace/source-project counts, vault-text-derived (works in both
+    store and vault-only mode). Sorted by count desc."""
+    counts: dict[str, int] = {}
+    for fields in idx.frontmatter.values():
+        ns = fields.get("namespace")
+        if ns:
+            counts[ns] = counts.get(ns, 0) + 1
+    return sorted(counts.items(), key=lambda kv: -kv[1])
+
+
+def _recent_activity(idx: VaultIndex, n: int = 5) -> list[tuple[str, float]]:
+    """5 newest notes by frontmatter `created`, (relpath, epoch) newest first."""
+    dated = []
+    for rel, fields in idx.frontmatter.items():
+        ts = _epoch_from_iso(fields.get("created", ""))
+        if ts:
+            dated.append((rel, ts))
+    dated.sort(key=lambda kv: -kv[1])
+    return dated[:n]
+
+
+def _render_brain_section(idx: VaultIndex, graph, sim_index) -> str:
+    """"What your brain knows": top entity chips (tap = search), a projects
+    breakdown in prose, a recent-activity list, and connection-of-the-day --
+    the "more informative website" upgrades Rustom asked for, on top of the
+    existing stat tiles/donut/sparkline (untouched)."""
+    parts = []
+
+    if graph is not None and graph.hubs:
+        chips = "".join(
+            f'<a class="entity-chip" href="/?q={urllib.parse.quote(entity)}">{html.escape(entity)}'
+            f'<span class="n">{node.degree}</span></a>'
+            for entity, node in list(graph.hubs.items())[:10]
+        )
+        parts.append(f'<div class="brain-section"><h3>what your brain knows</h3><div class="entity-chips">{chips}</div></div>')
+
+    breakdown = _namespace_breakdown(idx)
+    if breakdown:
+        items = "".join(
+            f"<li>{html.escape(namespace_in_words(ns))} <span class=\"when\">{count:,} note(s)</span></li>"
+            for ns, count in breakdown
+        )
+        parts.append(f'<div class="brain-section"><h3>projects</h3><ul class="prose-list">{items}</ul></div>')
+
+    recent = _recent_activity(idx)
+    if recent:
+        items = "".join(
+            f'<li><a href="/note/{urllib.parse.quote(rel)}">{html.escape(note_title(rel, idx))}</a>'
+            f'<span class="when">{html.escape(_relative_time(ts))}</span></li>'
+            for rel, ts in recent
+        )
+        parts.append(f'<div class="brain-section"><h3>recent activity</h3><ul class="prose-list">{items}</ul></div>')
+
+    if sim_index is not None:
+        today = datetime.now().strftime("%Y-%m-%d")
+        cod = connection_of_the_day(sim_index, idx, today)
+        if cod is not None:
+            card = (
+                '<div class="cod-card"><div class="pair">'
+                f'<a href="/note/{urllib.parse.quote(cod["a"]["relpath"])}">{html.escape(cod["a"]["title"])}</a>'
+                f'<a href="/note/{urllib.parse.quote(cod["b"]["relpath"])}">{html.escape(cod["b"]["title"])}</a>'
+                "</div>"
+                f'<p class="why">why: shares {html.escape(cod["why"])}</p></div>'
+            )
+            parts.append(f'<div class="brain-section"><h3>connection of the day</h3>{card}</div>')
+
+    return "".join(parts)
+
+
+def _render_dashboard(idx: VaultIndex, db_path: Path | None, graph=None, sim_index=None) -> str:
     stats = compute_dashboard_stats(idx, db_path)
     mode_note = ""
     if stats["source"] != "store":
@@ -690,6 +776,7 @@ def _render_dashboard(idx: VaultIndex, db_path: Path | None) -> str:
     )
     donut_svg = _svg_donut(stats["donut"])
     sparkline_svg = _svg_sparkline(_sparkline_series(stats["daily"]))
+    brain_html = _render_brain_section(idx, graph, sim_index)
     return (
         '<section class="dashboard">'
         f"{mode_note}"
@@ -699,6 +786,7 @@ def _render_dashboard(idx: VaultIndex, db_path: Path | None) -> str:
         f'<div class="donut-wrap">{donut_svg}<ul class="legend">{legend}</ul></div></div>'
         f'<div class="viz-card"><h3>30-day activity</h3>{sparkline_svg}</div>'
         "</div>"
+        f"{brain_html}"
         "</section>"
     )
 
@@ -723,7 +811,7 @@ def parse_review_queue(body: str, idx: VaultIndex) -> list[dict]:
             target, rest = item_m.group(1), item_m.group(2)
             resolved = resolve_wikilink(target, idx)
             current["items"].append({
-                "target": target,
+                "target": note_title(resolved, idx) if resolved else target,
                 "href": ("/note/" + urllib.parse.quote(resolved)) if resolved else None,
                 "body_html": _inline(rest, idx),
             })
@@ -924,6 +1012,64 @@ ul.review-list { list-style: none; padding: 0; display: grid; gap: 0.5rem; margi
   .tiles { grid-template-columns: repeat(4, 1fr); }
   .viz-row { grid-template-columns: 1.1fr 1fr; }
 }
+
+/* Layer 0: readability -- meta strip, small chips, closed details block */
+.meta-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0.4rem 0 0.9rem; font-size: 0.85rem; color: var(--text-dim); }
+.meta-date, .meta-project { color: var(--text-dim); }
+.chip { display: inline-block; padding: 0.05rem 0.5rem; border-radius: 999px; font-size: 0.72rem; background: var(--bg-raised); border: 1px solid var(--border); color: var(--text-dim); }
+.promoted-from { color: var(--text-dim); font-size: 0.88rem; margin: 0 0 0.5rem; }
+.note-details { margin-top: 1.5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 0.9rem; font-size: 0.85rem; color: var(--text-dim); }
+.note-details summary { cursor: pointer; color: var(--text); font-family: var(--mono); font-size: 0.8rem; }
+.note-details .meta-rows span { display: inline-block; margin: 0.2rem 1rem 0.2rem 0; }
+.note-details h4 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); margin: 0.8rem 0 0.3rem; }
+
+/* Layer 0/3: related ideas panel (grouped entity links + discovery set) */
+.related-panel { margin-top: 1.5rem; }
+.related-panel h3 { font-size: 0.9rem; margin-bottom: 0.6rem; }
+.related-block { margin-bottom: 0.9rem; }
+.related-block h4 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); margin: 0 0 0.4rem; }
+.related-group { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.8rem; margin-bottom: 0.4rem; font-size: 0.88rem; }
+.related-group summary { cursor: pointer; }
+ul.related-list { list-style: none; margin: 0.4rem 0 0; padding: 0; }
+ul.related-list li { padding: 0.15rem 0; }
+ul.related-list.discovery { display: grid; gap: 0.4rem; }
+.related-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.8rem; }
+.related-card .why { margin: 0.2rem 0 0; color: var(--text-faint); font-size: 0.78rem; }
+
+/* Layer 2: graph canvas (full page + mini constellation), shared styling */
+.graph-canvas-wrap { position: relative; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.graph-canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.graph-canvas:active { cursor: grabbing; }
+.graph-hint { font-size: 0.72rem; color: var(--text-faint); padding: 0.4rem 0.7rem; margin: 0; }
+.constellation { margin-top: 1.5rem; }
+.constellation h3 { font-size: 0.9rem; margin-bottom: 0.5rem; }
+.constellation .graph-canvas-wrap { height: 220px; }
+.graph-canvas-wrap.graph-page { height: 62vh; min-height: 360px; }
+.graph-controls { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0; align-items: center; }
+.graph-controls select, .graph-controls input[type=text] { width: auto; min-width: 8rem; padding: 0.4rem 0.6rem; font-size: 0.85rem; }
+.graph-status { font-size: 0.78rem; color: var(--text-dim); margin: 0.4rem 0; }
+.graph-status button.expand { background: none; border: 1px solid var(--border); color: var(--accent); border-radius: 6px; padding: 0.1rem 0.5rem; font-size: 0.78rem; cursor: pointer; margin-left: 0.5rem; }
+.graph-legend { display: flex; gap: 1rem; font-size: 0.78rem; color: var(--text-dim); margin-bottom: 0.5rem; }
+.graph-legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
+.graph-legend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.graph-preview-card { position: absolute; z-index: 30; max-width: 16rem; background: var(--bg-raised); border: 1px solid var(--border); border-radius: 8px; padding: 0.55rem 0.75rem; font-size: 0.82rem; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); }
+.graph-preview-card strong { display: block; margin-bottom: 0.3rem; }
+.graph-preview-card a { font-size: 0.78rem; }
+
+/* dashboard: brain-knows chips, projects breakdown, recent activity, connection of the day */
+.brain-section { margin-top: 1.25rem; }
+.brain-section h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); margin: 0 0 0.5rem; }
+.entity-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.entity-chip { background: var(--bg-card); border: 1px solid var(--border); color: var(--text); border-radius: 999px; padding: 0.25rem 0.7rem; font-size: 0.82rem; }
+.entity-chip:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+.entity-chip .n { color: var(--text-faint); margin-left: 0.3rem; }
+.prose-list { list-style: none; margin: 0; padding: 0; font-size: 0.88rem; }
+.prose-list li { padding: 0.3rem 0; border-bottom: 1px solid var(--border); }
+.prose-list li:last-child { border-bottom: none; }
+.prose-list .when { color: var(--text-faint); float: right; font-size: 0.78rem; }
+.cod-card { background: var(--bg-card); border: 1px solid var(--accent); border-radius: 10px; padding: 0.8rem 1rem; }
+.cod-card .pair { display: flex; flex-direction: column; gap: 0.3rem; margin: 0.4rem 0; }
+.cod-card .why { color: var(--text-dim); font-size: 0.82rem; margin-top: 0.4rem; }
 """
 
 _MERMAID_INIT = f"""
@@ -1060,6 +1206,309 @@ _WIKILINK_PREVIEW_JS = """
 """
 
 
+_GRAPH_JS = """
+<script>
+(function(){
+  function esc(s){ var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function matchesQ(node, q){ return !q || node.label.toLowerCase().indexOf(q) !== -1; }
+
+  function makeSim(data, W, H){
+    var nodes = data.nodes.map(function(n){
+      return {
+        id: n.id, kind: n.kind, label: n.label, degree: n.degree || 0,
+        x: W / 2 + (Math.random() - 0.5) * W * 0.8,
+        y: H / 2 + (Math.random() - 0.5) * H * 0.8,
+        vx: 0, vy: 0, fixed: false
+      };
+    });
+    var byId = {};
+    nodes.forEach(function(n){ byId[n.id] = n; });
+    var edges = [];
+    (data.edges || []).forEach(function(e){
+      var s = byId[e.source], t = byId[e.target];
+      if (s && t) edges.push({ s: s, t: t, w: e.weight || 1 });
+    });
+    return { nodes: nodes, edges: edges, byId: byId };
+  }
+
+  function step(sim, W, H){
+    var nodes = sim.nodes, n = nodes.length;
+    var repel = Math.min(2200, 70000 / Math.max(1, n));
+    for (var i = 0; i < n; i++){
+      var a = nodes[i];
+      if (a.fixed) continue;
+      var fx = 0, fy = 0;
+      for (var j = 0; j < n; j++){
+        if (i === j) continue;
+        var b = nodes[j];
+        var dx = a.x - b.x, dy = a.y - b.y;
+        var d2 = dx * dx + dy * dy + 0.01;
+        var f = repel / d2;
+        fx += dx * f; fy += dy * f;
+      }
+      fx += (W / 2 - a.x) * 0.002;
+      fy += (H / 2 - a.y) * 0.002;
+      a.vx = (a.vx + fx) * 0.55;
+      a.vy = (a.vy + fy) * 0.55;
+    }
+    sim.edges.forEach(function(e){
+      var dx = e.t.x - e.s.x, dy = e.t.y - e.s.y;
+      var dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      var f = (dist - 70) * 0.02;
+      var fx = (dx / dist) * f, fy = (dy / dist) * f;
+      if (!e.s.fixed){ e.s.vx += fx; e.s.vy += fy; }
+      if (!e.t.fixed){ e.t.vx -= fx; e.t.vy -= fy; }
+    });
+    nodes.forEach(function(a){
+      if (a.fixed) return;
+      a.x += Math.max(-8, Math.min(8, a.vx));
+      a.y += Math.max(-8, Math.min(8, a.vy));
+      a.x = Math.max(10, Math.min(W - 10, a.x));
+      a.y = Math.max(10, Math.min(H - 10, a.y));
+    });
+  }
+
+  function draw(ctx, sim, W, H, view, dpr, opts){
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    ctx.setTransform(view.scale * dpr, 0, 0, view.scale * dpr, view.tx * dpr, view.ty * dpr);
+    ctx.lineWidth = 1 / view.scale;
+    sim.edges.forEach(function(e){
+      var dim = !matchesQ(e.s, opts.q) && !matchesQ(e.t, opts.q);
+      ctx.strokeStyle = dim ? "rgba(90,95,107,0.12)" : "rgba(90,95,107,0.45)";
+      ctx.beginPath();
+      ctx.moveTo(e.s.x, e.s.y); ctx.lineTo(e.t.x, e.t.y);
+      ctx.stroke();
+    });
+    sim.nodes.forEach(function(node){
+      var isHub = node.kind === "hub";
+      var r = (isHub ? 7 : 3.5) + Math.min(6, Math.sqrt(node.degree || 0));
+      var dim = !matchesQ(node, opts.q);
+      ctx.globalAlpha = dim ? 0.15 : 1;
+      ctx.fillStyle = isHub ? "#6fd6ff" : "#7cb0ff";
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, r / view.scale, 0, Math.PI * 2);
+      ctx.fill();
+      if (node === opts.selected){
+        ctx.strokeStyle = "#f0f2f6"; ctx.lineWidth = 2 / view.scale; ctx.stroke();
+      }
+      if (view.scale > 0.75 && (isHub || node === opts.selected) && !dim){
+        ctx.fillStyle = "#d8dbe2";
+        ctx.font = (10 / view.scale) + "px sans-serif";
+        ctx.fillText(node.label.slice(0, 30), node.x + r / view.scale + 3, node.y + 3);
+      }
+      ctx.globalAlpha = 1;
+    });
+  }
+
+  function nodeAt(sim, view, cssX, cssY){
+    var wx = (cssX - view.tx) / view.scale, wy = (cssY - view.ty) / view.scale;
+    var best = null, bestD = 18 / view.scale;
+    sim.nodes.forEach(function(n){
+      var d = Math.hypot(n.x - wx, n.y - wy);
+      if (d < bestD){ bestD = d; best = n; }
+    });
+    return best;
+  }
+
+  function initWrap(wrap){
+    if (wrap.__memsubInit) return;
+    wrap.__memsubInit = true;
+    var canvas = wrap.querySelector("canvas.graph-canvas");
+    if (!canvas) return;
+    var mode = wrap.dataset.mode;
+    var statusEl = document.getElementById(wrap.dataset.status || "");
+    var searchEl = document.getElementById(wrap.dataset.search || "");
+    var nsEl = document.getElementById(wrap.dataset.namespace || "");
+    var periodEl = document.getElementById(wrap.dataset.period || "");
+    var limitEl = document.getElementById(wrap.dataset.limit || "");
+
+    var view = { scale: 1, tx: 0, ty: 0 };
+    var opts = { q: "", selected: null };
+    var sim = null, settleFrames = 0, raf = null, previewCard = null;
+
+    function size(){
+      var rect = wrap.getBoundingClientRect();
+      var dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, rect.width * dpr);
+      canvas.height = Math.max(1, rect.height * dpr);
+      return { W: rect.width, H: rect.height, dpr: dpr };
+    }
+
+    function redraw(){
+      var s = size();
+      var ctx = canvas.getContext("2d");
+      draw(ctx, sim, s.W, s.H, view, s.dpr, opts);
+    }
+
+    function settleLoop(){
+      var s = size();
+      if (settleFrames < 220){
+        step(sim, s.W, s.H);
+        settleFrames++;
+        redraw();
+        raf = requestAnimationFrame(settleLoop);
+      } else {
+        redraw();
+        raf = null;
+      }
+    }
+
+    function start(data){
+      var s = size();
+      sim = makeSim(data, s.W, s.H);
+      settleFrames = 0;
+      opts.selected = null;
+      hidePreview();
+      if (raf) cancelAnimationFrame(raf);
+      settleLoop();
+    }
+
+    function reheat(){
+      settleFrames = 0;
+      if (!raf) settleLoop();
+    }
+
+    function hidePreview(){
+      if (previewCard){ previewCard.remove(); previewCard = null; }
+    }
+
+    function showPreview(node, cssX, cssY){
+      hidePreview();
+      previewCard = document.createElement("div");
+      previewCard.className = "graph-preview-card";
+      var href = node.kind === "hub"
+        ? "/?q=" + encodeURIComponent(node.label)
+        : "/note/" + node.id.slice(5).split("/").map(encodeURIComponent).join("/");
+      var sub = node.kind === "hub" ? node.degree + " note(s)" : "note";
+      previewCard.innerHTML = "<strong>" + esc(node.label) + "</strong>" +
+        "<span>" + esc(sub) + "</span><br><a href=\\"" + href + "\\">open &rarr;</a>";
+      wrap.appendChild(previewCard);
+      var rect = wrap.getBoundingClientRect();
+      previewCard.style.left = Math.max(4, Math.min(cssX, rect.width - 200)) + "px";
+      previewCard.style.top = Math.max(4, cssY) + "px";
+    }
+
+    // pointer interaction: drag node, pan background, click = preview/open
+    var activePointers = {};
+    var dragTarget = null, panning = false, moved = false, lastX = 0, lastY = 0;
+
+    canvas.addEventListener("pointerdown", function(e){
+      canvas.setPointerCapture(e.pointerId);
+      activePointers[e.pointerId] = { x: e.offsetX, y: e.offsetY };
+      moved = false;
+      var hit = sim ? nodeAt(sim, view, e.offsetX, e.offsetY) : null;
+      if (hit){
+        dragTarget = hit; hit.fixed = true;
+      } else {
+        panning = true; lastX = e.offsetX; lastY = e.offsetY;
+      }
+    });
+    canvas.addEventListener("pointermove", function(e){
+      if (!(e.pointerId in activePointers)) return;
+      activePointers[e.pointerId] = { x: e.offsetX, y: e.offsetY };
+      if (dragTarget){
+        moved = true;
+        dragTarget.x = (e.offsetX - view.tx) / view.scale;
+        dragTarget.y = (e.offsetY - view.ty) / view.scale;
+        redraw();
+      } else if (panning){
+        moved = true;
+        view.tx += e.offsetX - lastX; view.ty += e.offsetY - lastY;
+        lastX = e.offsetX; lastY = e.offsetY;
+        redraw();
+      }
+    });
+    function endPointer(e){
+      delete activePointers[e.pointerId];
+      if (dragTarget){
+        if (!moved){
+          hitTap(dragTarget, e.offsetX, e.offsetY);
+        }
+        dragTarget.fixed = false;
+        dragTarget = null;
+        reheat();
+      } else if (panning && !moved){
+        hidePreview();
+        opts.selected = null;
+        redraw();
+      }
+      panning = false;
+    }
+    canvas.addEventListener("pointerup", endPointer);
+    canvas.addEventListener("pointercancel", endPointer);
+    canvas.addEventListener("wheel", function(e){
+      e.preventDefault();
+      var factor = e.deltaY < 0 ? 1.1 : 0.9;
+      var newScale = Math.max(0.3, Math.min(4, view.scale * factor));
+      var wx = (e.offsetX - view.tx) / view.scale;
+      var wy = (e.offsetY - view.ty) / view.scale;
+      view.tx = e.offsetX - wx * newScale;
+      view.ty = e.offsetY - wy * newScale;
+      view.scale = newScale;
+      redraw();
+    }, { passive: false });
+
+    function hitTap(node, cssX, cssY){
+      if (opts.selected === node){
+        var href = node.kind === "hub"
+          ? "/?q=" + encodeURIComponent(node.label)
+          : "/note/" + node.id.slice(5).split("/").map(encodeURIComponent).join("/");
+        window.location.href = href;
+        return;
+      }
+      opts.selected = node;
+      showPreview(node, cssX, cssY);
+      redraw();
+    }
+
+    if (searchEl){
+      searchEl.addEventListener("input", function(){
+        opts.q = searchEl.value.trim().toLowerCase();
+        redraw();
+      });
+    }
+
+    function currentSrc(){
+      var base = wrap.dataset.src;
+      var params = new URLSearchParams(base.split("?")[1] || "");
+      if (nsEl && nsEl.value) params.set("namespace", nsEl.value); else params.delete("namespace");
+      if (periodEl && periodEl.value) params.set("period", periodEl.value); else params.delete("period");
+      if (limitEl && limitEl.value) params.set("limit", limitEl.value);
+      return base.split("?")[0] + "?" + params.toString();
+    }
+
+    function load(){
+      fetch(currentSrc()).then(function(r){ return r.json(); }).then(function(data){
+        if (statusEl){
+          var msg = "showing " + data.shown_notes + " of " + data.total_notes + " note(s), ranked by connectivity";
+          statusEl.textContent = msg;
+        }
+        start(data);
+      }).catch(function(){});
+    }
+
+    [nsEl, periodEl, limitEl].forEach(function(el){
+      if (el) el.addEventListener("change", load);
+    });
+
+    window.addEventListener("resize", function(){ if (sim) redraw(); });
+
+    if (mode === "mini"){
+      var script = wrap.querySelector("script.graph-data");
+      var data = script ? JSON.parse(script.textContent) : { nodes: [], edges: [] };
+      start(data);
+    } else {
+      load();
+    }
+  }
+
+  document.querySelectorAll(".graph-canvas-wrap").forEach(initWrap);
+})();
+</script>
+"""
+
+
 def _page(
     title: str,
     body: str,
@@ -1074,6 +1523,7 @@ def _page(
         '<a class="brand" href="/">memsub<span class="accent">::</span>vault</a>'
         f"{crumb}"
         '<span class="nav-spacer"></span>'
+        '<a class="nav-btn" href="/graph">graph</a>'
         '<a class="nav-btn" href="/random">random</a>'
         '<a class="nav-btn" href="/review">review queue</a>'
         "</nav>"
@@ -1103,38 +1553,187 @@ def _page(
     return html_doc.encode("utf-8")
 
 
-def render_note_page(relpath: str, idx: VaultIndex) -> bytes:
+def _epoch_from_iso(iso: str) -> float | None:
+    if not iso:
+        return None
+    try:
+        return datetime.strptime(iso[:19], "%Y-%m-%dT%H:%M:%S").timestamp()
+    except ValueError:
+        return None
+
+
+def _render_kind_badges(fields: dict) -> str:
+    """kind/status as small badges with hover text -- the provenance badge
+    (observed/inferred/human-verified/quarantined) is the one prominent
+    badge; these are extra machine vocabulary downgraded to small chips,
+    per Layer 0 ("kind/type/status become at most small badges with hover
+    text")."""
+    chips = []
+    for key in ("kind", "status"):
+        val = fields.get(key)
+        if val and not (key == "status" and val == "active"):
+            chips.append(
+                f'<span class="chip" title="{html.escape(key)}: {html.escape(val)}">{html.escape(val)}</span>'
+            )
+    return "".join(chips)
+
+
+def _render_details_block(fields: dict, sections: NoteSections, idx: VaultIndex) -> str:
+    """Every machine field (id, hashes, run/session ids, turn spans, backend,
+    model, audit log) collapses into one closed <details> at the bottom --
+    Layer 0's literal fix for Rustom's "i dont understand shit here"."""
+    if not fields and not sections.provenance and not sections.audit:
+        return ""
+    rows = "".join(
+        f"<span><strong>{html.escape(k)}</strong>: {html.escape(str(v))}</span>"
+        for k, v in fields.items()
+    )
+    prov_html = render_markdown(sections.provenance, idx) if sections.provenance else ""
+    audit_html = render_markdown(sections.audit, idx) if sections.audit else ""
+    return (
+        "<details class=\"note-details\"><summary>Details (ids, provenance, audit log)</summary>"
+        f'<div class="meta-rows">{rows}</div>'
+        f"{prov_html}"
+        f"{('<h4>Audit events</h4>' + audit_html) if audit_html else ''}"
+        "</details>"
+    )
+
+
+def _render_related_panel(relpath: str, idx: VaultIndex, sections: NoteSections, graph, sim_index) -> str:
+    """Layer 3's related-ideas panel, split into two clearly labeled groups.
+    "Already linked" doubles as Layer 0's fix for the entity link-soup
+    ("shares entity Chat with <slug>" x8 -> one grouped, expandable, prose
+    line per entity). "Similar but unlinked" is the discovery set: TF-IDF
+    cosine, top 5, excluding anything already sharing a wikilink or entity
+    -- computed once at server start (memsub/vault_similarity.py)."""
+    linked_html = ""
+    if sections.links:
+        groups = group_related_entities(sections.links, idx, relpath)
+        if groups:
+            items = []
+            for g in groups:
+                members_html = "".join(
+                    f'<li><a href="/note/{urllib.parse.quote(rel)}">{html.escape(title)}</a></li>'
+                    for rel, title in g.members
+                )
+                plural = "s" if g.count != 1 else ""
+                ns_note = ""
+                items.append(
+                    "<details class=\"related-group\">"
+                    f"<summary>Related: {g.count} note{plural} about "
+                    f"{html.escape(g.entity)}{ns_note}</summary>"
+                    f'<ul class="related-list">{members_html}</ul></details>'
+                )
+            linked_html = "".join(items)
+    if not linked_html:
+        linked_html = '<p class="count">no linked notes yet</p>'
+
+    unlinked_html = ""
+    if sim_index is not None:
+        candidates = related_ideas(relpath, sim_index, idx)
+        if candidates:
+            items = "".join(
+                '<li class="related-card">'
+                f'<a href="/note/{urllib.parse.quote(c["relpath"])}">{html.escape(c["title"])}</a>'
+                + (f'<p class="why">shares: {html.escape(c["why"])}</p>' if c["why"] else "")
+                + "</li>"
+                for c in candidates
+            )
+            unlinked_html = f'<ul class="related-list discovery">{items}</ul>'
+    if not unlinked_html:
+        unlinked_html = '<p class="count">no similar-but-unlinked notes found yet</p>'
+
+    return (
+        '<section class="related-panel">'
+        "<h3>Related ideas</h3>"
+        '<div class="related-block"><h4>Already linked</h4>' + linked_html + "</div>"
+        '<div class="related-block"><h4>Similar but unlinked <span class="count">(discovery)</span></h4>'
+        + unlinked_html
+        + "</div>"
+        "</section>"
+    )
+
+
+def _render_constellation(relpath: str, graph) -> str:
+    """Mini constellation: this note's immediate neighborhood, canvas,
+    tap-through. Embedded inline (no extra HTTP round trip) since the graph
+    was already built once at server start."""
+    if graph is None:
+        return ""
+    data = note_constellation(graph, relpath)
+    if len(data.get("nodes", [])) <= 1:
+        return ""
+    payload = json.dumps(data)
+    return (
+        '<section class="constellation">'
+        "<h3>Constellation</h3>"
+        '<div class="graph-canvas-wrap" data-mode="mini">'
+        f'<script type="application/json" class="graph-data">{payload}</script>'
+        '<canvas class="graph-canvas" height="220"></canvas>'
+        '<p class="graph-hint">drag to explore &middot; tap a node to preview &middot; tap again to open</p>'
+        "</div></section>"
+        f"{_GRAPH_JS}"
+    )
+
+
+def render_note_page(relpath: str, idx: VaultIndex, graph=None, sim_index=None) -> bytes:
     text = idx.notes[relpath]
     fields, body = split_frontmatter(text)
+    sections = split_note_sections(body)
+    main_md = sections.content or body
+
+    title = note_title(relpath, idx)
+    badge = _provenance_badge(fields) if fields else ""
+    created_ts = _epoch_from_iso(fields.get("created", ""))
+    project_words = namespace_in_words(fields.get("namespace", "")) if fields.get("namespace") else ""
+
     meta_html = ""
     if fields:
-        badge = _provenance_badge(fields)
-        rows = "".join(
-            f"<span><strong>{html.escape(k)}</strong>: {html.escape(str(v))}</span>"
-            for k, v in fields.items()
-        )
+        badge_html = f'<span class="badge badge-{badge}">{badge}</span>' if badge else ""
+        date_html = f'<span class="meta-date">{html.escape(_relative_time(created_ts))}</span>' if created_ts else ""
+        project_html = f'<span class="meta-project">from {html.escape(project_words)}</span>' if project_words else ""
+        kind_badges = _render_kind_badges(fields)
         meta_html = (
-            '<div class="meta">'
-            f'<div class="meta-badge"><span class="badge badge-{badge}">{badge}</span></div>'
-            f'<div class="meta-rows">{rows}</div></div>'
+            '<div class="meta-strip">'
+            f"{badge_html}{date_html}{project_html}{kind_badges}"
+            "</div>"
         )
-    body_html = render_markdown(body, idx)
+
+    editorial = parse_editorial_links(sections.links) if sections.links else []
+    promoted_from = next((t for k, t in editorial if k == "promoted from"), None)
+    promoted_html = ""
+    if promoted_from:
+        resolved = resolve_wikilink(promoted_from, idx)
+        if resolved:
+            promoted_html = (
+                f'<p class="promoted-from">Promoted from <a href="/note/{urllib.parse.quote(resolved)}">'
+                f"{html.escape(note_title(resolved, idx))}</a></p>"
+            )
+
+    body_html = render_markdown(main_md, idx)
     chain = supersede_chain(relpath, idx)
-    timeline_html = _render_supersede_timeline(chain, relpath)
+    timeline_html = _render_supersede_timeline(chain, relpath, idx)
+    related_html = _render_related_panel(relpath, idx, sections, graph, sim_index)
+    constellation_html = _render_constellation(relpath, graph)
+    details_html = _render_details_block(fields, sections, idx)
 
     folder = str(Path(relpath).parent) if Path(relpath).parent != Path(".") else ""
-    breadcrumb = f"{folder} / {Path(relpath).stem}" if folder else Path(relpath).stem
+    breadcrumb = f"{folder} / {title}" if folder else title
 
     preview_js = _WIKILINK_PREVIEW_JS if '<a class="wikilink"' in body_html else ""
     content = (
-        f"<h1>{html.escape(Path(relpath).stem)}</h1>"
+        f"<h1>{html.escape(title)}</h1>"
         f"{meta_html}"
-        f"{timeline_html}"
+        f"{promoted_html}"
         f'<div class="note-body">{body_html}</div>'
+        f"{timeline_html}"
+        f"{constellation_html}"
+        f"{related_html}"
+        f"{details_html}"
         f"{preview_js}"
     )
     return _page(
-        relpath,
+        title,
         content,
         include_mermaid="```mermaid" in body,
         note_count=len(idx.notes),
@@ -1142,7 +1741,48 @@ def render_note_page(relpath: str, idx: VaultIndex) -> bytes:
     )
 
 
-def render_index_page(idx: VaultIndex, query: str = "", db_path: Path | None = None) -> bytes:
+def render_graph_page(idx: VaultIndex, graph) -> bytes:
+    """Layer 2: /graph -- interactive force-directed canvas graph. Namespace
+    filter, this-week/this-month time filter, search-highlight, drag/zoom/
+    pan, tap-to-preview/tap-through. Node data comes from /api/graph.json,
+    already capped with an honest "showing top N of M" status line."""
+    namespaces = sorted({n.namespace for n in graph.notes.values() if n.namespace}) if graph else []
+    ns_options = "".join(
+        f'<option value="{html.escape(ns)}">{html.escape(namespace_in_words(ns))}</option>' for ns in namespaces
+    )
+    total_notes = len(graph.notes) if graph else 0
+    total_hubs = len(graph.hubs) if graph else 0
+    empty_note = "" if total_notes else '<p class="count">no notes indexed yet.</p>'
+    content = (
+        "<h1>Graph</h1>"
+        f'<p class="count">{total_notes:,} note(s) &middot; {total_hubs} hub entit{"y" if total_hubs == 1 else "ies"}</p>'
+        '<div class="graph-legend">'
+        '<span><span class="dot" style="background:#6fd6ff"></span>hub (biggest entities)</span>'
+        '<span><span class="dot" style="background:#7cb0ff"></span>note</span>'
+        "</div>"
+        '<div class="graph-controls">'
+        '<input type="text" id="graph-search" placeholder="search node labels...">'
+        f'<select id="graph-namespace"><option value="">all namespaces</option>{ns_options}</select>'
+        '<select id="graph-period"><option value="">all time</option>'
+        '<option value="week">this week</option><option value="month">this month</option></select>'
+        '<select id="graph-limit"><option value="150">top 150</option><option value="300">top 300</option>'
+        f'<option value="600">top 600</option><option value="{MAX_NODE_LIMIT}">top {MAX_NODE_LIMIT} (max)</option></select>'
+        "</div>"
+        '<p class="graph-status" id="graph-status">loading&hellip;</p>'
+        '<div class="graph-canvas-wrap graph-page" data-mode="full" data-src="/api/graph.json?limit=150" '
+        'data-status="graph-status" data-search="graph-search" data-namespace="graph-namespace" '
+        'data-period="graph-period" data-limit="graph-limit">'
+        '<canvas class="graph-canvas"></canvas>'
+        "</div>"
+        f"{empty_note}"
+        f"{_GRAPH_JS}"
+    )
+    return _page("Graph", content, note_count=len(idx.notes), breadcrumb="graph")
+
+
+def render_index_page(
+    idx: VaultIndex, query: str = "", db_path: Path | None = None, graph=None, sim_index=None
+) -> bytes:
     by_folder: dict[str, list] = {}
     sections: list[str] = []
 
@@ -1165,12 +1805,12 @@ def render_index_page(idx: VaultIndex, query: str = "", db_path: Path | None = N
             by_folder.setdefault(folder, []).append(rel)
         for folder in sorted(by_folder):
             items = "".join(
-                f'<li><a href="/note/{urllib.parse.quote(rel)}">{html.escape(Path(rel).stem)}</a></li>'
+                f'<li><a href="/note/{urllib.parse.quote(rel)}">{html.escape(note_title(rel, idx))}</a></li>'
                 for rel in sorted(by_folder[folder])
             )
             sections.append(f'<div class="folder"><h2>{html.escape(folder)}</h2><ul class="notelist">{items}</ul></div>')
 
-    dashboard_html = _render_dashboard(idx, db_path)
+    dashboard_html = _render_dashboard(idx, db_path, graph, sim_index)
     content = (
         f"{dashboard_html}"
         '<section class="search-section">'
@@ -1190,7 +1830,9 @@ def render_index_page(idx: VaultIndex, query: str = "", db_path: Path | None = N
 # --------------------------------------------------------------------------- #
 # HTTP server (stdlib only)
 # --------------------------------------------------------------------------- #
-def make_handler(idx: VaultIndex, db_path: Path | None = None) -> type[BaseHTTPRequestHandler]:
+def make_handler(
+    idx: VaultIndex, db_path: Path | None = None, graph=None, sim_index=None
+) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
         server_version = "memsub-vault-serve/2.0"
 
@@ -1214,7 +1856,7 @@ def make_handler(idx: VaultIndex, db_path: Path | None = None) -> type[BaseHTTPR
 
             if parsed.path == "/":
                 query = urllib.parse.parse_qs(parsed.query).get("q", [""])[0]
-                self._send(render_index_page(idx, query, db_path))
+                self._send(render_index_page(idx, query, db_path, graph, sim_index))
                 return
 
             if parsed.path == "/random":
@@ -1227,6 +1869,30 @@ def make_handler(idx: VaultIndex, db_path: Path | None = None) -> type[BaseHTTPR
 
             if parsed.path == "/review":
                 self._send(render_review_page(idx))
+                return
+
+            if parsed.path == "/graph":
+                self._send(render_graph_page(idx, graph))
+                return
+
+            if parsed.path == "/api/graph.json":
+                if graph is None:
+                    payload = json.dumps(
+                        {"nodes": [], "edges": [], "total_notes": 0, "shown_notes": 0, "truncated": False}
+                    ).encode("utf-8")
+                    self._send(payload, content_type="application/json; charset=utf-8")
+                    return
+                qs = urllib.parse.parse_qs(parsed.query)
+                namespace = qs.get("namespace", [""])[0]
+                period = qs.get("period", [""])[0]
+                try:
+                    limit = int(qs.get("limit", [str(DEFAULT_NODE_LIMIT)])[0])
+                except ValueError:
+                    limit = DEFAULT_NODE_LIMIT
+                payload = json.dumps(filter_and_cap(graph, namespace=namespace, period=period, limit=limit)).encode(
+                    "utf-8"
+                )
+                self._send(payload, content_type="application/json; charset=utf-8")
                 return
 
             if parsed.path == "/api/search.json":
@@ -1249,7 +1915,7 @@ def make_handler(idx: VaultIndex, db_path: Path | None = None) -> type[BaseHTTPR
                 fields, body = split_frontmatter(idx.notes[relpath])
                 snippet = " ".join(body.strip().split())[:220]
                 payload = json.dumps({
-                    "title": Path(relpath).stem,
+                    "title": note_title(relpath, idx),
                     "snippet": snippet,
                     "badge": _provenance_badge(fields),
                 }).encode("utf-8")
@@ -1268,7 +1934,7 @@ def make_handler(idx: VaultIndex, db_path: Path | None = None) -> type[BaseHTTPR
                     # non-.md file reached via a crafted /note/ path); refuse
                     self._send(b"not found", status=404, content_type="text/plain")
                     return
-                self._send(render_note_page(relpath, idx))
+                self._send(render_note_page(relpath, idx, graph, sim_index))
                 return
 
             self._send(b"not found", status=404, content_type="text/plain")
@@ -1287,15 +1953,23 @@ def serve_vault(
         print(f"no such directory: {root}")
         return 1
     idx = build_index(root)
+    # Layer 2/3: built once at startup, same "no live reload" contract the
+    # note index already has (WORKLOG.md 2026-07-20 assumption 4). Read-only,
+    # vault-text-derived -- no store access (assumption 2).
+    graph = build_graph_index(idx)
+    sim_index = build_similarity_index(idx, linked_neighbors(graph))
     resolved_db = Path(db_path).expanduser() if db_path else None
-    handler = make_handler(idx, resolved_db)
+    handler = make_handler(idx, resolved_db, graph, sim_index)
     with socketserver.ThreadingTCPServer((host, port), handler) as httpd:
         db_msg = (
             f", dashboard store: {resolved_db}"
             if resolved_db and resolved_db.exists()
             else ", dashboard: vault-only mode"
         )
-        print(f"memsub vault serve: {len(idx.notes)} note(s) from {root}{db_msg}")
+        print(
+            f"memsub vault serve: {len(idx.notes)} note(s) from {root}{db_msg}, "
+            f"graph: {len(graph.notes)} note node(s) / {len(graph.hubs)} hub(s)"
+        )
         print(f"listening on http://{host}:{port} (Ctrl-C to stop)")
         try:
             httpd.serve_forever()
