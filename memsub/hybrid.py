@@ -30,6 +30,8 @@ from .backends import LLMBackend
 from .embed import Embedder, HashingEmbedder
 from .graph import graph_episode_order
 from .lexical import BM25Index, rrf_fuse, tokenize
+from .rerank import rank_by_model
+from .sleep import _extract_entities
 from .store import Episode, EpisodicStore
 from .temporal import classify_intent, episode_matches_date, ordinal_direction, parse_absolute_date, resolve_relative
 
@@ -451,6 +453,104 @@ class HybridRetriever:
             max_subqueries=max_subqueries, hops=hops, temporal_weight=temporal_weight,
             ordinal_pool=ordinal_pool,
         )
+        return [
+            (self.episodes[i], 1.0 / (self.rrf_k + pos + 1))
+            for pos, i in enumerate(order[:k])
+        ]
+
+    # -- learned reranker (2026-07-20, opt-in, rank() untouched) ----------- #
+    def candidate_features(
+        self, query: str, store: EpisodicStore | None = None, pool_size: int = 50, hops: int = 1,
+    ) -> list[dict]:
+        """Per-candidate feature dicts for the top `pool_size` of `rank(query)`,
+        used both to train the tiny learned reranker (memsub/rerank.py) and
+        to build the abstention score's aggregate features
+        (memsub/answer_policy.py). Needs no LLM call: `rank()` and
+        `graph_episode_order` (called with `backend=None`, its documented
+        zero-cost default) are both deterministic.
+
+        Each dict: {"index": int (into self.episodes), "bm25_norm",
+        "dense_norm" (both min-max normalized within this pool, so they are
+        comparable across queries of different length/specificity),
+        "rrf_recip" (1/(rrf_k+pos+1), pos = position in the base rank()
+        order -- monotone in the fused ranking), "entity_overlap" (fraction
+        of the query's rule-based entities found in this candidate's
+        content), "recency" (same bounded recency factor rank() itself
+        uses), "temporal_match" (1.0 if this episode's valid window/
+        session_date matches a date resolved from the query, else 0.0),
+        "graph_boost" (1.0 if this episode is within `hops` of a matched
+        query entity in `store`'s graph index, else 0.0; always 0.0 when
+        `store` is None or has no entities indexed)}.
+        """
+        eps = self.episodes
+        base_order = self.rank(query)
+        pool = base_order[:pool_size]
+        if not pool:
+            return []
+        bm = self._bm25.scores(query)
+        qvec = self.embedder.embed(query)
+        dense = {i: float(self._vectors[i] @ qvec) for i in pool}
+        bm_pool = {i: bm[i] for i in pool}
+
+        def _norm(v: float, lo: float, hi: float) -> float:
+            return (v - lo) / (hi - lo) if hi > lo else 0.5
+
+        bm_lo, bm_hi = min(bm_pool.values()), max(bm_pool.values())
+        d_lo, d_hi = min(dense.values()), max(dense.values())
+
+        query_entities = _extract_entities(query)
+        target_date = parse_absolute_date(query) or resolve_relative(query, self._now_reference())
+
+        graph_idx: set[int] = set()
+        if store is not None and store.entity_count() > 0:
+            graph_idx = set(graph_episode_order(query, store, eps, hops=hops))
+
+        n = len(eps)
+        feats = []
+        for pos, i in enumerate(pool):
+            ep = eps[i]
+            ep_entities = _extract_entities(ep.content)
+            entity_overlap = (
+                len(query_entities & ep_entities) / len(query_entities) if query_entities else 0.0
+            )
+            recency = self.recency_floor + (1 - self.recency_floor) * self.recency_weight ** (n - 1 - i)
+            temporal_match = 1.0 if (target_date is not None and episode_matches_date(ep, target_date)) else 0.0
+            feats.append(
+                {
+                    "index": i,
+                    "bm25_norm": _norm(bm_pool[i], bm_lo, bm_hi),
+                    "dense_norm": _norm(dense[i], d_lo, d_hi),
+                    "rrf_recip": 1.0 / (self.rrf_k + pos + 1),
+                    "entity_overlap": entity_overlap,
+                    "recency": recency,
+                    "temporal_match": temporal_match,
+                    "graph_boost": 1.0 if i in graph_idx else 0.0,
+                }
+            )
+        return feats
+
+    def rank_reranked(
+        self, query: str, weights: dict, store: EpisodicStore | None = None,
+        pool_size: int = 50, hops: int = 1,
+    ) -> list[int]:
+        """Opt-in: re-order the top `pool_size` of rank()'s own order by the
+        tiny learned reranker's P(gold-supporting) score (`weights` is the
+        dict `memsub.rerank.train_logistic`/`save_weights` produces); the
+        tail (beyond pool_size) is left in its original rank() order,
+        appended after. Degrades to plain rank() when the pool is empty
+        (empty store) -- never drops a candidate, only reorders."""
+        base_order = self.rank(query)
+        feats = self.candidate_features(query, store=store, pool_size=pool_size, hops=hops)
+        if not feats:
+            return base_order
+        reordered = rank_by_model(weights, feats)
+        return reordered + base_order[pool_size:]
+
+    def search_reranked(
+        self, query: str, weights: dict, store: EpisodicStore | None = None,
+        k: int = 6, pool_size: int = 50, hops: int = 1,
+    ) -> list[tuple[Episode, float]]:
+        order = self.rank_reranked(query, weights, store=store, pool_size=pool_size, hops=hops)
         return [
             (self.episodes[i], 1.0 / (self.rrf_k + pos + 1))
             for pos, i in enumerate(order[:k])
