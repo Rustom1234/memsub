@@ -1764,3 +1764,104 @@ this build is the next step past display-only surfacing).
   spending any judge calls; the n=20 holdout judged comparison uses ~40
   total Sonnet CLI calls (20 baseline + 20 temporal judge calls), nothing
   larger, no other cloud calls anywhere in this task.
+
+## 2026-07-20: Second brain Layers 0/2/3 (vault serve readability, graph, connections)
+
+Ordered directly by Rustom, docs/second-brain-spec-2026-07-20.md: "i never
+wanna forget an idea and i want to be linked up to other ideas sometimes...
+also the UI needs to be way cooler - i wanna see the obsidian graph... i want
+the second brain but i want it with summarised high quality notes", plus the
+Layer 0 addendum: raw note pages are "not readable, i dont understand shit
+here." Scope for this task: Layer 0 (readability), Layer 2 (graph), Layer 3
+(connections), and dashboard "more informative" upgrades, inside
+memsub/vault_serve.py plus new read-only helper modules only. Layer 1
+(distillation) and Layer 4 (idea capture) are a different agent's work, not
+touched here. store.py/hybrid.py/memory.py/cli.py/scripts/ are another
+agent's active files -- not touched, not even read-modified.
+
+### Assumptions (Karpathy rule 1, stated before coding)
+
+1. No `topics/` tier exists yet (Layer 1 hasn't run: confirmed
+   `~/memsub-vault` has no `topics/` dir). Layer 2's graph therefore ships
+   exactly what the task brief scopes for "for now": note nodes (small, dim)
+   plus hub nodes for the biggest entities (large, accent) -- no topic-tier
+   nodes. When Layer 1 ships later, topic nodes are a natural additive node
+   kind on the same GraphIndex shape; not built speculatively now.
+2. Entity data for the graph is read from vault markdown text, not the
+   store's `entities`/`entity_links` SQLite tables. Reason: `memsub/vault.py`'s
+   `render_note` already writes every entity relationship as a literal
+   `- shares entity **X** with [[Y]]` line in each note's `## Links` section
+   (same source `memsub/graph.py`'s backfill populated the DB tables from).
+   Parsing vault text: (a) keeps vault-serve's read surface store-optional,
+   consistent with the existing "vault-only mode" fallback the dashboard
+   already has, (b) reuses the same precedent `_supersede_links` already
+   sets (walk `## Links` bullets from raw text, no store access), (c) avoids
+   opening `~/.memsub/memory.db` from a new code path this task doesn't own.
+   Documented plainly in the doc update: graph edges are vault-text-derived,
+   not live-DB-derived; a note's entity links only exist in the graph once
+   `memsub vault sync` has regenerated its file.
+3. Layer 3 "existing embeddings if accessible read-only" -- checked: no
+   embeddings table/index in `store.py`'s schema (`memsub/embed.py` embeds
+   query-time only, nothing persisted per-episode). Per the task's own
+   fallback instruction, similarity is TF-IDF cosine over note body text
+   (the `## Content` section only, not frontmatter/provenance noise),
+   computed once at server-start index-build time, stated honestly in the
+   doc as TF-IDF, never described as "embeddings."
+4. Performance: both the graph and the TF-IDF similarity index are built
+   once at `serve_vault()` startup (same "no live reload" contract the note
+   index already has), not per-request. `/api/graph.json` filters/caps an
+   already-built in-memory graph; TF-IDF top-K neighbors per note are
+   precomputed at startup and cached, so a note-page request is O(1) lookup.
+   TF-IDF postings skip terms with document frequency above 15% of the
+   corpus (stopword-like, near-zero idf) to bound pairwise comparison cost
+   across ~4,300 notes.
+5. One title function, one place: `memsub/vault_notes.py:note_title()` is
+   the single source of truth for "first sentence of `## Content`, never the
+   slug" and every surface that shows a note's name (search results, folder
+   listings, graph node labels, related-ideas panels, wikilink hover
+   preview, connection-of-the-day) calls it -- no surface keeps its own
+   `Path(rel).stem` title logic after this change.
+6. The Layer 0 rewrite only changes *rendering*; the underlying markdown
+   `memsub/vault.py` writes is untouched (that file is off-limits anyway).
+   `## Provenance` / `### Audit events` / raw frontmatter fields render
+   inside one closed `<details>` at the bottom; `## Links`' entity-share
+   bullets group by entity into one expandable prose line each; `supersedes`
+   / `superseded by` / `promoted from` lines stay visible (human-meaningful
+   editorial links, not machine jargon) above the details block. The
+   existing supersede-chain timeline keeps parsing raw text unchanged.
+7. "Connection of the day" pool: collecting the single global best-similarity
+   unlinked pair via full O(n^2) comparison is what the TF-IDF top-K-per-note
+   precompute already avoids; instead the daily pick draws from the union of
+   each note's precomputed top-unlinked-neighbor (already capped, already
+   excludes shared-wikilink/entity pairs), taking the top 50 by score
+   globally, then `random.Random(<ISO date>)` picks one deterministically --
+   same pair all day, changes at midnight server-local time, no LLM.
+
+### Success criteria (stated before coding)
+
+- Full existing suite (383 baseline) stays green; new tests added for
+  `vault_notes`, `vault_graph`, `vault_similarity`, and the rewritten note
+  page / dashboard / graph endpoints, including a path-traversal case for
+  every new path-taking endpoint.
+- `note_title()` returns the first sentence of a standard memsub note's
+  content (not the 80-char-truncated slug the old `<h1>` used, not the raw
+  filename stem) and falls back gracefully for non-memsub notes (index,
+  review-queue, templates) that have no `## Content` section.
+- `/graph` renders a canvas graph from a real vault run (127.0.0.1:8767,
+  read-only), supports drag/zoom/pan, a namespace filter, a time filter, and
+  a "showing top N of M notes by connectivity" note with expand controls.
+- Every note page shows a mini constellation (immediate neighborhood) and a
+  related-ideas panel split into "already linked" / "similar but unlinked"
+  (top 5, TF-IDF, excluding shared-wikilink/entity pairs).
+- Dashboard gains: "what your brain knows" top-10 entity chips (tap =
+  search), a projects/namespace breakdown in prose, a 5-newest recent
+  activity list (prose titles, relative dates), and connection-of-the-day --
+  all additive, existing tiles/donut/sparkline untouched.
+- No write endpoints added anywhere; `safe_path` traversal guarantee
+  extended to any new path-taking route, covered by tests.
+- Live smoke test on 127.0.0.1:8767 (host-b's 8766 instance untouched) against
+  the real `~/memsub-vault` + `~/.memsub/memory.db`-adjacent read; headless
+  screenshots at 390x844 and 1280x900 for dashboard, `/graph`, a
+  many-entity-link note (readability proof), and connection-of-the-day;
+  looked at, iterated once on anything that reads badly; committed to
+  `docs/screenshots/2026-07-20-brain/`.
