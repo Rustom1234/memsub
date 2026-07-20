@@ -445,7 +445,7 @@ def _cmd_vault_serve(args: argparse.Namespace) -> int:
     # --root and --vault point at the same viewer (see memsub/vault_serve.py
     # module docstring); --root just overrides which folder is served.
     root = Path(args.root) if args.root else Path(args.vault)
-    return serve_vault(root, port=args.port)
+    return serve_vault(root, port=args.port, db_path=args.db)
 
 
 def _cmd_wiki_ingest(args: argparse.Namespace) -> int:
@@ -715,6 +715,11 @@ def build_parser() -> argparse.ArgumentParser:
         "e.g. a project's docs/ folder)",
     )
     v_serve.add_argument("--port", type=int, default=8766, help="port to bind (127.0.0.1 only)")
+    v_serve.add_argument(
+        "--db", default=str(default_db_path()),
+        help="SQLite store for the dashboard's real counts (best-effort: falls back to "
+        "vault-only mode, derived from note frontmatter, if this path does not exist)",
+    )
     v_serve.set_defaults(func=_cmd_vault_serve)
 
     p_stats = sub.add_parser(

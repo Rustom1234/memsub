@@ -1230,3 +1230,147 @@ reconstruction records (packed context per failing question):
 `results/locomo-open-domain-autopsy-2026-07-19.jsonl`, produced by
 `scripts/locomo_open_domain_autopsy_2026-07-19.py` (read-only, no
 answer/judge calls).
+
+## 2026-07-19 19:47: vault_serve product-UI overhaul (dashboard + search + note view + review queue)
+
+### Scope and boundary (Karpathy rule 1: state assumptions)
+
+Task: turn `memsub vault serve` from a plain functional viewer into a
+product-grade UI ("this is a memory product," not "a file server").
+In-scope: `memsub/vault_serve.py`, `memsub/cli.py`'s `vault serve` wiring
+only (adding `--db`), new inline CSS/JS inside vault_serve.py, docs +
+screenshots. Explicitly out of scope and untouched: `memsub/hybrid.py`,
+`scripts/locomo_*` (another agent's in-flight eval work), `memsub/store.py`
+(read-only consumer only, no new methods added there), `memsub/vault.py`.
+
+Assumptions stated up front:
+1. `/` becomes one page that is BOTH the dashboard (stat tiles, donut,
+   sparkline) AND the existing search/browse (folder-grouped note list),
+   stacked vertically, not two separate routes. Reasons: (a) the existing
+   HTTP smoke test hits `GET /` on a 1-note fixture with no store and
+   asserts `b"hello"` (the note's stem) appears in the body -- that only
+   survives if the folder listing stays on `/`; (b) simpler nav, matches
+   "index page" already being the anchor page; (c) Karpathy rule 2
+   (simplicity) -- no reason to split one browsing surface into two routes.
+2. Dashboard stats are computed from `EpisodicStore`'s existing public read
+   methods only (`all()`, `events()`, `count()`, `active()`), never new
+   store.py methods, never raw SQL. Two store calls per dashboard render
+   (`store.all()` + `store.events()`, no filter) are enough to derive every
+   requested number in Python: total, active/superseded/forgotten/
+   quarantined counts (via `TERMINAL_EVENTS`, newest-event-per-episode,
+   same rule as `store.status()`), human-verified count (episodes with a
+   `confirmed` event, matching `memsub/vault.py`'s own frontmatter rule),
+   namespace count, and a 30-day created-per-day series (from `ep.ts`).
+   "Last extraction time" = max `ep.ts` among episodes whose
+   `provenance.get("origin") == "extraction"` (a key already written by
+   `memsub/extraction.py` and visible in every synced note's Provenance
+   block) -- avoids needing a new store method for extraction-checkpoint
+   timestamps.
+3. DB is opened read-only in spirit: only if the file already exists on
+   disk (checked with `Path.exists()` before ever constructing
+   `EpisodicStore`, since `sqlite3.connect` silently creates a missing
+   file -- must never let a GET request create a database). If missing,
+   absent, or fails to open, the dashboard falls back to vault-only mode:
+   note count and folder/namespace counts from the markdown index only, no
+   store-derived numbers, with a visible "vault-only mode" note instead of
+   silently showing zeros. `--db` defaults to the same `default_db_path()`
+   convention as every other memsub command (`$MEMSUB_DB` or
+   `~/.memsub/memory.db`).
+4. Provenance badge (note view) is derived purely from frontmatter fields
+   already written by `memsub/vault.py` (`status`, `type`,
+   `human_confirmed`) -- no store access from the note-render path at all.
+   Precedence when fields overlap: human-verified > quarantined > inferred
+   > observed. The dashboard donut uses the equivalent live-store
+   precedence for consistency of label meaning (not the same code path,
+   since note view never touches the store).
+5. Supersede-chain timeline walks `[[wikilink]]`s inside each note's
+   existing "## Links" section text (`- superseded by [[..]]` /
+   `- supersedes [[..]]`, already written by `vault.py`) via regex over the
+   in-memory vault index -- no store access, capped at 20 hops to bound a
+   pathological cycle.
+6. Review queue page parses `review-queue.md`'s existing generated
+   structure (`## <category> (...)` headings, `- [[note]] -- text`
+   bullets) at the vault root. Root-mode (docs folder, no such file) shows
+   a graceful "no review queue in this folder" state, not an error.
+7. Zero new dependencies: no pip installs, no new CDN scripts (mermaid CDN
+   stays, only loaded on note pages that use it). All animation is CSS
+   (`@keyframes`, `stroke-dashoffset` draw-in) or vanilla JS (debounced
+   fetch, `requestAnimationFrame` count-up), gated behind
+   `@media (prefers-reduced-motion: reduce)` where it's decorative.
+8. No write endpoints added anywhere; `safe_path` traversal guarantee is
+   reused unchanged for every new route that takes a path segment
+   (`/api/preview/<path>` reuses `safe_path` + the existing `idx.notes`
+   membership check, identical pattern to `/note/<path>`).
+
+### Success criteria (Karpathy rule 4)
+
+- `pytest` stays green, 333+ (no regressions to existing wikilink/dead-link/
+  frontmatter/mermaid/search/path-traversal/HTTP-smoke tests, whose exact
+  asserted substrings are preserved verbatim).
+- 4 headless screenshots at 390x844 and 1280x800 (dashboard, search-in-
+  action, note w/ provenance card, review queue) reviewed and iterated
+  once, committed to `docs/screenshots/2026-07-19/`.
+- No new dependency added (`git diff` on `pyproject.toml`/`requirements*`
+  stays empty).
+- `docs/vault-serve-2026-07-18.md` and this WORKLOG entry reflect the
+  shipped surface; commits are local only, never pushed.
+
+
+### Build result 2026-07-19 20:14: shipped, tests green, screenshots reviewed
+
+`memsub/vault_serve.py` rebuilt in one pass (near-total rewrite, same
+tested public symbols: `build_index`, `render_note_page`, `safe_path`,
+`search_notes`, `serve_vault`, `make_handler`, all signatures backward
+compatible via new optional params). `memsub/cli.py`'s `vault serve`
+subcommand gained `--db` (defaults to `default_db_path()`, same convention
+as every other memsub command).
+
+New surface: dashboard (`/`, stat tiles + inline-SVG provenance donut +
+30-day sparkline, live per-request store queries with a vault-only
+fallback), instant debounced search (`/api/search.json`, folder-grouped,
+`<mark>` snippets, keyboard nav), note view (provenance badge, animated
+supersede-chain timeline walked from existing `## Links` text, wikilink
+hover preview via `/api/preview/<path>`), `/review` (parses
+`review-queue.md` into triage cards, states the apply-loop is manual),
+`/random`, sticky nav + breadcrumb + footer stamp. Zero new dependencies;
+all animation is CSS keyframes or vanilla JS, gated behind
+`prefers-reduced-motion`.
+
+Verification:
+- `pytest -q`: 333 passed, both before and after every checkpoint (ran it
+  before touching anything, immediately after the rewrite, after the `--db`
+  CLI wiring, and after the final CSS iteration -- stayed green throughout).
+- Live smoke test against the real `~/memsub-vault` (4334 notes) and real
+  `~/.memsub/memory.db`: `/`, `/review`, `/random` (redirect),
+  `/api/search.json`, `/api/preview/<path>`, `/note/<path>` all 200/302 as
+  expected; traversal probe (`/note/%2e%2e%2f%2e%2e%2fetc%2fpasswd`) still
+  404s.
+- Debugged an apparent data-consistency bug (dashboard tiles showing
+  different totals than the provenance donut on the same page): root cause
+  was headless Chrome's `--screenshot` capturing the page before the
+  700ms JS count-up animation finished (a target of 1 floors to "0" for
+  most of the animation), not a real bug -- confirmed by comparing an HTTP
+  response's numbers against a simultaneous direct `EpisodicStore` query
+  (matched exactly) and by re-shooting with `--virtual-time-budget=2000`.
+  Separately confirmed the shared `~/.memsub/memory.db` was being actively
+  written by unrelated concurrent extraction work during this session
+  (total episode count moved between screenshots) -- expected for a
+  no-cache live dashboard, documented in
+  docs/vault-serve-2026-07-18.md, not something to fix here.
+- 8 screenshots (390x844 + 1280x800 x {dashboard, search-in-action, note
+  w/ provenance card + timeline, review queue}) reviewed; one iteration
+  applied (note-page `<h1>` was oversized for this vault's long slugified
+  titles, especially on the 390px shot -- capped to `1.4rem` with
+  `word-break`). Re-shot and confirmed. Committed to
+  `docs/screenshots/2026-07-19/`.
+- `docs/vault-serve-2026-07-18.md` rewritten to document the full new
+  surface, vault-only fallback semantics, and the live-numbers caveat.
+
+Environment note: `pkill -u user -f "memsub.cli vault serve"` killed its
+own invoking shell (exit 144) because this sandbox's shell wrapper embeds
+the full launch command line, which the `-f` pattern also matches -- the
+target process still died correctly; killing by explicit PID avoided the
+side effect on retries.
+
+Server stopped cleanly at the end (port 8766 confirmed free). No push (per
+task instruction: local commits only).
