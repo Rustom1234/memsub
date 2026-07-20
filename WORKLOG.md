@@ -2611,3 +2611,81 @@ who clones the repo. My surfaces only: `demo/`, `scripts/build_demo_vault.py`,
   agent commits on this branch expected and left untouched). No
   `git bundle`. Never `git push`.
 
+### Result
+
+All success criteria met, after 3 rebuild iterations (each `--fresh`,
+~9-10 minutes, local qwen3:8b, `think=False`). `demo/memory.db` +
+`demo/vault/` committed (~1.7MB), fully regenerable via
+`python3 scripts/build_demo_vault.py --fresh`.
+
+**Counts**: 144 episodes (136 active, 7 superseded, 1 quarantined), kind
+breakdown 94 fact / 15 decision / 11 idea / 1 milestone / 23 real fusion
+episodes, 48 entities / 371 entity-links (real `graph backfill`), 8 topic
+notes (`demo/vault/topics/`).
+
+**Ripple showcase** (`ripple(store, <engine-decision-id>, max_hops=2)`):
+19 affected items, total impact 42.5, all 3 tiers populated -- 6 direct
+(supersede to the Unity-switch decision, 3 real fusion citations, 2 topic
+citations), 4 transitive (the Unity decision's own further fusion
+citations), 9 associative (Godot tutorials, pricing research, the
+contractor hire, entity-share only). Exceeds the 8-12-item target from the
+plan; kept as-is since every item stayed genuinely on-topic (no noise) and
+"more, still coherent" reads as more impressive for a competition demo,
+not less curated.
+
+**3 iteration bugs found and fixed** (full detail in
+`docs/demo-2026-07-20.md`'s honest iteration log, not hidden):
+1. Applying the deliberate supersede chains before graph backfill/
+   consolidate made the engine decision already-inactive by the time
+   fusion/entity-linking ran (both only see `store.active()`) -- empty
+   associative tier, no fusion citation. Fixed: reordered so graph
+   backfill + consolidate run first, deliberate supersedes last
+   (idempotent-guarded against consolidate's own contradiction judge
+   possibly already having caught a pair).
+2. Even after reordering, consolidate's contradiction phase (pairs
+   same-`kind` episodes) coincidentally paired the engine decision with an
+   unrelated same-kind episode and auto-superseded it before fusion ran in
+   the same call, re-excluding it from fusion. Fixed: gave that one
+   episode a unique `kind="milestone"` no other record shares --
+   mathematically unpairable in the contradiction phase.
+3. `importance=15.0` (chosen against decay) measured 0.159-0.196 for the
+   earliest (January) episodes -- just under the 0.2 decay threshold, since
+   decay's clock is wall-clock `time.time()` (today), not story time.
+   Several early memories, including the pricing-research episode central
+   to the ripple showcase, were decayed as "forgotten" on the first real
+   consolidate pass. Fixed: raised to `importance=100.0`, a 5x margin at
+   the oldest date.
+
+**Quarantine exhibit**: verified `store.status()` returns exactly
+`"quarantined"` for the tampered episode, caught by consolidate()'s real
+phase-0 signature check (not a fabricated event); dashboard PROVENANCE
+donut and QUARANTINED tile both show it, red.
+
+**Retrieval sanity** (`MemoryClient.search`, `embedder="auto"` --
+real `nomic-embed-text` via local ollama, pulled for this build): 2 of 3
+planned questions return the exactly-right memory at or near rank 1
+("what has Maya decided about the art style" hits the painterly-gouache
+decision at rank 1; "what engine is Maya using and why" returns
+Unity-migration-relevant hits throughout). The third ("what does Maya
+charge") returns topically-adjacent freelance-client hits but does not
+surface the specific rate figures within the top 12 -- an honest finding
+(vocabulary mismatch between "charge" and "rate"/"dollars"/"hour" on a
+tiny corpus, confirmed not a broken pipeline: direct phrasing like
+"freelance rate" hits the right episode at rank 1), documented rather than
+hidden, matching this project's standing rule against fabricated positive
+results.
+
+**Screenshots**: `docs/screenshots/2026-07-20-demo/{dashboard,graph,
+topic-engine-choice}-1280x900.png`, headless `google-chrome --headless=new
+--force-prefers-reduced-motion` (skips vault-serve's stat-tile count-up
+animation, avoiding the known mid-animation-frame timing quirk documented
+in `docs/vault-serve-2026-07-18.md`, so tiles show final server-rendered
+values).
+
+**Verification**: `pytest -q` 493 passed (untouched suite, confirmed
+before and after this work). `vault serve --vault demo/vault --db
+demo/memory.db` starts cleanly, dashboard/`/graph`/topic notes all 200.
+
+Full runbook, exact commands, the 3 questions, and the ripple command are
+in `docs/demo-2026-07-20.md`.
+
