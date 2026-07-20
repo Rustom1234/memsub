@@ -1490,3 +1490,83 @@ Full suite: `pytest` 339 passed (was 328 at the end of the last recorded session
 +6 for `test_recall_cli.py`, +5 unaccounted for by other agents' work this repo
 already had in flight -- not this task's concern, all pre-existing and green).
 No em dash in any new or touched file.
+
+Commit: `12c79bf` "Add memsub recall CLI + auto-recall hook for Claude Code
+sessions". `git log -1`/`git rev-parse HEAD` checked immediately after and match
+this commit.
+
+### Task 2: scripts/repo_watchdog.sh (rollback watchdog)
+
+Assumptions (Karpathy rule 1, stated before coding):
+
+1. "Descendant" is checked with `git merge-base --is-ancestor expected current`
+   (exit code, not text parsing) -- the exact primitive git ships for this
+   question, no reimplementation. A rollback is defined as: expected exists,
+   current != expected, and expected is NOT an ancestor of current. This also
+   correctly catches the case where `expected`'s commit object no longer exists
+   at all (aggressive gc after a hard reset): `--is-ancestor` fails non-zero on a
+   missing object exactly like it does on a genuine non-ancestor, so both land in
+   the same warning branch without special-casing.
+2. "A rollback must not overwrite the evidence" (task's own wording) is
+   implemented literally: the expected-head file is written in exactly two
+   cases (no file yet: seed; current is a descendant of expected: advance) and
+   in no other case. The rollback branch prints and logs but never touches the
+   file, so the next run re-detects the same rollback from the same
+   last-known-good baseline until a human (not this script) resolves it and
+   presumably re-seeds.
+3. Exit code: 0 only if every repo was clean/seeded/advanced AND the recovery
+   branch was found AND at least one bundle exists; 1 otherwise. Not wired to
+   any alerting in this round (no mail/webhook exists to wire it to) --
+   documented as the hook point for a future alerting wrapper, per the task's
+   scope (cron line only, not an alerting system).
+4. Repos and thresholds are env-var overridable
+   (`REPO_WATCHDOG_REPOS`/`_STATE_DIR`/`_BUNDLE_DIR`/`_RECOVERY_REF`), same
+   convention as memsub-inbox-sweep.sh, specifically so the three-path test
+   below never has to touch `~/.repo-watchdog` or the real repos.
+
+Built: `scripts/repo_watchdog.sh`. Pure `git`/shell, no network, no Python
+startup cost -- a full run against both real repos completes in well under a
+second, safe for a 5-minute cron cadence.
+
+**Three-path test, scratch clone under `/tmp`, real repos never touched**
+(`/tmp/wd-test/repos/scratchrepo`, fresh `git init`, isolated
+`REPO_WATCHDOG_STATE_DIR`/`REPO_WATCHDOG_BUNDLE_DIR` pointed at `/tmp/wd-test/...`):
+
+1. **Clean/seed** (no expected file yet, 2 commits + a `recovery-jul17-18`
+   branch present, 1 dummy bundle file): `SEED scratchrepo: expected head
+   initialized to e65c92c...`, recovery branch found, 1 bundle found, exit 0.
+2. **Descendant-advance** (one more real commit on top): `ADVANCE scratchrepo:
+   e65c92c... -> 327be12...`, expected file updated to the new HEAD, exit 0.
+3. **Simulated rollback** (`git reset --hard HEAD~2` in the scratch clone,
+   landing on an ancestor of the last-seen expected HEAD): full loud warning
+   block printed naming the repo/expected/actual, one line appended to the
+   test's incidents.log (`ROLLBACK repo=scratchrepo ... expected=327be12...
+   actual=1772b0e...`), **expected file confirmed unchanged** (still
+   `327be12...`, not overwritten), exit 1. Re-ran the watchdog again with no
+   other changes: still detects and re-flags the same rollback (persistent
+   alarm, since nothing updated the baseline) -- confirms case 2 above works
+   exactly as intended, not just on the first detection.
+
+Also exercised (same scratch-repo technique, separate isolated state dirs): a
+repo with no `recovery-jul17-18` branch at all (`WARN ... recovery branch
+'recovery-jul17-18' not found`, incident logged, exit 1) and an empty bundle
+directory (`WARN: no bundles found in ...`, incident logged, exit 1) -- both
+paths confirmed independently of the HEAD-comparison logic.
+
+**Real seeding run** (against the actual repos, read-only: `rev-parse HEAD`,
+`show-ref`, `find` -- no mutation of either repo):
+
+```
+SEED book-dna: expected head initialized to 7c793d6fb487e5cf6c940bcc275eafc0f6aca5dd
+SEED memory-sublayer: expected head initialized to 12c79bf1d057b3317b1f16a4840b22d47a1fd162
+OK: 8 bundle(s) in /home/user/repo-bundles
+```
+
+Exit 0 -- both repos' `recovery-jul17-18` branches exist, 8 bundles present.
+`~/.repo-watchdog/expected/{book-dna,memory-sublayer}.head` now seeded.
+
+Installer: `~/scripts/install-durable-capture.sh` gains a fourth crontab line
+(`*/5 * * * * .../scripts/repo_watchdog.sh >> ~/.repo-watchdog/cron.log 2>&1`),
+same `add_cron` idempotent-append helper the other three cron lines already use.
+
+No em dash in any new or touched file.
