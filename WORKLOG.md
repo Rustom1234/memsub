@@ -2468,3 +2468,146 @@ dataclass `==`), the empty case, an unknown-id `ValueError`, and the
 `ripple_on_event` wrapper. Full suite: 493 passed. Full verbatim Case 1
 report and the honest associative-tier-is-correlation caveat are in
 `docs/ripple-2026-07-20.md`.
+
+## 2026-07-20: Build-week demo vault (synthetic persona, no real data)
+
+### Why
+
+Rustom is submitting memsub to a build-week competition. The real vault
+(`~/memsub-vault` + `~/.memsub/memory.db`) is private and can never be
+shown in a demo. This task builds a fully synthetic, public-safe persona
+brain -- "Maya Chen, indie game developer building Lighthouse Keeper while
+freelancing" -- that exercises every showcase feature (topics, ripple,
+temporal, quarantine, contradictions, graph) on real pipeline output, so
+`vault serve --vault demo/vault --db demo/memory.db` just works for anyone
+who clones the repo. My surfaces only: `demo/`, `scripts/build_demo_vault.py`,
+`docs/demo-2026-07-20.md`, this file. Everything else (`vault_serve.py`,
+`vault_*.py`, `ask.py`, `cli.py`, `distill.py`, `hybrid.py`, `rerank.py`,
+`answer_policy.py`, `store.py`) is imported read-only, never edited.
+
+### Assumptions (stated before coding, Karpathy rule 1)
+
+1. **Write path**: episodes are constructed as `memsub.store.Episode(...)`
+   with explicit historical `ts`/`valid_from`/`valid_to`, tagged with
+   `memsub.provenance.tag_episode(ep, channel)`, then `store.append(ep)`.
+   This is a first-class public write path (the same one `memsub.sdk
+   .MemoryClient.add` calls internally) -- not a hand-written DB row --
+   and it is the only way to control historical timestamps, since
+   `MemoryClient.add` always stamps `time.time()`.
+2. **Decay would gut a 6-month-spread vault**: `consolidate()`'s decay
+   phase computes `age_days` against `now` (defaults to real wall-clock
+   time, i.e. today, 2026-07-20), so a January episode is already
+   ~190 days old the moment `consolidate()` runs. At default
+   `importance=1.0` and `decay_half_life_days=30`, that decays to
+   `0.5**(190/30) ≈ 0.011`, far under `decay_value_threshold=0.2` --
+   most of the vault would be silently forgotten on the very first real
+   consolidation pass. Fix: every persona episode is written with
+   `importance=15.0` (clears the threshold even at ~200 days old with
+   zero retrievals: `15 * 0.5**(200/30) ≈ 0.23 > 0.2`), a defensible
+   choice since every hand-curated showcase memory is, narratively, one
+   Maya actually cares about. Decay is not exercised as its own showcase
+   beat in this task; not showcasing it is a smaller loss than losing the
+   vault.
+3. **Topic-note membership is authored, not auto-clustered, for the
+   showcase topics**: `memsub.distill.cluster_topics` partitions episodes
+   into *disjoint* components (union-find) -- by construction, one episode
+   can never land in two auto-clustered topics. The ripple showcase
+   requires the engine-choice decision to be cited in *two* topic notes,
+   which the automatic path cannot produce. Resolution: reuse
+   `distill.py`'s real rendering functions (`Topic`, `generate_topic_content`
+   -- one real qwen3:8b call per topic, `render_machine_block`,
+   `topic_frontmatter`, `note_wikilink`) but choose each topic's member
+   list explicitly rather than calling `cluster_topics`/`distill` end to
+   end. This still writes the exact spec format (member wikilinks, machine
+   block markers, frontmatter) with real LLM prose; it is deliberate
+   curation of *which* real pipeline function is the entry point, not a
+   deviation from the spec format.
+4. **Deliberate supersede events use `store.log_event` directly**, not
+   `consolidate()`'s LLM contradiction judge, for the four engineered
+   chains (engine reversal, freelance rate x2, art-style pivot, sleep
+   habit pivot): the judge is stochastic against a hashing embedder's
+   similarity band, and the brief calls for guaranteed, reproducible
+   showcase structure. `store.log_event` is the same public API
+   `consolidate()` itself calls to apply an action -- not a private
+   internal. `consolidate()` still runs afterward for real dedup/
+   contradiction/fusion against everything I did *not* hand-supersede,
+   so the "real pipeline ran" claim in the doc is true.
+5. **Fusion is genuinely automatic**: the Godot-related episodes span
+   >=2 distinct `session_id`s and share the "Godot" entity (rule-based
+   capitalized-word extraction, `memsub.sleep._extract_entities` --
+   confirmed by reading the regex), which is all `consolidate()`'s fusion
+   phase needs (`_fusion_candidates` reads entities straight from
+   `ep.content`, no graph-backfill dependency) -- so the fused episode
+   citing them is produced by one real qwen3:8b judge call, not
+   hand-written.
+6. **Quarantine timing**: the imported-channel episode is tampered (one
+   character flipped in the `content` column via a raw `sqlite3` UPDATE,
+   bypassing the store's append-only API entirely -- deliberately, that
+   is the point) *before* `graph_store`/`consolidate()` run, so the real
+   phase-0 signature check in `consolidate()` is what logs the
+   `quarantined` event, not a fabricated one.
+7. **Graph backfill is required even though I hand-author topics**:
+   `memsub.ripple`'s associative tier reads `store.entities_for_episode`
+   / `episode_ids_for_entities`, populated only by
+   `memsub.graph.graph_store`. Skipping it would leave the associative
+   tier empty regardless of how topics are authored.
+8. **Namespace**: single namespace `"maya-chen"` for the whole persona
+   (unregistered namespaces are open by design per `memsub.namespaces`,
+   confirmed in `memsub/sdk.py`'s docstring) -- simplest layout, one
+   vault folder, matches how `vault serve` already expects a single-user
+   store.
+9. **`.gitignore` excludes `*.db` repo-wide**; `demo/memory.db` must be
+   committed anyway (explicit deliverable) -- will need `git add -f`.
+
+### Plan (Karpathy rules 2/3: minimum code, nothing speculative)
+
+1. `scripts/build_demo_vault.py`, one script, run manually (not part of
+   any test suite): persona data as plain Python literals (~130-150
+   entries across 7 topics: game design, engine choice, freelance
+   clients, art style, health/habits, reading list, community/marketing),
+   one qwen3:8b call per entry to turn a factual bullet into one warm,
+   third-person sentence (proper nouns preserved verbatim by prompt
+   instruction, so entity extraction stays reliable), written via
+   `Episode` + `provenance.tag_episode` + `store.append` into
+   `demo/memory.db`.
+2. Apply the 4 deliberate supersede chains + 1 quarandtine tamper via
+   direct store/sqlite calls (assumption 4/6 above).
+3. Run `memsub.graph.graph_store` (real qwen backend for near-miss entity
+   dedup, likely zero LLM calls needed since names are spelled
+   consistently) then `memsub.consolidate.consolidate` (real qwen
+   backend: dedup, contradiction, fusion, decay) over the whole store.
+4. Hand-author 7 topic notes via `distill.py`'s real rendering functions
+   (assumption 3), including the engine-choice topic and a second
+   freelance/hiring topic that both cite the engine decision.
+5. `memsub.vault.sync_vault` to write per-episode notes into
+   `demo/vault/maya-chen/`.
+6. Verify: `memsub.ripple.ripple()` on the engine decision (target: all
+   3 tiers populated, 8-12 total items) written into the doc; 3 sanity
+   search queries via `memsub.sdk.MemoryClient.search`; `vault serve`
+   run briefly on port 8768, screenshots at 1280x900 (dashboard, /graph,
+   the engine-choice topic note) via headless `google-chrome`.
+7. `docs/demo-2026-07-20.md`: exact runbook, the 3 questions, the ripple
+   command, screenshot paths.
+
+### Success criteria (Karpathy rule 4, stated before coding)
+
+- `demo/vault/` + `demo/memory.db` exist, are regenerable by re-running
+  `scripts/build_demo_vault.py` from a clean state, and are small enough
+  to commit.
+- 120-150 episodes, 6-8 topic notes with member wikilinks in the real
+  spec format.
+- `ripple(store, <engine-decision-id>, max_hops=2, vault_path="demo/vault")`
+  shows non-empty `derived_directly`, `derived_transitively`, and
+  `associatively_related` tiers, 8-12 items total.
+- The tampered episode's `store.status()` is exactly `"quarantined"` and
+  its synced vault note's frontmatter says so.
+- 3 planned questions return on-topic top hits via `MemoryClient.search`.
+- `vault serve --vault demo/vault --db demo/memory.db` starts cleanly and
+  renders the dashboard, `/graph`, and the engine-choice topic note
+  without errors.
+- `pytest -q` (existing suite, untouched) stays green.
+- No em dash anywhere in generated content or docs. Commits per
+  checkpoint, own-paths-only, `git log -1` verified after each (concurrent
+  agent commits on this branch expected and left untouched). No
+  `git bundle`. Never `git push`.
+
