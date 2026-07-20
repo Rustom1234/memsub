@@ -45,6 +45,9 @@ from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
+from . import ask as ask_mod
+from .backends import build_backend
+from .sdk import MemoryClient
 from .store import EpisodicStore, TERMINAL_EVENTS
 from .vault_graph import (
     DEFAULT_NODE_LIMIT,
@@ -1072,6 +1075,27 @@ ul.related-list.discovery { display: grid; gap: 0.4rem; }
 .cod-card { background: var(--bg-card); border: 1px solid var(--accent); border-radius: 10px; padding: 0.8rem 1rem; }
 .cod-card .pair { display: flex; flex-direction: column; gap: 0.3rem; margin: 0.4rem 0; }
 .cod-card .why { color: var(--text-dim); font-size: 0.82rem; margin-top: 0.4rem; }
+
+/* Ask your brain */
+.ask-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.75rem 0 1rem; }
+.ask-chip { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-dim); border-radius: 999px; padding: 0.3rem 0.75rem; font-size: 0.82rem; cursor: pointer; }
+.ask-chip:hover { border-color: var(--accent); color: var(--accent); }
+.ask-form { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
+.ask-form input[type=text] { flex: 1; }
+.ask-form button { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); border-radius: 8px; padding: 0 1rem; font-family: var(--sans); font-size: 1rem; cursor: pointer; }
+.ask-form button:disabled { opacity: 0.5; cursor: default; }
+.ask-status { color: var(--text-dim); font-size: 0.85rem; margin: 0.4rem 0; }
+.ask-turn { margin: 1.25rem 0; padding-top: 1rem; border-top: 1px solid var(--border); }
+.ask-turn:first-child { border-top: none; }
+.ask-question { font-family: var(--mono); color: #f0f2f6; font-size: 0.95rem; margin-bottom: 0.5rem; }
+.ask-answer { max-width: 42rem; }
+.ask-answer p { margin: 0.4rem 0; }
+.ask-error { color: #ff8a8a; font-size: 0.9rem; }
+.ask-refusal { color: var(--text-dim); font-style: italic; }
+a.cite-chip { display: inline-block; background: var(--accent-dim); color: var(--accent); border-radius: 4px; padding: 0 0.3rem; font-size: 0.78rem; font-family: var(--mono); margin: 0 0.05rem; }
+ol.ask-sources, ul.ask-nearest { margin: 0.6rem 0 0; padding-left: 1.4rem; font-size: 0.85rem; color: var(--text-dim); }
+ol.ask-sources li, ul.ask-nearest li { padding: 0.15rem 0; }
+.ask-meta { color: var(--text-faint); font-size: 0.75rem; margin-top: 0.4rem; }
 """
 
 _MERMAID_INIT = f"""
@@ -1525,6 +1549,7 @@ def _page(
         '<a class="brand" href="/">memsub<span class="accent">::</span>vault</a>'
         f"{crumb}"
         '<span class="nav-spacer"></span>'
+        '<a class="nav-btn" href="/ask">ask</a>'
         '<a class="nav-btn" href="/graph">graph</a>'
         '<a class="nav-btn" href="/random">random</a>'
         '<a class="nav-btn" href="/review">review queue</a>'
@@ -1782,6 +1807,116 @@ def render_graph_page(idx: VaultIndex, graph) -> bytes:
     return _page("Graph", content, note_count=len(idx.notes), breadcrumb="graph")
 
 
+# --------------------------------------------------------------------------- #
+# "Ask your brain": /ask page + /api/ask (memsub/ask.py owns the flow --
+# retrieval, sufficiency gate, prompt, citation parsing; this file only owns
+# the page chrome and the route)
+# --------------------------------------------------------------------------- #
+_ASK_JS = """
+<script>
+(function(){
+  var form = document.getElementById('ask-form');
+  var input = document.getElementById('ask-input');
+  var button = document.getElementById('ask-submit');
+  var status = document.getElementById('ask-status');
+  var conversation = document.getElementById('ask-conversation');
+  if (!form) return;
+
+  function esc(s){ var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  function renderTurn(question, data){
+    var turn = document.createElement('div');
+    turn.className = 'ask-turn';
+    var qEl = document.createElement('div');
+    qEl.className = 'ask-question';
+    qEl.textContent = question;
+    turn.appendChild(qEl);
+
+    var body = document.createElement('div');
+    body.className = 'ask-answer';
+    if (data.error) {
+      body.innerHTML = '<p class="ask-error">' + esc(data.error) + '</p>';
+    } else if (!data.sufficient) {
+      body.innerHTML = '<p class="ask-refusal">' + esc(data.message) + '</p>' +
+        (data.nearest_html ? '<p class="ask-meta">maybe related:</p>' + data.nearest_html : '');
+    } else {
+      body.innerHTML = '<p>' + data.answer_html + '</p>' +
+        (data.sources_html ? '<p class="ask-meta">sources:</p>' + data.sources_html : '');
+    }
+    if (typeof data.latency_ms === 'number') {
+      var meta = document.createElement('p');
+      meta.className = 'ask-meta';
+      meta.textContent = (data.backend || 'local model') + ' · ' + data.latency_ms + ' ms';
+      body.appendChild(meta);
+    }
+    turn.appendChild(body);
+    conversation.insertBefore(turn, conversation.firstChild);
+  }
+
+  function ask(question){
+    if (!question) return;
+    button.disabled = true;
+    status.style.display = '';
+    status.textContent = 'thinking...';
+    fetch('/api/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: question })
+    }).then(function(resp){ return resp.json(); }).then(function(data){
+      renderTurn(question, data);
+    }).catch(function(err){
+      renderTurn(question, { error: 'request failed: ' + err });
+    }).then(function(){
+      button.disabled = false;
+      status.style.display = 'none';
+      input.value = '';
+      input.focus();
+    });
+  }
+
+  form.addEventListener('submit', function(ev){
+    ev.preventDefault();
+    ask(input.value.trim());
+  });
+
+  document.querySelectorAll('.ask-chip').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      ask(chip.getAttribute('data-q'));
+    });
+  });
+})();
+</script>
+"""
+
+
+def _ask_sample_chips(graph) -> str:
+    """Sample question chips filled from the graph's top entities (same
+    source `_render_brain_section` already uses for entity chips)."""
+    if graph is None or not graph.hubs:
+        return ""
+    chips = []
+    for entity in list(graph.hubs.keys())[:6]:
+        q = f"what did I decide about {entity}"
+        chips.append(f'<span class="ask-chip" data-q="{html.escape(q)}">{html.escape(q)}</span>')
+    return f'<div class="ask-chips">{"".join(chips)}</div>'
+
+
+def render_ask_page(idx: VaultIndex, graph=None) -> bytes:
+    content = (
+        "<h1>Ask your brain</h1>"
+        '<p class="count">ask a question; answers are grounded only in your own notes, with citations.</p>'
+        f"{_ask_sample_chips(graph)}"
+        '<form id="ask-form" class="ask-form">'
+        '<input type="text" id="ask-input" autocomplete="off" placeholder="what did I decide about...">'
+        '<button type="submit" id="ask-submit">ask</button>'
+        "</form>"
+        '<p class="ask-status" id="ask-status" style="display:none">thinking...</p>'
+        '<div id="ask-conversation"></div>'
+        f"{_ASK_JS}"
+    )
+    return _page("Ask your brain", content, note_count=len(idx.notes), breadcrumb="ask")
+
+
 def render_index_page(
     idx: VaultIndex, query: str = "", db_path: Path | None = None, graph=None, sim_index=None
 ) -> bytes:
@@ -1833,7 +1968,11 @@ def render_index_page(
 # HTTP server (stdlib only)
 # --------------------------------------------------------------------------- #
 def make_handler(
-    idx: VaultIndex, db_path: Path | None = None, graph=None, sim_index=None
+    idx: VaultIndex,
+    db_path: Path | None = None,
+    graph=None,
+    sim_index=None,
+    ask_backend=None,
 ) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
         server_version = "memsub-vault-serve/2.0"
@@ -1875,6 +2014,10 @@ def make_handler(
 
             if parsed.path == "/graph":
                 self._send(render_graph_page(idx, graph))
+                return
+
+            if parsed.path == "/ask":
+                self._send(render_ask_page(idx, graph))
                 return
 
             if parsed.path == "/api/graph.json":
@@ -1941,6 +2084,51 @@ def make_handler(
 
             self._send(b"not found", status=404, content_type="text/plain")
 
+        def do_POST(self) -> None:  # noqa: N802 (stdlib-mandated name)
+            parsed = urllib.parse.urlparse(self.path)
+
+            if parsed.path == "/api/ask":
+                length = int(self.headers.get("Content-Length", 0) or 0)
+                raw = self.rfile.read(length) if length else b"{}"
+                try:
+                    data = json.loads(raw.decode("utf-8"))
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    data = {}
+                question = str(data.get("question", ""))
+                if db_path is None or not db_path.exists():
+                    payload = json.dumps(
+                        {
+                            "question": question.strip(),
+                            "sufficient": False,
+                            "message": (
+                                "no local store is configured for this vault-serve "
+                                "instance (vault-only mode) -- ask needs --db."
+                            ),
+                            "nearest_html": "",
+                            "latency_ms": 0,
+                        }
+                    ).encode("utf-8")
+                    self._send(payload, content_type="application/json; charset=utf-8")
+                    return
+                # A fresh MemoryClient per request, not one built once at server
+                # startup: EpisodicStore's sqlite connection can only be used
+                # from the thread that created it (confirmed live -- sqlite3
+                # raises "objects created in a thread can only be used in that
+                # same thread"), and ThreadingTCPServer hands each request its
+                # own thread. Same per-request-open pattern the dashboard already
+                # uses (_open_store_readonly). Cold HybridRetriever build is
+                # ~0.65s against the live ~5k-episode store -- negligible next to
+                # the multi-second local LLM call that follows.
+                namespaces = sorted({ns for ns, _ in _namespace_breakdown(idx)}) or ["default"]
+                clients = [
+                    MemoryClient(db_path=db_path, namespace=ns, retrieval="hybrid") for ns in namespaces
+                ]
+                result = ask_mod.answer(question, clients, idx, ask_backend)
+                self._send(json.dumps(result).encode("utf-8"), content_type="application/json; charset=utf-8")
+                return
+
+            self._send(b"not found", status=404, content_type="text/plain")
+
     return Handler
 
 
@@ -1961,7 +2149,19 @@ def serve_vault(
     graph = build_graph_index(idx)
     sim_index = build_similarity_index(idx, linked_neighbors(graph))
     resolved_db = Path(db_path).expanduser() if db_path else None
-    handler = make_handler(idx, resolved_db, graph, sim_index)
+    ask_backend = None
+    if resolved_db and resolved_db.exists():
+        try:
+            # Hardcoded "ollama", never "auto": "auto" prefers a cloud API
+            # key if ANTHROPIC_API_KEY happens to be set, which would break
+            # this feature's "zero cloud" requirement regardless of env. The
+            # backend itself holds no sqlite state, so it is safe to build
+            # once here and reuse across request threads (unlike the
+            # per-request MemoryClients in do_POST -- see that comment).
+            ask_backend = build_backend(prefer="ollama", model="qwen3:8b")
+        except RuntimeError as exc:
+            print(f"ask: local ollama backend unavailable ({exc}); /ask will show an error until it is")
+    handler = make_handler(idx, resolved_db, graph, sim_index, ask_backend)
     with socketserver.ThreadingTCPServer((host, port), handler) as httpd:
         db_msg = (
             f", dashboard store: {resolved_db}"

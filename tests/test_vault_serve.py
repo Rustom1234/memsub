@@ -284,3 +284,96 @@ def test_api_graph_json_over_http_smoke_and_traversal_stays_safe(tmp_path):
         thread.join(timeout=5)
 
 
+# --------------------------------------------------------------------------- #
+# "Ask your brain" (2026-07-20): /ask page + /api/ask route
+# --------------------------------------------------------------------------- #
+def test_ask_page_renders_form_and_sample_chips(tmp_path):
+    from memsub.vault_serve import render_ask_page
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    page = render_ask_page(idx, graph).decode("utf-8")
+    assert 'id="ask-form"' in page
+    assert 'id="ask-input"' in page
+    assert 'class="ask-chip"' in page
+    assert "Chat" in page  # top hub entity from the fixture's shared-entity links
+    assert '<a class="nav-btn" href="/ask">ask</a>' in page
+
+
+def test_api_ask_without_store_gives_honest_vault_only_message(tmp_path):
+    import json
+    import socketserver
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    handler = make_handler(idx, None, graph, sim)  # no ask_clients/ask_backend -- vault-only mode
+    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), handler)
+    port = httpd.server_address[1]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        conn.request(
+            "POST", "/api/ask", body=json.dumps({"question": "anything"}),
+            headers={"Content-Type": "application/json"},
+        )
+        resp = conn.getresponse()
+        assert resp.status == 200
+        payload = json.loads(resp.read())
+        assert payload["sufficient"] is False
+        assert "vault-only mode" in payload["message"]
+        conn.close()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+
+
+def test_api_ask_end_to_end_with_mock_backend_returns_cited_answer(tmp_path):
+    import json
+    import socketserver
+
+    from memsub.backends import MockBackend
+    from memsub.sdk import MemoryClient
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    db_path = tmp_path / "memory.db"
+    seed_client = MemoryClient(db_path=db_path, namespace="claude-code", retrieval="hybrid")
+    seed_client.add("The user prefers nohup over tmux for the agent loop.")
+    seed_client.close()
+    backend = MockBackend(responder=lambda s, m: "The user prefers nohup over tmux. [1]")
+
+    handler = make_handler(idx, db_path, graph, sim, backend)
+    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), handler)
+    port = httpd.server_address[1]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+
+        conn.request("GET", "/ask")
+        resp = conn.getresponse()
+        assert resp.status == 200
+        assert b"ask-form" in resp.read()
+
+        conn.request(
+            "POST", "/api/ask",
+            body=json.dumps({"question": "does the user prefer nohup or tmux for the agent loop"}),
+            headers={"Content-Type": "application/json"},
+        )
+        resp = conn.getresponse()
+        assert resp.status == 200
+        payload = json.loads(resp.read())
+        assert payload["sufficient"] is True
+        assert "cite-chip" in payload["answer_html"]
+        assert payload["cited"] == [1]
+
+        conn.request("POST", "/api/ask", body=json.dumps({"question": "what is the capital of France"}),
+                      headers={"Content-Type": "application/json"})
+        resp = conn.getresponse()
+        payload = json.loads(resp.read())
+        assert payload["sufficient"] is False
+        assert payload["message"] == "Your brain does not contain enough on this yet."
+        conn.close()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
