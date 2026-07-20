@@ -194,3 +194,36 @@ def test_search_reranked_returns_top_k_pairs():
     results = hy.search_reranked("hiking", weights, k=3)
     assert len(results) == 3
     assert all(isinstance(score, float) for _, score in results)
+
+
+# --------------------------------------------------------------------------- #
+# base_order pass-through (fairness pattern, docs/temporal-v1-2026-07-20.md)
+# --------------------------------------------------------------------------- #
+def test_candidate_features_uses_passed_base_order_not_plain_rank():
+    eps = [_ep(f"Alice: fact {i} about hiking", i, f"e{i}") for i in range(5)]
+    hy = HybridRetriever(temporal=False, session_weight=0.0)
+    hy.ingest(eps)
+    reversed_order = list(range(4, -1, -1))
+    feats = hy.candidate_features("hiking", base_order=reversed_order)
+    assert [f["index"] for f in feats] == reversed_order
+    # rrf_recip must be monotone in the PASSED order, not a freshly computed rank()
+    assert feats[0]["rrf_recip"] > feats[-1]["rrf_recip"]
+
+
+def test_rank_reranked_reorders_the_passed_base_order_pool():
+    eps = [
+        _ep("Alice: I love hiking near the lake.", 1, "a"),
+        _ep("Bob: my favorite food is pizza.", 2, "b"),
+    ]
+    hy = HybridRetriever(temporal=False, session_weight=0.0)
+    hy.ingest(eps)
+    weights = {
+        "mean": [0.0] * len(RERANK_FEATURE_NAMES),
+        "std": [1.0] * len(RERANK_FEATURE_NAMES),
+        "w": [0.0, 0.0, 0.0, 10.0, 0.0, 0.0, 0.0],  # entity_overlap only
+        "b": 0.0,
+    }
+    # Force a base_order where Bob's episode (no entity match) comes first;
+    # the reranker should still promote Alice's episode (index 0).
+    order = hy.rank_reranked("What does Alice like?", weights, base_order=[1, 0], pool_size=2)
+    assert order[0] == 0

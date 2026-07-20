@@ -461,6 +461,7 @@ class HybridRetriever:
     # -- learned reranker (2026-07-20, opt-in, rank() untouched) ----------- #
     def candidate_features(
         self, query: str, store: EpisodicStore | None = None, pool_size: int = 50, hops: int = 1,
+        base_order: list[int] | None = None,
     ) -> list[dict]:
         """Per-candidate feature dicts for the top `pool_size` of `rank(query)`,
         used both to train the tiny learned reranker (memsub/rerank.py) and
@@ -469,21 +470,29 @@ class HybridRetriever:
         `graph_episode_order` (called with `backend=None`, its documented
         zero-cost default) are both deterministic.
 
+        base_order: pass a previously computed ranking (e.g.
+        `rank_decomposed_graph(...)`) to build features over THAT pool
+        instead of a fresh plain `rank(query)` call -- same `base_order`
+        fairness pattern as `rank_temporal`/`rank_decomposed_graph_temporal`
+        (docs/temporal-v1-2026-07-20.md): lets a caller apply the learned
+        reranker on top of its actual serving retrieval order rather than a
+        separately-recomputed plain-rank pool.
+
         Each dict: {"index": int (into self.episodes), "bm25_norm",
         "dense_norm" (both min-max normalized within this pool, so they are
         comparable across queries of different length/specificity),
-        "rrf_recip" (1/(rrf_k+pos+1), pos = position in the base rank()
-        order -- monotone in the fused ranking), "entity_overlap" (fraction
-        of the query's rule-based entities found in this candidate's
-        content), "recency" (same bounded recency factor rank() itself
-        uses), "temporal_match" (1.0 if this episode's valid window/
-        session_date matches a date resolved from the query, else 0.0),
-        "graph_boost" (1.0 if this episode is within `hops` of a matched
-        query entity in `store`'s graph index, else 0.0; always 0.0 when
-        `store` is None or has no entities indexed)}.
+        "rrf_recip" (1/(rrf_k+pos+1), pos = position in `base_order` --
+        monotone in whichever fused ranking produced it), "entity_overlap"
+        (fraction of the query's rule-based entities found in this
+        candidate's content), "recency" (same bounded recency factor
+        rank() itself uses), "temporal_match" (1.0 if this episode's valid
+        window/session_date matches a date resolved from the query, else
+        0.0), "graph_boost" (1.0 if this episode is within `hops` of a
+        matched query entity in `store`'s graph index, else 0.0; always 0.0
+        when `store` is None or has no entities indexed)}.
         """
         eps = self.episodes
-        base_order = self.rank(query)
+        base_order = self.rank(query) if base_order is None else base_order
         pool = base_order[:pool_size]
         if not pool:
             return []
@@ -531,16 +540,22 @@ class HybridRetriever:
 
     def rank_reranked(
         self, query: str, weights: dict, store: EpisodicStore | None = None,
-        pool_size: int = 50, hops: int = 1,
+        pool_size: int = 50, hops: int = 1, base_order: list[int] | None = None,
     ) -> list[int]:
-        """Opt-in: re-order the top `pool_size` of rank()'s own order by the
-        tiny learned reranker's P(gold-supporting) score (`weights` is the
-        dict `memsub.rerank.train_logistic`/`save_weights` produces); the
-        tail (beyond pool_size) is left in its original rank() order,
-        appended after. Degrades to plain rank() when the pool is empty
-        (empty store) -- never drops a candidate, only reorders."""
-        base_order = self.rank(query)
-        feats = self.candidate_features(query, store=store, pool_size=pool_size, hops=hops)
+        """Opt-in: re-order the top `pool_size` of `base_order` (default:
+        `rank(query)`) by the tiny learned reranker's P(gold-supporting)
+        score (`weights` is the dict `memsub.rerank.train_logistic`/
+        `save_weights` produces); the tail (beyond pool_size) is left in its
+        original order, appended after. Degrades to plain rank() (or the
+        passed-in base_order) when the pool is empty (empty store) -- never
+        drops a candidate, only reorders.
+
+        base_order: pass a previously computed ranking (e.g.
+        `rank_decomposed_graph(...)`) to rerank THAT pool instead of a
+        freshly recomputed plain rank() -- same fairness pattern as
+        `rank_temporal`'s own `base_order` parameter."""
+        base_order = self.rank(query) if base_order is None else base_order
+        feats = self.candidate_features(query, store=store, pool_size=pool_size, hops=hops, base_order=base_order)
         if not feats:
             return base_order
         reordered = rank_by_model(weights, feats)
@@ -548,9 +563,11 @@ class HybridRetriever:
 
     def search_reranked(
         self, query: str, weights: dict, store: EpisodicStore | None = None,
-        k: int = 6, pool_size: int = 50, hops: int = 1,
+        k: int = 6, pool_size: int = 50, hops: int = 1, base_order: list[int] | None = None,
     ) -> list[tuple[Episode, float]]:
-        order = self.rank_reranked(query, weights, store=store, pool_size=pool_size, hops=hops)
+        order = self.rank_reranked(
+            query, weights, store=store, pool_size=pool_size, hops=hops, base_order=base_order,
+        )
         return [
             (self.episodes[i], 1.0 / (self.rrf_k + pos + 1))
             for pos, i in enumerate(order[:k])
