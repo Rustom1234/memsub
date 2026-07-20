@@ -1374,3 +1374,119 @@ side effect on retries.
 
 Server stopped cleanly at the end (port 8766 confirmed free). No push (per
 task instruction: local commits only).
+
+---
+
+## 2026-07-19: Three planned extensions, ordered directly by Rustom ("execute the full plan")
+
+Scope, per the task instruction: do not touch scripts/locomo_* / results/locomo_* /
+memsub/hybrid.py (another agent may still be running LOCOMO evals), leave
+memsub/vault_serve.py alone (finished, stable). Never `git push`. Verify `git log -1`
+is this session's own commit after every commit (lab infra has silently rolled refs
+back twice before; a mismatch means stop and report, not retry).
+
+### Task 1: `memsub recall` CLI + scripts/memsub-recall-hook.sh (auto-recall for
+Claude Code sessions)
+
+Assumptions (Karpathy rule 1, stated before coding):
+
+1. `HybridRetriever.search`'s returned score is explicitly documented in
+   memsub/hybrid.py as "a rank-derived score ... not comparable across queries" --
+   `1/(rrf_k+pos+1)`. Confirmed empirically before building anything: a totally
+   irrelevant query ("what is the weather in tokyo today") against the real
+   4218-episode claude-code namespace still gets a "top hit" at rrf=0.0164, same as
+   a genuinely on-topic query's top hit. This score is unusable as a relevance
+   floor. The actual gate is raw cosine similarity between the query and each
+   candidate's content, computed directly with the same embedder (HashingEmbedder,
+   the CLI's existing default, zero network/cold-start).
+2. Silence is the default per the task's explicit instruction. Tuned the cosine
+   floor empirically against the real store (not synthetic data): 0.35 let one
+   clearly-irrelevant query through ("is it going to rain tomorrow in paris" ->
+   matched "Agent loop is running with PID 39518..." at cos=0.351, pure hash-trigram
+   coincidence); 0.38 was the lowest floor that stayed silent on every tested
+   irrelevant query (weather, pizza, coffee, banana-spaceship-gibberish, breakfast,
+   cookie recipe) while still firing on clearly on-topic ones. Shipped as
+   `--min-relevance 0.38` (CLI flag, overridable, not hardcoded). Accepted tradeoff,
+   stated plainly: this does cost some recall (a middling-relevance real match, e.g.
+   "remind me about the pixel agents overnight run review" at cos 0.375-0.379,
+   drops below 0.38 and goes silent) -- the task's own priority ("must not spam
+   every prompt") points at false positives being the worse failure mode, not false
+   negatives.
+3. Quarantined episodes (memsub.provenance signature verification failure) are
+   never injected by this path, independent of whether store.active() has already
+   filtered them: `_cmd_recall` calls `provenance.channel_status` itself rather
+   than trusting that a `consolidate()` pass already ran for this namespace. This
+   is the one read path that puts memory content directly back into a live agent's
+   context, so it re-checks rather than assumes. Covered by
+   `test_recall_never_injects_quarantined_content`.
+
+Built: `memsub/cli.py` gains `_cmd_recall` + the `recall` subparser (`--db
+--namespace --query --k --max-chars --min-relevance`), zero LLM calls anywhere in
+the path (MemoryClient with the default hashing embedder, `client.search(...,
+log=False)` so recall lookups do not pollute the audit trail's retrieval-event
+log). `scripts/memsub-recall-hook.sh` (new): reads UserPromptSubmit hook JSON on
+stdin (`.prompt`), calls `memsub recall`, wraps non-empty output as
+`{"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext":
+...}}`, wrapped in a `timeout 2s` safety net (not the real latency control --
+see below). Fails silently on any error (missing jq field, missing binary, missing
+store) so it can never block a prompt.
+
+**Timing** (the actual budget-relevant measurement, real store, real venv, cold
+process each time -- no warm daemon): `time (echo '<hook json>' |
+memsub-recall-hook.sh)` measured 0.65s-0.83s wall across several real queries
+against the live ~/.memsub/memory.db (4218 active episodes, claude-code
+namespace). Comfortably under the 2s budget with headroom. Per the task's own
+framing ("embedding the query is the cost"): the real cost here is not the query
+embedding itself (HashingEmbedder is pure numpy, sub-millisecond, no daemon, no
+cold start -- there is nothing to warm up) but `MemoryClient._get_index` rebuilding
+the whole HybridRetriever index (BM25 + dense) over every active episode in the
+namespace on every fresh CLI invocation, which is O(namespace size). At today's
+size (4218 episodes) that costs ~0.6-0.7s; documenting rather than hacking around,
+per instruction: if this namespace's episode count grows roughly another 5-10x, or
+a future caller passes `--embedder ollama` (real cold-start risk, unlike hashing),
+the correct fix is a small warm daemon that keeps one pre-built HybridRetriever
+index in memory across hook invocations (e.g. a local Unix-socket server the hook
+talks to instead of spawning `memsub recall` fresh each time), not a longer
+timeout and not caching tricks bolted onto the CLI path. Not built this round --
+out of scope, and unnecessary at today's scale.
+
+**3 example injections** (real pipe-test, `echo '{"prompt": "..."}' |
+memsub-recall-hook.sh`, real store):
+
+1. "what does the durable output rule say about streaming to a git tracked file" ->
+   injected 1 line: "A .gitignore rule was added to exclude outputs/*.parquet files
+   to prevent tracking of model output files. [legacy, 5d ago]"
+2. "what did we decide about the pixel agents folder in the home directory" ->
+   injected 2 lines (the broken-hooks decision-pending note, and the original
+   Pixel Agents folder request), both genuinely on-topic.
+3. "what is Kumo used for in the client project" -> injected 3 lines, all
+   genuinely on-topic (client-project reuse, ranked-effort list mentioning Kumo,
+   the KumoRFM/PQL schema note).
+
+**3 example correct silences** (same pipe-test, empty stdout, exit 0):
+
+1. "is it going to rain tomorrow in paris"
+2. "what should I eat for breakfast tomorrow"
+3. "give me a recipe for chocolate chip cookies"
+
+Tests: `tests/test_recall_cli.py` (new, 6 tests) -- relevant hit prints with
+channel tag + age, irrelevant query stays silent, missing store is silent-not-an-
+error, quarantined content is never printed regardless of relevance, unsigned-
+legacy content is tagged "legacy", `--max-chars` budget is respected (a budget
+smaller than one line yields nothing rather than a truncated line).
+
+Installer: `~/scripts/install-durable-capture.sh` gains a third idempotent section
+(same jq-merge-with-.bak style as the existing two) adding
+`bash /home/user/projects/memory-sublayer/scripts/memsub-recall-hook.sh` to
+`.hooks.UserPromptSubmit` (repo-scoped script, absolute path, matching the
+daily_extract.sh cron line's precedent -- not `~/scripts/`, which is reserved for
+personal machine glue like memsub-inbox.sh). Verified the
+merge logic against a scratch copy of the real `~/.claude/settings.json` (not the
+real file -- installing hooks is Rustom-run only, stated in the installer's own
+header) -- confirms it appends alongside the existing `accountability.sh` entry
+rather than clobbering it.
+
+Full suite: `pytest` 339 passed (was 328 at the end of the last recorded session;
++6 for `test_recall_cli.py`, +5 unaccounted for by other agents' work this repo
+already had in flight -- not this task's concern, all pre-existing and green).
+No em dash in any new or touched file.

@@ -514,6 +514,88 @@ def _cmd_graph_backfill(args: argparse.Namespace) -> int:
     return 0
 
 
+def _fmt_age(seconds: float) -> str:
+    """Compact relative age for a recall line, e.g. '3h ago', '12d ago'."""
+    seconds = max(seconds, 0.0)
+    if seconds < 90:
+        return f"{int(seconds)}s ago"
+    minutes = seconds / 60.0
+    if minutes < 90:
+        return f"{int(minutes)}m ago"
+    hours = minutes / 60.0
+    if hours < 36:
+        return f"{int(hours)}h ago"
+    days = hours / 24.0
+    return f"{int(days)}d ago"
+
+
+def _cmd_recall(args: argparse.Namespace) -> int:
+    """Read-only auto-recall for scripts/memsub-recall-hook.sh: hybrid
+    retrieval (memsub.sdk.MemoryClient, no LLM call anywhere in this path),
+    printing a compact plain-text block or nothing at all.
+
+    HybridRetriever.search's returned score is a rank-derived RRF position
+    score (1/(rrf_k+pos+1)) -- comparable within one query's own ranking,
+    not across queries, and not a relevance measure at all (an entirely
+    irrelevant query still gets a "top" hit at very nearly the same score
+    as a perfectly on-topic one). So the injection gate here is a *separate*
+    signal: raw cosine similarity between the query and each candidate's
+    content, computed with the same embedder. Empirically tuned against the
+    real ~/.memsub/memory.db claude-code namespace (4200+ episodes spanning
+    many unrelated projects): 0.35 let one clearly-irrelevant query
+    ("is it going to rain tomorrow in paris") through on pure hash-trigram
+    coincidence; 0.38 was the lowest floor that stayed silent on every
+    tested irrelevant query while still firing on clearly on-topic ones.
+    Silence is the default outcome, by design: a missed weak match costs
+    nothing, a false injection spams every prompt.
+
+    Quarantined episodes (memsub.provenance: signature verification failed)
+    are never injected, independent of store.active()'s own filtering --
+    this is the one read path that puts memory content directly back into a
+    live agent's context, so it re-checks the signature itself rather than
+    trusting that a consolidate() pass already ran for this namespace.
+    """
+    import time as _time
+
+    from . import provenance as _prov
+    from .sdk import MemoryClient
+
+    db = Path(args.db)
+    if not db.exists():
+        return 0  # nothing to recall from: silent, not an error
+    client = MemoryClient(db_path=db, namespace=args.namespace, retrieval="hybrid")
+    try:
+        hits = client.search(args.query, k=args.k, log=False)
+        if not hits:
+            return 0
+        qvec = client.embedder.embed(args.query)
+        key = _prov.load_key()
+        now = _time.time()
+        lines: list[str] = []
+        used = 0
+        for h in hits:
+            ep = h.episode
+            status, channel = _prov.channel_status(ep, key)
+            if status == _prov.STATUS_QUARANTINED:
+                continue
+            cvec = client.embedder.embed(ep.content)
+            cos = float(qvec @ cvec)
+            if cos < args.min_relevance:
+                continue
+            tag = channel if status == _prov.STATUS_VERIFIED else "legacy"
+            line = f"- {ep.content} [{tag}, {_fmt_age(now - ep.ts)}]"
+            cost = len(line) + 1  # +1 for the newline joining lines
+            if used + cost > args.max_chars:
+                break
+            lines.append(line)
+            used += cost
+        if lines:
+            print("\n".join(lines))
+        return 0
+    finally:
+        client.close()
+
+
 def _cmd_mcp(args: argparse.Namespace) -> int:
     from .mcp_server import serve
     from .sdk import MemoryClient
@@ -743,6 +825,26 @@ def build_parser() -> argparse.ArgumentParser:
     w_ingest.add_argument("--run-id", default="wiki", help="run id to file claims under")
     w_ingest.add_argument("--max-chars", type=int, default=12000, help="chunk size in characters")
     w_ingest.set_defaults(func=_cmd_wiki_ingest)
+
+    p_recall = sub.add_parser(
+        "recall",
+        help="read-only auto-recall block for scripts/memsub-recall-hook.sh: "
+        "hybrid retrieval, zero LLM calls, prints nothing when no hit clears "
+        "--min-relevance",
+    )
+    p_recall.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    p_recall.add_argument("--namespace", default=os.environ.get("MEMSUB_NAMESPACE", "default"))
+    p_recall.add_argument("--query", required=True, help="the prompt/query text to recall against")
+    p_recall.add_argument("--k", type=int, default=3, help="max memories to consider (default 3)")
+    p_recall.add_argument(
+        "--max-chars", type=int, default=700, help="hard cap on the printed block's size"
+    )
+    p_recall.add_argument(
+        "--min-relevance", type=float, default=0.38,
+        help="cosine-similarity floor (query vs. content, same embedder) a hit must "
+        "clear to be printed; see _cmd_recall's docstring for how this was tuned",
+    )
+    p_recall.set_defaults(func=_cmd_recall)
 
     p_mcp = sub.add_parser("mcp", help="run the MCP stdio server (for claude mcp add)")
     p_mcp.add_argument("--db", default=None, help="SQLite store path (default: $MEMSUB_DB or ~/.memsub/memory.db)")
