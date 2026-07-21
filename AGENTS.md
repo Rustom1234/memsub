@@ -1,5 +1,12 @@
 # Agent Instructions
 
+**START HERE: read `docs/PROJECT-BRIEF-2026-07-21.md` before any work.**
+It is the complete map: what this project is, measured claims and their
+discipline, where every module and dataset lives, how to run and test
+everything, the demo runbook, and the working rules (never push, never
+expose the real vault, no em dashes, durable outputs, opt-in features,
+claim traceability). The rules in that brief override defaults.
+
 This project uses **bd** (beads) for issue tracking. Run `bd prime` for full workflow context.
 
 > **Architecture in one line:** Issues live in a local Dolt database
