@@ -27,10 +27,10 @@ Maya re-evaluated Unity under the new Indie Growth tier and was impressed by how
 
 ### Audit events
 
-- 2026-07-20T18:23:25  **fused_into**  by=fusion:f8db28d8834ef513 entity=Indie
-- 2026-07-20T18:23:24  **fused_into**  by=fusion:2ee9d60906ab69e4 entity=Growth
-- 2026-07-20T18:23:03  **fused_into**  by=fusion:c5d75101d000d642 entity=Unity
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:53  **fused_into**  by=fusion:f8db28d8834ef513 entity=Indie
+- 2026-07-21T02:58:53  **fused_into**  by=fusion:2ee9d60906ab69e4 entity=Growth
+- 2026-07-21T02:58:31  **fused_into**  by=fusion:4c1416c3a62c1ea0 entity=Unity
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 
@@ -40,5 +40,5 @@ Maya re-evaluated Unity under the new Indie Growth tier and was impressed by how
 - shares entity **Growth** with [[maya-chen-decided-to-switch-lighthouse-keeper-from--fusion:f]]
 - shares entity **Growth** with [[maya-chen-followed-the-unity-announcement-closely--fusion:6]]
 - shares entity **Growth** with [[maya-started-developing-lighthouse-keeper-in-godot--fusion:4]]
-- shares entity **Growth** with [[maya-switched-lighthouse-keeper-from-godot-to-unit--fusion:c]]
+- shares entity **Growth** with [[maya-switched-lighthouse-keeper-from-godot-to-unit--fusion:4]]
 - shares entity **Indie** with [[maya-chen-followed-the-unity-announcement-closely--2737f9e4]]

@@ -27,8 +27,8 @@ Maya started an illustration and web contract with Bramble and Co, a small indie
 
 ### Audit events
 
-- 2026-07-20T18:23:19  **fused_into**  by=fusion:7c2e30ed172df421 entity=Bramble
-- 2026-07-20T18:22:46  **graphed**
+- 2026-07-21T02:58:48  **fused_into**  by=fusion:7c2e30ed172df421 entity=Bramble
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 
@@ -39,4 +39,4 @@ Maya started an illustration and web contract with Bramble and Co, a small indie
 - shares entity **Bramble** with [[maya-worked-with-bramble-and-co-a-small-indie-book--fusion:7]]
 - shares entity **Bramble** with [[wren-callahan-an-editor-at-bramble-and-co-initiall--fusion:9]]
 - shares entity **Bramble** with [[wren-callahan-an-editor-at-bramble-and-co-initiall--fusion:9]]
-- shares entity **Bramble** with [[maya-worked-as-a-freelance-motion-graphics-animato--fusion:e]]
+- shares entity **Maya** with [[maya-s-core-idea-for-lighthouse-keeper-is-a-solita--8616f5f3]]

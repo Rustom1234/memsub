@@ -61,9 +61,9 @@
     </g>
   </svg>
   <div class="container hero-inner">
-    <span class="eyebrow">local-first memory for AI</span>
-    <h1>Your second brain.<br>Not theirs.</h1>
-    <p class="lede">Your AI forgets you, and the labs' memory features live on their servers. <strong>memsub</strong> builds your second brain from your own sessions: local, cryptographically yours, and benchmarked above the market leader's reproduced score. Ask it anything and get answers with receipts. Change your mind, and it shows you every idea that decision touched: impact analysis for your beliefs.</p>
+    <span class="eyebrow">one line, then it runs itself</span>
+    <h1>Install it once.<br>It never stops building.</h1>
+    <p class="lede"><strong>memsub</strong> is your second brain, and it is never finished: one line installs it, then it keeps extracting new memories, pruning what's stale, resolving contradictions, and summarizing into evergreen notes, continuously, on your own machine. Watch it happen, drop an idea and get back one you forgot you had, and ask it anything with receipts, benchmarked above the market leader's reproduced score. Your AI will never forget you again.</p>
     <div class="cta-row">
       <a class="btn btn-primary" href="#demo">See the demo</a>
       <a class="btn btn-ghost" href="#benchmarks">Read the numbers</a>
@@ -87,17 +87,18 @@
         <button class="tour-step-btn" data-step="3"><span class="n">03</span>A readable note</button>
         <button class="tour-step-btn" data-step="4"><span class="n">04</span>Ask, with citations</button>
         <button class="tour-step-btn" data-step="5"><span class="n">05</span>The ripple</button>
+        <button class="tour-step-btn" data-step="6"><span class="n">06</span>Resonance</button>
       </div>
 
       <div class="tour-panel">
         <!-- step 1: dashboard -->
         <div class="tour-slide active" data-step="1">
           <div class="tour-frame">
-            <img src="assets/img/demo-dashboard.png" alt="memsub vault dashboard: 144 total memories, 136 active, 7 superseded, 1 quarantined, provenance donut, entity chips, recent activity and connection of the day.">
+            <img src="assets/img/demo-dashboard.png" alt="memsub vault dashboard: 147 total memories, 139 active, 7 superseded, 1 quarantined, provenance donut, entity chips, recent activity and connection of the day.">
           </div>
           <div class="tour-caption">
-            <h3>144 memories, one glance</h3>
-            <p>Every stat on this dashboard is server-rendered from the real store: 136 active, 7 superseded, 1 quarantined (red, caught by provenance verification &mdash; see below). The entity chips (Maya, Keeper, Godot, Fintrack, Reyes&hellip;) come from a real <code>graph backfill</code> pass. "Connection of the day" is memsub's serendipity engine surfacing an unlinked-but-similar note pair, computed from existing embeddings, no LLM call at query time.</p>
+            <h3>147 memories, one glance</h3>
+            <p>Every stat on this dashboard is server-rendered from the real store: 139 active, 7 superseded, 1 quarantined (red, caught by provenance verification &mdash; see below). The entity chips (Maya, Keeper, Godot, Fintrack, Reyes&hellip;) come from a real <code>graph backfill</code> pass. "Connection of the day" is memsub's serendipity engine surfacing an unlinked-but-similar note pair, computed from existing embeddings, no LLM call at query time.</p>
           </div>
         </div>
 
@@ -155,16 +156,16 @@
           </div>
           <div class="ripple-wrap">
             <div class="stat-grid">
-              <div class="stat-tile"><div class="stat-value accent">19</div><div class="stat-caption">affected items</div></div>
-              <div class="stat-tile"><div class="stat-value accent">42.5</div><div class="stat-caption">total impact score</div></div>
+              <div class="stat-tile"><div class="stat-value accent">20</div><div class="stat-caption">affected items</div></div>
+              <div class="stat-tile"><div class="stat-value accent">45.5</div><div class="stat-caption">total impact score</div></div>
               <div class="stat-tile"><div class="stat-value">3 / 3</div><div class="stat-caption">tiers lit up</div></div>
               <div class="stat-tile"><div class="stat-value">~30ms</div><div class="stat-caption">zero LLM calls</div></div>
             </div>
 
             <div class="ripple-tier">
-              <h4>Derived directly &middot; 6 items</h4>
+              <h4>Derived directly &middot; 7 items</h4>
               <div class="ripple-item"><div class="impact">3.0</div><div class="body"><b>Superseded</b> by the later "switch to Unity" decision.<span class="path">reason: engine_switch, a deliberate reversal</span></div></div>
-              <div class="ripple-item"><div class="impact">3.0</div><div class="body"><b>Cited as a source</b> in 3 separate real fusion episodes.<span class="path">consolidate()'s LLM-judged fusion pass grouped the Godot-related memories</span></div></div>
+              <div class="ripple-item"><div class="impact">3.0</div><div class="body"><b>Cited as a source</b> in 4 separate real fusion episodes.<span class="path">consolidate()'s LLM-judged fusion pass grouped the Godot-related memories</span></div></div>
               <div class="ripple-item"><div class="impact">3.0</div><div class="body"><b>Listed as a source</b> in 2 topic notes.<span class="path">engine-choice-and-tooling, key-project-decisions</span></div></div>
             </div>
 
@@ -180,6 +181,24 @@
             <p class="footnote">Real output from <code>ripple(store, engine_decision_id, max_hops=2)</code> against the committed <code>demo/memory.db</code> &mdash; exceeds the original 8&ndash;12 item design target; kept as-is because every item stayed genuinely on-topic. Full verbatim report and the exact command: <a href="../docs/ripple-2026-07-20.md">docs/ripple-2026-07-20.md</a>, <a href="../docs/demo-2026-07-20.md">docs/demo-2026-07-20.md</a>.</p>
           </div>
         </div>
+
+        <!-- step 6: resonance -->
+        <div class="tour-slide" data-step="6">
+          <div class="tour-frame">
+            <img src="assets/img/demo-resonate.png" alt="The Resonance page: drop an idea into a textarea, get back distant-but-resonant memories as connection cards.">
+          </div>
+          <div class="tour-caption">
+            <h3>Drop an idea, hear what echoes back</h3>
+            <p>Not search: search finds the obvious match. Resonance embeds the idea, scores it against every memory already in the store, throws out whichever topic the single closest match belongs to (that one is not a surprise, it's the obvious connection), and keeps the best match from each remaining topic. One local model call per surviving match writes the bridge. The idea itself is saved as a new memory through the same write path everything else uses.</p>
+          </div>
+          <div class="cite-panel mt-3">
+            <div class="cite-q">Idea: <span>Maya wonders if the lighthouse light should pulse with an irregular rhythm, so it feels alive instead of mechanical.</span></div>
+            <div class="cite-hit"><div class="cite-score">resonance 0.758</div><div class="cite-content">"Maya added a dynamic lighting pass in Unity so the lighthouse beam sweeps across Sofia Reyes's painted backgrounds at night."<br><b>Why this connects (qwen3:8b, verbatim):</b> "These connect because both involve using dynamic lighting to evoke a sense of movement and vitality, Maya's old memory shows her animating light to sweep across static backgrounds, while the new idea proposes an irregular pulse to mimic organic, breathing energy rather than rigid mechanics."</div></div>
+            <div class="cite-hit mt-2"><div class="cite-score">resonance 0.753</div><div class="cite-content">"Maya read an analysis of Firewatch's isolated-setting pacing, which she found directly relevant to the lighthouse's solitary tone." A research note from months earlier, with nothing to do with lighting on the surface.<br><b>Why this connects (qwen3:8b, verbatim):</b> "These connect because both involve using rhythm to evoke a sense of solitude and vitality, Firewatch's pacing subtly mirrors the lighthouse's irregular pulse, translating isolation into a living, breathing atmosphere rather than a static, mechanical one."</div></div>
+            <div class="cite-hit mt-2"><div class="cite-score">resonance 0.723</div><div class="cite-content">"Maya restructured Lighthouse Keeper into three acts tied to the tide, so certain areas are only reachable at low tide, pacing the mystery's reveals." A structural decision, not a lighting one.<br><b>Why this connects (qwen3:8b, verbatim):</b> "These connect because both use rhythmic patterns inspired by natural cycles, the tide's predictable ebb and flow in the story structure and the irregular pulse of the lighthouse light, to evoke a sense of organic, living systems rather than rigid mechanics."</div></div>
+            <div class="cite-note">Real, unedited top 3 from <code>python -m memsub.resonance</code> against the committed <code>demo/memory.db</code>, 138 active memories. The demo persona was also seeded with a dedicated old memory built for this feature (a sound-design note on player attention and irregular rhythm, written months before the idea) so the connection space had genuine breadth, not just re-decorated lighthouse facts: it scores well above the resonance floor but lands just outside this idea's exact top three, an honest look at the real distance/breadth tradeoff the ranking makes on a small, single-topic vault.</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -192,15 +211,15 @@
       {"type":"out","text":"building demo vault ... ~121 content-generation calls, local qwen3:8b, think=False"},
       {"type":"out","text":"graph backfill: 48 entities / 371 entity-episode links"},
       {"type":"out","text":"consolidate: dedup + contradiction + fusion + decay ... done"},
-      {"type":"out","text":"144 episodes written (136 active, 7 superseded, 1 quarantined)"},
+      {"type":"out","text":"146 episodes written (138 active, 7 superseded, 1 quarantined)"},
       {"type":"out","text":"8 topic notes distilled -> demo/vault/topics/"},
       {"type":"out","text":"done in ~9m40s"},
       {"type":"prompt","text":"python3 -m memsub.cli vault serve --vault demo/vault --db demo/memory.db --port 8768"},
       {"type":"out","text":"serving on http://127.0.0.1:8768/ ..."},
       {"type":"prompt","text":"python3 -c \"ripple(store, engine_decision_id, max_hops=2)\""},
       {"type":"out","text":"ripple: Maya decided to build Lighthouse Keeper in Godot 4 ..."},
-      {"type":"out","text":"total impact: 42.5  (19 affected item(s))"},
-      {"type":"out","text":"  derived directly: 6   derived transitively: 4   associatively related: 9"}
+      {"type":"out","text":"total impact: 45.5  (20 affected item(s))"},
+      {"type":"out","text":"  derived directly: 7   derived transitively: 4   associatively related: 9"}
     ]'></div>
 
     <div class="section-head reveal mt-5" style="margin-bottom:1.25rem">

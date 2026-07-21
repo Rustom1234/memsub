@@ -27,13 +27,14 @@ Maya decided to switch Lighthouse Keeper from Godot to Unity after Unity's Indie
 
 ### Audit events
 
-- 2026-07-20T18:23:25  **fused_into**  by=fusion:f8db28d8834ef513 entity=Indie
-- 2026-07-20T18:23:24  **fused_into**  by=fusion:2ee9d60906ab69e4 entity=Growth
-- 2026-07-20T18:23:08  **fused_into**  by=fusion:4270244e077b37c8 entity=Godot
-- 2026-07-20T18:23:03  **fused_into**  by=fusion:c5d75101d000d642 entity=Unity
-- 2026-07-20T18:23:02  **fused_into**  by=fusion:94f25872dd9862a0 entity=Lighthouse
-- 2026-07-20T18:22:59  **fused_into**  by=fusion:3e4af01038bcab04 entity=Maya
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:53  **fused_into**  by=fusion:f8db28d8834ef513 entity=Indie
+- 2026-07-21T02:58:53  **fused_into**  by=fusion:2ee9d60906ab69e4 entity=Growth
+- 2026-07-21T02:58:36  **fused_into**  by=fusion:4270244e077b37c8 entity=Godot
+- 2026-07-21T02:58:31  **fused_into**  by=fusion:4c1416c3a62c1ea0 entity=Unity
+- 2026-07-21T02:58:29  **fused_into**  by=fusion:2141c700f1e77b2f entity=Lighthouse
+- 2026-07-21T02:58:27  **fused_into**  by=fusion:c8ce3a139463c678 entity=Keeper
+- 2026-07-21T02:58:25  **fused_into**  by=fusion:8e069a60803a51d9 entity=Maya
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

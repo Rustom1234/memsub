@@ -6,29 +6,28 @@ type: "observed"
 status: "active"
 created: "2026-04-01T10:31:00"
 last_updated: "2026-04-01T10:31:00"
-content_hash: "7fbf785e968c1e86"
+content_hash: "cfca171103c25d47"
 ---
 
 # Maya started batch-cooking on Sundays to make sure she never skipped lunch durin
 
 ## Content
 
-Maya started batch-cooking on Sundays to make sure she never skipped lunch during the crunch weeks of the Unity migration.
+Maya started batch-cooking on Sundays to make sure she never skipped lunch during the intense Unity migration crunch weeks.
 
 ## Provenance
 
 - Run: `demo-build-2026-07-20`
 - Session: `maya-2026-04-01`
 - channel: user_stated
-- channel_sig: 4db954f5d62e1be252676d2f53882302b61136e5d345c42714de63b34b632059
+- channel_sig: 28d9dd431a1d91e2ffb150f39df70111b357003390a3b6de5afdc6b75358f755
 - origin: demo_build
 - persona: maya-chen
 - tag: health.meal_prep
 
 ### Audit events
 
-- 2026-07-20T18:23:03  **fused_into**  by=fusion:c5d75101d000d642 entity=Unity
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

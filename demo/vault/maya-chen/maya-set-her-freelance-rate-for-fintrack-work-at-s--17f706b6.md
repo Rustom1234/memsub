@@ -5,7 +5,7 @@ kind: "fact"
 type: "observed"
 status: "superseded"
 created: "2026-01-06T09:19:00"
-last_updated: "2026-07-20T18:23:29"
+last_updated: "2026-07-21T02:58:57"
 content_hash: "dd51769360f96deb"
 ---
 
@@ -27,9 +27,9 @@ Maya set her freelance rate for Fintrack work at sixty-five dollars an hour, the
 
 ### Audit events
 
-- 2026-07-20T18:23:29  **superseded**  by=6064544024406af9695582193c0c4bb9966024d7 reason=rate_change
-- 2026-07-20T18:23:11  **fused_into**  by=fusion:ed6f1ac263537e49 entity=Fintrack
-- 2026-07-20T18:22:46  **graphed**
+- 2026-07-21T02:58:57  **superseded**  by=6064544024406af9695582193c0c4bb9966024d7 reason=rate_change
+- 2026-07-21T02:58:40  **fused_into**  by=fusion:ed6f1ac263537e49 entity=Fintrack
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

@@ -1,36 +1,33 @@
 ---
-id: "2fac2f7f34865f1e9c92b30a49a5cecc98b9ff3b"
+id: "2b2bac50636ab336d5ad17f0b6624fbf1e15c1a0"
 namespace: "maya-chen"
-kind: "idea"
+kind: "fact"
 type: "observed"
 status: "active"
-created: "2026-06-08T15:11:00"
-last_updated: "2026-06-08T15:11:00"
-content_hash: "11b42ef5dc689bc7"
+created: "2026-02-10T19:17:00"
+last_updated: "2026-02-10T19:17:00"
+content_hash: "613f98abe39d289e"
 ---
 
-# Maya and Sofia Reyes created a short style guide that explains the gouache palet
+# Maya cut caffeine after two p.m. after noticing it was wrecking her wake-up sche
 
 ## Content
 
-Maya and Sofia Reyes created a short style guide that explains the gouache palette rules, making it easier for future contract artists to match the look.
+Maya cut caffeine after two p.m. after noticing it was wrecking her wake-up schedule.
 
 ## Provenance
 
 - Run: `demo-build-2026-07-20`
-- Session: `maya-2026-06-08`
+- Session: `maya-2026-02-10`
 - channel: user_stated
-- channel_sig: ae8998f16396bb8892309d67cf0f9f2a59c9f2f3c600da6068f1eb64aaa28697
+- channel_sig: 9067b01cea4916613ff04569574b80fefc83feb3121c55e24082cd7acd76c248
 - origin: demo_build
 - persona: maya-chen
-- tag: art.style_guide
+- tag: health.caffeine
 
 ### Audit events
 
-- 2026-07-20T18:23:06  **fused_into**  by=fusion:8ec6ed55e150dac0 entity=Sofia
-- 2026-07-20T18:23:05  **fused_into**  by=fusion:eae1718b7c0c0c88 entity=Reyes
-- 2026-07-20T18:22:59  **fused_into**  by=fusion:3e4af01038bcab04 entity=Maya
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

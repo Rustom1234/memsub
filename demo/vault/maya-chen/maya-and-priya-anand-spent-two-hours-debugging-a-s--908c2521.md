@@ -27,9 +27,9 @@ Maya and Priya Anand spent two hours debugging a save-corruption bug that only a
 
 ### Audit events
 
-- 2026-07-20T18:23:17  **fused_into**  by=fusion:af94b9a9e0b84755 entity=Priya
-- 2026-07-20T18:23:16  **fused_into**  by=fusion:7be5809a90fc74a3 entity=Anand
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:45  **fused_into**  by=fusion:af94b9a9e0b84755 entity=Priya
+- 2026-07-21T02:58:44  **fused_into**  by=fusion:7be5809a90fc74a3 entity=Anand
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

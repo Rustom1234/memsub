@@ -6,28 +6,28 @@ type: "observed"
 status: "active"
 created: "2026-02-27T08:50:00"
 last_updated: "2026-02-27T08:50:00"
-content_hash: "4adc0c6c558785d1"
+content_hash: "473bb36243b0af94"
 ---
 
-# Maya read an analysis of Gone Home's use of found documents, which she found dir
+# Maya read an analysis of Gone Home's use of found documents, which directly infl
 
 ## Content
 
-Maya read an analysis of Gone Home's use of found documents, which she found directly relevant to the letter-based mystery in Lighthouse Keeper.
+Maya read an analysis of Gone Home's use of found documents, which directly influenced her approach to Lighthouse Keeper's letter-based mystery.
 
 ## Provenance
 
 - Run: `demo-build-2026-07-20`
 - Session: `maya-2026-02-27`
 - channel: user_stated
-- channel_sig: a5dac8d86e59c80b228214dc81ed184525658d1647bcdd8ebbbc7422cd82dd92
+- channel_sig: 404964a7220da3e7d22b165c173b676337a73b7cbd280d56437a986278221192
 - origin: demo_build
 - persona: maya-chen
 - tag: reading.gone_home_analysis
 
 ### Audit events
 
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

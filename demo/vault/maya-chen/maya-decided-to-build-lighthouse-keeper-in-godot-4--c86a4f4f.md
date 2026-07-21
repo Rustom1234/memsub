@@ -5,7 +5,7 @@ kind: "milestone"
 type: "observed"
 status: "superseded"
 created: "2026-01-14T15:00:00"
-last_updated: "2026-07-20T18:23:29"
+last_updated: "2026-07-21T02:58:57"
 content_hash: "98fdf2e274832834"
 ---
 
@@ -27,11 +27,12 @@ Maya decided to build Lighthouse Keeper in Godot 4, drawn by the free license, G
 
 ### Audit events
 
-- 2026-07-20T18:23:29  **superseded**  by=8049802db2f3ec2e658addf5a1c836d5066dbe13 reason=engine_switch
-- 2026-07-20T18:23:14  **fused_into**  by=fusion:7d2bfae451c308ce entity=GDScript
-- 2026-07-20T18:23:08  **fused_into**  by=fusion:4270244e077b37c8 entity=Godot
-- 2026-07-20T18:23:02  **fused_into**  by=fusion:94f25872dd9862a0 entity=Lighthouse
-- 2026-07-20T18:22:46  **graphed**
+- 2026-07-21T02:58:57  **superseded**  by=8049802db2f3ec2e658addf5a1c836d5066dbe13 reason=engine_switch
+- 2026-07-21T02:58:42  **fused_into**  by=fusion:7d2bfae451c308ce entity=GDScript
+- 2026-07-21T02:58:36  **fused_into**  by=fusion:4270244e077b37c8 entity=Godot
+- 2026-07-21T02:58:29  **fused_into**  by=fusion:2141c700f1e77b2f entity=Lighthouse
+- 2026-07-21T02:58:27  **fused_into**  by=fusion:c8ce3a139463c678 entity=Keeper
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

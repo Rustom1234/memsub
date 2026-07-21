@@ -1,33 +1,34 @@
 ---
-id: "2b2bac50636ab336d5ad17f0b6624fbf1e15c1a0"
+id: "eed6be46bf511711ba10a30a326d2df1f983fd48"
 namespace: "maya-chen"
 kind: "fact"
 type: "observed"
 status: "active"
-created: "2026-02-10T19:17:00"
-last_updated: "2026-02-10T19:17:00"
-content_hash: "e1625ccfe9ba6b93"
+created: "2026-05-10T08:28:00"
+last_updated: "2026-05-10T08:28:00"
+content_hash: "cb37c50456c53c9d"
 ---
 
-# Maya stopped drinking caffeine after two p.m. after realizing it was messing up 
+# Maya's wrist pain remained under control during the Unity migration because she 
 
 ## Content
 
-Maya stopped drinking caffeine after two p.m. after realizing it was messing up her morning routine.
+Maya's wrist pain remained under control during the Unity migration because she used an ergonomic keyboard and took regular screen breaks.
 
 ## Provenance
 
 - Run: `demo-build-2026-07-20`
-- Session: `maya-2026-02-10`
+- Session: `maya-2026-05-10`
 - channel: user_stated
-- channel_sig: 630869980f8ff64b47b1956540a5d9bf4d056bffb5d19704bcc07cc1b7328a86
+- channel_sig: 8e957b00fdb694822d6b76247fc1ded17e0c9dc0bf83a7bfb16e0cb6c3cf4b65
 - origin: demo_build
 - persona: maya-chen
-- tag: health.caffeine
+- tag: health.wrist_recheck
 
 ### Audit events
 
-- 2026-07-20T18:22:46  **graphed**
+- 2026-07-21T02:58:31  **fused_into**  by=fusion:4c1416c3a62c1ea0 entity=Unity
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

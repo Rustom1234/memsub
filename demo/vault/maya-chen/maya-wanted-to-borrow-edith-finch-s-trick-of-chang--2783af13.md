@@ -27,17 +27,17 @@ Maya wanted to borrow Edith Finch's trick of changing controls per memory sequen
 
 ### Audit events
 
-- 2026-07-20T18:23:29  **fused_into**  by=fusion:a080d4b1e1a30cc2 entity=Finch
-- 2026-07-20T18:23:27  **fused_into**  by=fusion:73bd6c0880efedc4 entity=Edith
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:57  **fused_into**  by=fusion:a080d4b1e1a30cc2 entity=Finch
+- 2026-07-21T02:58:56  **fused_into**  by=fusion:73bd6c0880efedc4 entity=Edith
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 
 - shares entity **Edith** with [[maya-played-through-what-remains-of-edith-finch-to--c5219401]]
-- shares entity **Edith** with [[maya-was-inspired-by-edith-finch-s-approach-to-sto--fusion:7]]
-- shares entity **Edith** with [[maya-was-inspired-by-edith-finch-s-approach-to-sto--fusion:a]]
+- shares entity **Edith** with [[maya-was-drawn-to-edith-finch-for-its-pacing-of-a--fusion:7]]
+- shares entity **Edith** with [[maya-was-drawn-to-the-way-the-story-of-edith-finch--fusion:a]]
 - shares entity **Finch** with [[maya-played-through-what-remains-of-edith-finch-to--c5219401]]
-- shares entity **Finch** with [[maya-was-inspired-by-edith-finch-s-approach-to-sto--fusion:7]]
-- shares entity **Finch** with [[maya-was-inspired-by-edith-finch-s-approach-to-sto--fusion:a]]
+- shares entity **Finch** with [[maya-was-drawn-to-edith-finch-for-its-pacing-of-a--fusion:7]]
+- shares entity **Finch** with [[maya-was-drawn-to-the-way-the-story-of-edith-finch--fusion:a]]
 - shares entity **Keeper** with [[maya-s-core-idea-for-lighthouse-keeper-is-a-solita--8616f5f3]]
 - shares entity **Keeper** with [[maya-compared-godot-4-and-unity-licensing-costs-fo--b56d1170]]

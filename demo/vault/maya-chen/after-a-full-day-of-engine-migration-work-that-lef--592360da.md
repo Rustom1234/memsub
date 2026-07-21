@@ -27,15 +27,15 @@ After a full day of engine-migration work that left her eyes strained, Maya star
 
 ### Audit events
 
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 
 - shares entity **After** with [[after-the-devlog-post-was-shared-on-a-narrative-ga--3a860a51]]
-- shares entity **After** with [[after-a-long-crunch-week-during-the-unity-migratio--8f519f61]]
-- shares entity **After** with [[after-the-second-playtest-revealed-players-had-mis--8e9a3fe5]]
+- shares entity **After** with [[after-the-second-playtest-revealed-players-missed--8e9a3fe5]]
 - shares entity **After** with [[after-the-unity-migration-a-second-playtest-showed--e038713c]]
 - shares entity **Maya** with [[maya-s-core-idea-for-lighthouse-keeper-is-a-solita--8616f5f3]]
 - shares entity **Maya** with [[maya-set-her-freelance-rate-for-fintrack-work-at-s--17f706b6]]
 - shares entity **Maya** with [[daniel-ochoa-fintrack-s-product-lead-became-maya-s--e721ab2f]]
 - shares entity **Maya** with [[maya-took-on-a-freelance-motion-graphics-contract--19312e81]]
+- shares entity **Maya** with [[maya-compared-godot-4-and-unity-licensing-costs-fo--b56d1170]]

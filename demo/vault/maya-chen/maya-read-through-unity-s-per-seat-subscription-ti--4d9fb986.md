@@ -6,29 +6,29 @@ type: "observed"
 status: "active"
 created: "2026-01-10T10:58:00"
 last_updated: "2026-01-10T10:58:00"
-content_hash: "d2a0198e6b0e9002"
+content_hash: "7988ff7b42544e27"
 ---
 
-# Maya read through Unity's per-seat subscription tiers and runtime fee terms, fin
+# Maya read through Unity's per-seat subscription tiers and runtime fee terms, and
 
 ## Content
 
-Maya read through Unity's per-seat subscription tiers and runtime fee terms, finding them confusing for a one-person studio that was still pre-revenue.
+Maya read through Unity's per-seat subscription tiers and runtime fee terms, and found them confusing for a one-person studio that was still pre-revenue.
 
 ## Provenance
 
 - Run: `demo-build-2026-07-20`
 - Session: `maya-2026-01-10`
 - channel: user_stated
-- channel_sig: 96c8c0ad0bb6cde646c2e9f3ba532c3be332c462b3fdade211a0a4c0f8fc5235
+- channel_sig: 9a25fea22570d396285228978602f1d7153e8064ccd593f972d2bf801d9cfee0
 - origin: demo_build
 - persona: maya-chen
 - tag: engine.pricing_research2
 
 ### Audit events
 
-- 2026-07-20T18:23:03  **fused_into**  by=fusion:c5d75101d000d642 entity=Unity
-- 2026-07-20T18:22:46  **graphed**
+- 2026-07-21T02:58:31  **fused_into**  by=fusion:4c1416c3a62c1ea0 entity=Unity
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

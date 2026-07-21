@@ -27,11 +27,12 @@ Maya updated the Lighthouse Keeper's Steam page screenshots to include Sofia Rey
 
 ### Audit events
 
-- 2026-07-20T18:23:18  **fused_into**  by=fusion:d9abed0dcdd5cc46 entity=Steam
-- 2026-07-20T18:23:06  **fused_into**  by=fusion:8ec6ed55e150dac0 entity=Sofia
-- 2026-07-20T18:23:05  **fused_into**  by=fusion:eae1718b7c0c0c88 entity=Reyes
-- 2026-07-20T18:23:02  **fused_into**  by=fusion:94f25872dd9862a0 entity=Lighthouse
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:47  **fused_into**  by=fusion:d9abed0dcdd5cc46 entity=Steam
+- 2026-07-21T02:58:35  **fused_into**  by=fusion:8ec6ed55e150dac0 entity=Sofia
+- 2026-07-21T02:58:32  **fused_into**  by=fusion:eae1718b7c0c0c88 entity=Reyes
+- 2026-07-21T02:58:29  **fused_into**  by=fusion:2141c700f1e77b2f entity=Lighthouse
+- 2026-07-21T02:58:27  **fused_into**  by=fusion:c8ce3a139463c678 entity=Keeper
+- 2026-07-21T02:58:13  **graphed**
 
 ## Links
 

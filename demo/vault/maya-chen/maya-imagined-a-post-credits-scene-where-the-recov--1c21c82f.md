@@ -6,28 +6,28 @@ type: "observed"
 status: "active"
 created: "2026-06-05T15:51:00"
 last_updated: "2026-06-05T15:51:00"
-content_hash: "396c58d23987ae9f"
+content_hash: "b01de294c03885ce"
 ---
 
 # Maya imagined a post-credits scene where the recovered letters are displayed in 
 
 ## Content
 
-Maya imagined a post-credits scene where the recovered letters are displayed in a small coastal museum, connecting the ending choice to a visible consequence.
+Maya imagined a post-credits scene where the recovered letters are displayed in a small coastal museum, linking the ending choice to a visible consequence.
 
 ## Provenance
 
 - Run: `demo-build-2026-07-20`
 - Session: `maya-2026-06-05`
 - channel: user_stated
-- channel_sig: 4383812c607b811a1bf8b96ddb6940d8f2790df31ae1b4e0039794095cc7e744
+- channel_sig: 9778beb14f2ce593fa02ebed5718e070ed517279bce59f24f63774f25d04adc6
 - origin: demo_build
 - persona: maya-chen
 - tag: reading.idea_museum_ending
 
 ### Audit events
 
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:13  **graphed**
 
 ## Links
 

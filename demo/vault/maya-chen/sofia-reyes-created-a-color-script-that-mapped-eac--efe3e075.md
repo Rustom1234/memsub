@@ -6,30 +6,30 @@ type: "observed"
 status: "active"
 created: "2026-03-10T14:11:00"
 last_updated: "2026-03-10T14:11:00"
-content_hash: "f05083da23056a56"
+content_hash: "53f0ee53f43db6f5"
 ---
 
-# Sofia Reyes delivered a color script that mapped each area's palette to the stor
+# Sofia Reyes created a color script that mapped each area's palette to the story'
 
 ## Content
 
-Sofia Reyes delivered a color script that mapped each area's palette to the story's tide-based act structure.
+Sofia Reyes created a color script that mapped each area's palette to the story's tide-based act structure.
 
 ## Provenance
 
 - Run: `demo-build-2026-07-20`
 - Session: `maya-2026-03-10`
 - channel: user_stated
-- channel_sig: 7ae89cd87bf091992d6fbeb773dbc41db5b2e578cbbf5a6b664835cd21f0b2f1
+- channel_sig: f3fefdf0c952209e9c8d228f5259d08954d9ff54e2ed98c53c647c8e1ccfa108
 - origin: demo_build
 - persona: maya-chen
 - tag: art.color_script
 
 ### Audit events
 
-- 2026-07-20T18:23:06  **fused_into**  by=fusion:8ec6ed55e150dac0 entity=Sofia
-- 2026-07-20T18:23:05  **fused_into**  by=fusion:eae1718b7c0c0c88 entity=Reyes
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:35  **fused_into**  by=fusion:8ec6ed55e150dac0 entity=Sofia
+- 2026-07-21T02:58:32  **fused_into**  by=fusion:eae1718b7c0c0c88 entity=Reyes
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

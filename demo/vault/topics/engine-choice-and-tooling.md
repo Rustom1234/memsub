@@ -2,22 +2,22 @@
 type: "topic"
 namespace: "topics"
 slug: "engine-choice-and-tooling"
-member_count: 25
-member_hash: "9f061c526a1ccb87"
-created: "2026-07-20T18:23:44"
-updated: "2026-07-20T18:23:44"
+member_count: 26
+member_hash: "676ea93e0bf26b54"
+created: "2026-07-21T02:59:10"
+updated: "2026-07-21T02:59:10"
 ---
 
 <!-- memsub:distill:begin -->
 
 # Maya's Engine Switch for Lighthouse Keeper
 
-Maya initially developed Lighthouse Keeper in Godot 4 due to its open-source model and GDScript syntax, but later switched to Unity after Unity's Indie Growth tier offered better tools and cost efficiency for her project.
+Maya developed Lighthouse Keeper, a narrative mystery game, initially in Godot 4 due to its open-source model and GDScript syntax, but later switched to Unity after Unity's Indie Growth tier offered better tools and cost efficiency.
 
 ## Key facts
 
 - Maya compared Godot 4 and Unity licensing costs for a solo indie developer before starting her game Lighthouse Keeper, and Godot's zero-royalty open-source model stood out immediately. [[maya-compared-godot-4-and-unity-licensing-costs-fo--b56d1170]]
-- Maya read through Unity's per-seat subscription tiers and runtime fee terms, finding them confusing for a one-person studio that was still pre-revenue. [[maya-read-through-unity-s-per-seat-subscription-ti--4d9fb986]]
+- Maya read through Unity's per-seat subscription tiers and runtime fee terms, and found them confusing for a one-person studio that was still pre-revenue. [[maya-read-through-unity-s-per-seat-subscription-ti--4d9fb986]]
 - Maya decided to build Lighthouse Keeper in Godot 4, drawn by the free license, GDScript's Python-like syntax, and the lightweight editor. [[maya-decided-to-build-lighthouse-keeper-in-godot-4--c86a4f4f]]
 - Maya finished the official Godot 'Your First 2D Game' tutorial and began sketching Lighthouse Keeper's movement controller in GDScript. [[maya-finished-the-official-godot-your-first-2d-gam--30f56afa]]
 - Maya followed a GDScript state-machine tutorial to structure the lighthouse keeper character's walk, climb, and interact states. [[maya-followed-a-gdscript-state-machine-tutorial-to--dbda1bdb]]
@@ -36,14 +36,16 @@ Maya initially developed Lighthouse Keeper in Godot 4 due to its open-source mod
 - Maya spent a week porting Lighthouse Keeper's core movement and interaction scripts from GDScript to C# in Unity. [[maya-spent-a-week-porting-lighthouse-keeper-s-core--3888bb65]]
 - Maya rebuilt the save system in Unity using JSON serialization, following Priya Anand's original design for the data schema. [[maya-rebuilt-the-save-system-in-unity-using-json-s--16b2b155]]
 - Maya Chen completed a stable vertical slice for the Lighthouse Keeper's Unity build, including three rooms, the save system, and the opening cutscene. [[maya-chen-completed-a-stable-vertical-slice-for-th--7aaee855]]
-- Maya wrote a devlog reflecting that starting in Godot wasn't wasted time, as the GDScript prototype helped clarify Lighthouse Keeper's core interaction loop before moving to Unity. [[maya-wrote-a-devlog-reflecting-that-starting-in-go--94ac5f64]]
-- Maya used GDScript in Godot to prototype Lighthouse Keeper, which helped clarify the game's core interaction loop before porting the core movement and interaction scripts to C# in Unity. [[maya-used-gdscript-in-godot-to-prototype-lighthous--fusion:7]]
-- Maya started developing Lighthouse Keeper in Godot 4 due to its zero-royalty open-source model, GDScript's Python-like syntax, and lightweight editor, but later switched to Unity after Unity's Indie Growth pricing change and asset store provided better tools for the project. [[maya-started-developing-lighthouse-keeper-in-godot--fusion:4]]
+- Maya wrote a devlog reflecting that starting in Godot wasn't wasted time, as the GDScript prototype helped clarify Lighthouse Keeper's core interaction loop before the Unity rewrite. [[maya-wrote-a-devlog-reflecting-that-starting-in-go--94ac5f64]]
+- Maya used GDScript in Godot to prototype Lighthouse Keeper, which helped clarify the game's core interaction loop before porting the core mechanics to C# in Unity. [[maya-used-gdscript-in-godot-to-prototype-lighthous--fusion:7]]
+- Maya started developing Lighthouse Keeper in Godot 4 due to its zero-royalty open-source model, GDScript's Python-like syntax, and lightweight editor, but later switched to Unity after Unity's Indie Growth pricing change... [[maya-started-developing-lighthouse-keeper-in-godot--fusion:4]]
 - Maya tallied the total engine-related costs for Lighthouse Keeper and discovered that the free early months meant the Unity switch still landed well under her original budget. [[maya-tallied-the-total-engine-related-costs-for-li--ed87fcca]]
-- Maya developed Lighthouse Keeper, a narrative puzzle game set in a solitary lighthouse keeper's journey to solve the mystery of a vanished ship, using environmental and narrative puzzles, and transitioning from Godot to Unity while maintaining a playtime of three to four hours, with background art in a painterly gouache style and a title screen featuring a slow pan across the lighthouse at dusk. [[maya-developed-lighthouse-keeper-a-narrative-puzzl--fusion:9]]
+- Maya developed Lighthouse Keeper, a narrative mystery game set in a solitary lighthouse keeper's journey to solve the disappearance of a ship, using a mix of found letters and logbook entries, with environmental and narr... [[maya-developed-lighthouse-keeper-a-narrative-myste--fusion:2]]
+- Maya developed Lighthouse Keeper, a solitary lighthouse keeper mystery game set in a painterly gouache style, with environmental and narrative puzzles, structured into three acts tied to the tide, and built initially in... [[maya-developed-lighthouse-keeper-a-solitary-lighth--fusion:c]]
 
 ## Open questions
 
-- How did Maya's experience with Godot influence her decision-making process when switching to Unity?
+- How did the transition from Godot to Unity affect the overall development timeline for Lighthouse Keeper?
+- What role did the indie dev forum comments play in Maya's decision to consider Unity for console porting?
 
 <!-- memsub:distill:end -->

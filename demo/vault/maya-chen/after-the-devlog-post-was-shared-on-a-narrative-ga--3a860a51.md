@@ -27,16 +27,16 @@ After the devlog post was shared on a narrative-games forum, Lighthouse Keeper's
 
 ### Audit events
 
-- 2026-07-20T18:23:18  **fused_into**  by=fusion:d9abed0dcdd5cc46 entity=Steam
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:47  **fused_into**  by=fusion:d9abed0dcdd5cc46 entity=Steam
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 
 - shares entity **After** with [[after-a-full-day-of-engine-migration-work-that-lef--592360da]]
-- shares entity **After** with [[after-a-long-crunch-week-during-the-unity-migratio--8f519f61]]
-- shares entity **After** with [[after-the-second-playtest-revealed-players-had-mis--8e9a3fe5]]
+- shares entity **After** with [[after-the-second-playtest-revealed-players-missed--8e9a3fe5]]
 - shares entity **After** with [[after-the-unity-migration-a-second-playtest-showed--e038713c]]
 - shares entity **Keeper** with [[maya-s-core-idea-for-lighthouse-keeper-is-a-solita--8616f5f3]]
 - shares entity **Keeper** with [[maya-compared-godot-4-and-unity-licensing-costs-fo--b56d1170]]
 - shares entity **Keeper** with [[maya-committed-to-waking-up-at-six-a-m-to-get-focu--f86e3bcf]]
 - shares entity **Keeper** with [[maya-picked-up-the-art-of-game-design-by-jesse-sch--24affab2]]
+- shares entity **Keeper** with [[maya-started-running-three-times-a-week-along-the--dc073e2e]]

@@ -6,29 +6,29 @@ type: "observed"
 status: "active"
 created: "2026-03-01T14:35:00"
 last_updated: "2026-03-01T14:35:00"
-content_hash: "019915f981e74cd4"
+content_hash: "92ee525dd03413c2"
 ---
 
-# Maya set up Lighthouse Keeper's Steam page and uploaded early screenshots from t
+# Maya set up Lighthouse Keeper's Steam page with early screenshots from the proto
 
 ## Content
 
-Maya set up Lighthouse Keeper's Steam page and uploaded early screenshots from the prototype build.
+Maya set up Lighthouse Keeper's Steam page with early screenshots from the prototype build.
 
 ## Provenance
 
 - Run: `demo-build-2026-07-20`
 - Session: `maya-2026-03-01`
 - channel: user_stated
-- channel_sig: b918f02929bd95a1690fcde5aac9e9e1727bf8a209f419fcf0d6dfbc8e37574c
+- channel_sig: b609ad938c5760bd69cd992fe654a2e38a15863948de70c79a15e6f6d32fb116
 - origin: demo_build
 - persona: maya-chen
 - tag: marketing.steam_page
 
 ### Audit events
 
-- 2026-07-20T18:23:18  **fused_into**  by=fusion:d9abed0dcdd5cc46 entity=Steam
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:47  **fused_into**  by=fusion:d9abed0dcdd5cc46 entity=Steam
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

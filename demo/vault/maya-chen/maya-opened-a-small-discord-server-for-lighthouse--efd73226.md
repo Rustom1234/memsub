@@ -27,15 +27,16 @@ Maya opened a small Discord server for Lighthouse Keeper and answered questions 
 
 ### Audit events
 
-- 2026-07-20T18:23:23  **fused_into**  by=fusion:60355d9c15e4102a entity=Discord
-- 2026-07-20T18:23:02  **fused_into**  by=fusion:94f25872dd9862a0 entity=Lighthouse
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:52  **fused_into**  by=fusion:60355d9c15e4102a entity=Discord
+- 2026-07-21T02:58:29  **fused_into**  by=fusion:2141c700f1e77b2f entity=Lighthouse
+- 2026-07-21T02:58:27  **fused_into**  by=fusion:c8ce3a139463c678 entity=Keeper
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 
 - shares entity **Discord** with [[maya-hit-a-wall-with-godot-s-tilemap-layering-for--3dac6b4d]]
 - shares entity **Discord** with [[maya-shared-the-unity-vertical-slice-trailer-with--c0b88100]]
-- shares entity **Discord** with [[maya-used-discord-to-seek-help-with-godot-s-tilema--fusion:6]]
+- shares entity **Discord** with [[maya-used-the-discord-to-seek-help-with-godot-s-ti--fusion:6]]
 - shares entity **Keeper** with [[maya-s-core-idea-for-lighthouse-keeper-is-a-solita--8616f5f3]]
 - shares entity **Keeper** with [[maya-compared-godot-4-and-unity-licensing-costs-fo--b56d1170]]
 - shares entity **Keeper** with [[maya-committed-to-waking-up-at-six-a-m-to-get-focu--f86e3bcf]]

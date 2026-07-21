@@ -27,16 +27,16 @@ Maya delivered the first round of cover illustrations for Marrow Editions, the p
 
 ### Audit events
 
-- 2026-07-20T18:23:28  **fused_into**  by=fusion:037d984e640c9f1b entity=Editions
-- 2026-07-20T18:23:13  **fused_into**  by=fusion:90645f5b005be07f entity=Wren
-- 2026-07-20T18:23:09  **fused_into**  by=fusion:98145a1cb7975189 entity=Callahan
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:57  **fused_into**  by=fusion:037d984e640c9f1b entity=Editions
+- 2026-07-21T02:58:41  **fused_into**  by=fusion:90645f5b005be07f entity=Wren
+- 2026-07-21T02:58:38  **fused_into**  by=fusion:98145a1cb7975189 entity=Callahan
+- 2026-07-21T02:58:13  **graphed**
 
 ## Links
 
 - shares entity **Callahan** with [[wren-callahan-an-editor-at-bramble-and-co-briefed--929765f6]]
 - shares entity **Callahan** with [[maya-finished-three-cover-illustrations-for-brambl--26f3dfc3]]
-- shares entity **Callahan** with [[wren-callahan-introduced-maya-to-two-other-small-p--64b2ec96]]
+- shares entity **Callahan** with [[wren-callahan-referred-maya-to-two-other-small-pub--64b2ec96]]
 - shares entity **Callahan** with [[maya-shipped-the-redesigned-book-listing-pages-for--5ae745ee]]
 - shares entity **Callahan** with [[maya-worked-with-bramble-and-co-a-small-indie-book--fusion:7]]
 - shares entity **Callahan** with [[maya-raised-her-freelance-rate-to-a-hundred-dollar--26f6e62d]]

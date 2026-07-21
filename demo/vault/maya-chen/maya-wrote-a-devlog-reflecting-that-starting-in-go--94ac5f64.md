@@ -6,33 +6,34 @@ type: "observed"
 status: "active"
 created: "2026-06-10T13:47:00"
 last_updated: "2026-06-10T13:47:00"
-content_hash: "71589655874677dd"
+content_hash: "b71f68fb77f484ac"
 ---
 
 # Maya wrote a devlog reflecting that starting in Godot wasn't wasted time, as the
 
 ## Content
 
-Maya wrote a devlog reflecting that starting in Godot wasn't wasted time, as the GDScript prototype helped clarify Lighthouse Keeper's core interaction loop before moving to Unity.
+Maya wrote a devlog reflecting that starting in Godot wasn't wasted time, as the GDScript prototype helped clarify Lighthouse Keeper's core interaction loop before the Unity rewrite.
 
 ## Provenance
 
 - Run: `demo-build-2026-07-20`
 - Session: `maya-2026-06-10`
 - channel: user_stated
-- channel_sig: b3b41f253d25bd00dd684417e2344603b84e937a5a268022c14076e64dd6e9e4
+- channel_sig: 426cf37930122ff313e70fab8e9606dfc4743de9e6cf76f05b07a94f472668ac
 - origin: demo_build
 - persona: maya-chen
 - tag: engine.retro
 
 ### Audit events
 
-- 2026-07-20T18:23:14  **fused_into**  by=fusion:7d2bfae451c308ce entity=GDScript
-- 2026-07-20T18:23:08  **fused_into**  by=fusion:4270244e077b37c8 entity=Godot
-- 2026-07-20T18:23:03  **fused_into**  by=fusion:c5d75101d000d642 entity=Unity
-- 2026-07-20T18:23:02  **fused_into**  by=fusion:94f25872dd9862a0 entity=Lighthouse
-- 2026-07-20T18:22:59  **fused_into**  by=fusion:3e4af01038bcab04 entity=Maya
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:42  **fused_into**  by=fusion:7d2bfae451c308ce entity=GDScript
+- 2026-07-21T02:58:36  **fused_into**  by=fusion:4270244e077b37c8 entity=Godot
+- 2026-07-21T02:58:31  **fused_into**  by=fusion:4c1416c3a62c1ea0 entity=Unity
+- 2026-07-21T02:58:29  **fused_into**  by=fusion:2141c700f1e77b2f entity=Lighthouse
+- 2026-07-21T02:58:27  **fused_into**  by=fusion:c8ce3a139463c678 entity=Keeper
+- 2026-07-21T02:58:25  **fused_into**  by=fusion:8e069a60803a51d9 entity=Maya
+- 2026-07-21T02:58:13  **graphed**
 
 ## Links
 

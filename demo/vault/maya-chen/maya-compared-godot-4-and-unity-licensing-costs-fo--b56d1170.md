@@ -27,9 +27,9 @@ Maya compared Godot 4 and Unity licensing costs for a solo indie developer befor
 
 ### Audit events
 
-- 2026-07-20T18:23:08  **fused_into**  by=fusion:4270244e077b37c8 entity=Godot
-- 2026-07-20T18:23:03  **fused_into**  by=fusion:c5d75101d000d642 entity=Unity
-- 2026-07-20T18:22:46  **graphed**
+- 2026-07-21T02:58:36  **fused_into**  by=fusion:4270244e077b37c8 entity=Godot
+- 2026-07-21T02:58:31  **fused_into**  by=fusion:4c1416c3a62c1ea0 entity=Unity
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

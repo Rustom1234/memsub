@@ -6,28 +6,28 @@ type: "observed"
 status: "active"
 created: "2026-05-02T08:47:00"
 last_updated: "2026-05-02T08:47:00"
-content_hash: "d39fb037a963cdc3"
+content_hash: "ef3921c92f763ae5"
 ---
 
-# Maya read a chapter on ambient sound design in games, and shared the insights wi
+# Maya read a chapter on ambient sound design in games, which informed the brief s
 
 ## Content
 
-Maya read a chapter on ambient sound design in games, and shared the insights with her audio contractor to shape the project's sound direction.
+Maya read a chapter on ambient sound design in games, which informed the brief she gave her audio contractor.
 
 ## Provenance
 
 - Run: `demo-build-2026-07-20`
 - Session: `maya-2026-05-02`
 - channel: user_stated
-- channel_sig: 2f027cc8cba8ecee8de98e9bb0b3d7d6c37d82c3c1146a25af40c03c0e5f1af1
+- channel_sig: f1006e1ed1dd3aee7bebbc8ad203c19b24cc0e16dee31662138c75a3f4bd8335
 - origin: demo_build
 - persona: maya-chen
 - tag: reading.sound_design_book
 
 ### Audit events
 
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

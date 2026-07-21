@@ -27,8 +27,9 @@ Maya spent a week porting Lighthouse Keeper's core movement and interaction scri
 
 ### Audit events
 
-- 2026-07-20T18:23:14  **fused_into**  by=fusion:7d2bfae451c308ce entity=GDScript
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:42  **fused_into**  by=fusion:7d2bfae451c308ce entity=GDScript
+- 2026-07-21T02:58:31  **fused_into**  by=fusion:4c1416c3a62c1ea0 entity=Unity
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

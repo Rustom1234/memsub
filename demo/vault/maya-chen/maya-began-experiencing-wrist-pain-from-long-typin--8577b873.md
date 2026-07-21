@@ -1,37 +1,36 @@
 ---
-id: "dc00fb125b9e7189162d6f3a720c191c290a2a5f"
+id: "8577b873c6a1c8cc36a776fba8ecea7c77b591f1"
 namespace: "maya-chen"
-kind: "idea"
+kind: "fact"
 type: "observed"
 status: "active"
-created: "2026-01-24T18:22:00"
-last_updated: "2026-01-24T18:22:00"
-content_hash: "54245c30cedb7f8e"
+created: "2026-01-30T12:09:00"
+last_updated: "2026-01-30T12:09:00"
+content_hash: "561b0e9b979d0708"
 ---
 
-# Maya planned to use Jesse Schell's 'lens of the problem' approach on the tide-po
+# Maya began experiencing wrist pain from long typing sessions and started looking
 
 ## Content
 
-Maya planned to use Jesse Schell's 'lens of the problem' approach on the tide-pools puzzle after playtesting showed whether it was effective.
+Maya began experiencing wrist pain from long typing sessions and started looking into ergonomic keyboards.
 
 ## Provenance
 
 - Run: `demo-build-2026-07-20`
-- Session: `maya-2026-01-24`
+- Session: `maya-2026-01-30`
 - channel: user_stated
-- channel_sig: 1dc198e053604c74e5eb19d94f31462c41a262c7bff5b16f6651713121b3f0b1
+- channel_sig: 44cc0a296a0c2698abeb89291f9da3224fcf2ac0d3bdabcabb1e6ae175501558
 - origin: demo_build
 - persona: maya-chen
-- tag: reading.lens_100
+- tag: health.wrist_pain
 
 ### Audit events
 
-- 2026-07-20T18:22:46  **graphed**
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 
-- shares entity **Jesse** with [[maya-picked-up-the-art-of-game-design-by-jesse-sch--24affab2]]
 - shares entity **Maya** with [[maya-s-core-idea-for-lighthouse-keeper-is-a-solita--8616f5f3]]
 - shares entity **Maya** with [[maya-set-her-freelance-rate-for-fintrack-work-at-s--17f706b6]]
 - shares entity **Maya** with [[daniel-ochoa-fintrack-s-product-lead-became-maya-s--e721ab2f]]
@@ -39,3 +38,4 @@ Maya planned to use Jesse Schell's 'lens of the problem' approach on the tide-po
 - shares entity **Maya** with [[maya-compared-godot-4-and-unity-licensing-costs-fo--b56d1170]]
 - shares entity **Maya** with [[maya-committed-to-waking-up-at-six-a-m-to-get-focu--f86e3bcf]]
 - shares entity **Maya** with [[maya-read-through-unity-s-per-seat-subscription-ti--4d9fb986]]
+- shares entity **Maya** with [[maya-switched-to-a-standing-desk-after-long-develo--29e97770]]

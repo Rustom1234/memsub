@@ -5,7 +5,7 @@ kind: "decision"
 type: "observed"
 status: "superseded"
 created: "2026-01-16T10:32:00"
-last_updated: "2026-07-20T18:23:29"
+last_updated: "2026-07-21T02:58:57"
 content_hash: "0b321dbd55cb3104"
 ---
 
@@ -27,8 +27,8 @@ Maya chose a pixel-art style for Lighthouse Keeper because she wanted to keep th
 
 ### Audit events
 
-- 2026-07-20T18:23:29  **superseded**  by=ec069d306f309345e9332924829ed09635f9a6b5 judge_model=qwen3:8b reason=contradiction
-- 2026-07-20T18:22:46  **graphed**
+- 2026-07-21T02:58:57  **superseded**  by=ec069d306f309345e9332924829ed09635f9a6b5 judge_model=qwen3:8b reason=contradiction
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

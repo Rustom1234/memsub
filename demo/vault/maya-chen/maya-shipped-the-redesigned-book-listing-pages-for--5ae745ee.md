@@ -27,10 +27,10 @@ Maya shipped the redesigned book-listing pages for Bramble and Co, and Wren Call
 
 ### Audit events
 
-- 2026-07-20T18:23:19  **fused_into**  by=fusion:7c2e30ed172df421 entity=Bramble
-- 2026-07-20T18:23:13  **fused_into**  by=fusion:90645f5b005be07f entity=Wren
-- 2026-07-20T18:23:09  **fused_into**  by=fusion:98145a1cb7975189 entity=Callahan
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:48  **fused_into**  by=fusion:7c2e30ed172df421 entity=Bramble
+- 2026-07-21T02:58:41  **fused_into**  by=fusion:90645f5b005be07f entity=Wren
+- 2026-07-21T02:58:38  **fused_into**  by=fusion:98145a1cb7975189 entity=Callahan
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 
@@ -41,4 +41,4 @@ Maya shipped the redesigned book-listing pages for Bramble and Co, and Wren Call
 - shares entity **Bramble** with [[maya-worked-with-bramble-and-co-a-small-indie-book--fusion:7]]
 - shares entity **Bramble** with [[wren-callahan-an-editor-at-bramble-and-co-initiall--fusion:9]]
 - shares entity **Bramble** with [[wren-callahan-an-editor-at-bramble-and-co-initiall--fusion:9]]
-- shares entity **Bramble** with [[maya-worked-as-a-freelance-motion-graphics-animato--fusion:e]]
+- shares entity **Callahan** with [[wren-callahan-an-editor-at-bramble-and-co-briefed--929765f6]]

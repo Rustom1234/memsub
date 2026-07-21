@@ -27,15 +27,15 @@ Sofia Reyes handled the tide-pools and cliffside-cave backgrounds, leaving the w
 
 ### Audit events
 
-- 2026-07-20T18:23:06  **fused_into**  by=fusion:8ec6ed55e150dac0 entity=Sofia
-- 2026-07-20T18:23:05  **fused_into**  by=fusion:eae1718b7c0c0c88 entity=Reyes
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:35  **fused_into**  by=fusion:8ec6ed55e150dac0 entity=Sofia
+- 2026-07-21T02:58:32  **fused_into**  by=fusion:eae1718b7c0c0c88 entity=Reyes
+- 2026-07-21T02:58:13  **graphed**
 
 ## Links
 
 - shares entity **Reyes** with [[maya-read-a-chapter-on-gouache-color-theory-which--f7ae4caa]]
 - shares entity **Reyes** with [[maya-hired-sofia-reyes-a-freelance-illustrator-to--77a415dc]]
-- shares entity **Reyes** with [[sofia-reyes-delivered-a-color-script-that-mapped-e--efe3e075]]
+- shares entity **Reyes** with [[sofia-reyes-created-a-color-script-that-mapped-eac--efe3e075]]
 - shares entity **Reyes** with [[sofia-reyes-finished-the-first-background-painting--d62d5a4e]]
 - shares entity **Reyes** with [[maya-finalized-the-keeper-character-s-flat-shaded--abb99c5f]]
 - shares entity **Reyes** with [[maya-linked-the-tide-based-act-structure-directly--8ac084e6]]

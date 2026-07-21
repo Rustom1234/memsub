@@ -6,20 +6,20 @@ type: "observed"
 status: "active"
 created: "2026-05-01T13:39:00"
 last_updated: "2026-05-01T13:39:00"
-content_hash: "31b4a832af2ddebe"
+content_hash: "26a068052b11bbfd"
 ---
 
 # Priya Anand, a freelance Godot contractor, worked with Maya on the save-system a
 
 ## Content
 
-Priya Anand, a freelance Godot contractor, worked with Maya on the save-system and settings-menu for Lighthouse Keeper, including debugging a save-corruption bug, before recommending a Unity-focused contractor and subsequently influencing Maya's decision to rebuild the save system in Unity using JSON serialization based on her original design.
+Priya Anand, a freelance Godot contractor, worked with Maya on the save-system and settings-menu for Lighthouse Keeper, including debugging a save-corruption bug, and later recommended a Unity-focused contractor after the save-system contract was wound down, with Maya eventually rebuilding the save system in Unity using Priya's original design for the data schema.
 
 ## Provenance
 
 - Run: `demo-build-2026-07-20`
 - Session: `consolidate:fusion`
-- Generated at: 2026-07-20T18:22:47
+- Generated at: 2026-07-21T02:58:13
 - backend: ollama
 - entity: Anand
 - fused_from: ['16b2b155a58aae769de62d95fffbe004947c18c0', '16fc424e40e15d4e985caa41db9cebc579db4dea', '4b518c1cc1e8ea188ee54a4dd3184976ab84c4f1', '8be9e0375dce975f5657d8e01f987042572127ca', '908c25212f43a56266e449884b89b635da6dc7a1']

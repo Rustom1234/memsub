@@ -27,8 +27,8 @@ Maya decided the public demo would cover only the first act, ending right before
 
 ### Audit events
 
-- 2026-07-20T18:22:59  **fused_into**  by=fusion:3e4af01038bcab04 entity=Maya
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:25  **fused_into**  by=fusion:8e069a60803a51d9 entity=Maya
+- 2026-07-21T02:58:13  **graphed**
 
 ## Links
 

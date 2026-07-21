@@ -27,8 +27,8 @@ Maya added an email newsletter signup to the Steam page a few weeks before the d
 
 ### Audit events
 
-- 2026-07-20T18:23:18  **fused_into**  by=fusion:d9abed0dcdd5cc46 entity=Steam
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:47  **fused_into**  by=fusion:d9abed0dcdd5cc46 entity=Steam
+- 2026-07-21T02:58:13  **graphed**
 
 ## Links
 

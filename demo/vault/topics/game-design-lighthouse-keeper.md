@@ -4,15 +4,15 @@ namespace: "topics"
 slug: "game-design-lighthouse-keeper"
 member_count: 19
 member_hash: "acffa5ac704fd522"
-created: "2026-07-20T18:24:05"
-updated: "2026-07-20T18:24:05"
+created: "2026-07-21T02:59:29"
+updated: "2026-07-21T02:59:29"
 ---
 
 <!-- memsub:distill:begin -->
 
 # Lighthouse Keeper Design Philosophy
 
-Lighthouse Keeper is a narrative-driven puzzle game focused on atmosphere and mystery, with a core loop of exploring coastal areas by day and solving environmental and narrative puzzles by night. The game avoids traditional inventory puzzles and fail states, prioritizing emotional engagement over challenge.
+Lighthouse Keeper is a narrative puzzle game where a solitary keeper solves a mystery through environmental and story-based puzzles, focusing on atmosphere over challenge. The game uses found letters and a logbook mechanic to build its mystery, with a structured tide-based act system to pace the story.
 
 ## Key facts
 
@@ -27,9 +27,9 @@ Lighthouse Keeper is a narrative-driven puzzle game focused on atmosphere and my
 - Maya added an optional hint system that activates when players re-read the logbook, allowing those who want hints to request them without adjusting the difficulty setting. [[maya-added-an-optional-hint-system-that-activates--df676545]]
 - Maya restructured Lighthouse Keeper into three acts tied to the tide, so certain areas are only reachable at low tide, pacing the mystery's reveals. [[maya-restructured-lighthouse-keeper-into-three-act--138a1900]]
 - Maya linked the tide-based act structure directly to Sofia Reyes's color script, ensuring that lighting and pacing reinforce each other. [[maya-linked-the-tide-based-act-structure-directly--8ac084e6]]
-- Maya imagined an ending where the player could choose whether to keep the vanished captain's story secret or send it to his descendants, altering the final logbook entry. [[maya-imagined-an-ending-where-the-player-could-cho--1cd64ac3]]
-- After the second playtest revealed players had missed a key clue about the ship's fate, Maya rewrote the captain's letters. [[after-the-second-playtest-revealed-players-had-mis--8e9a3fe5]]
-- After the Unity migration, a second playtest showed that the tide-based act structure was clear to new players. [[after-the-unity-migration-a-second-playtest-showed--e038713c]]
+- Maya imagined an ending where the player could choose whether to keep the vanished captain's story secret or share it with his descendants, altering the final logbook entry. [[maya-imagined-an-ending-where-the-player-could-cho--1cd64ac3]]
+- After the second playtest revealed players missed a key clue about the ship's fate, Maya rewrote the captain's letters. [[after-the-second-playtest-revealed-players-missed--8e9a3fe5]]
+- After the Unity migration, a second playtest showed that the tide-based act structure was easy for new players to understand. [[after-the-unity-migration-a-second-playtest-showed--e038713c]]
 - Maya brought on an audio contractor to handle the ambient lighthouse and coastline sound design, knowing the puzzles relied heavily on the atmosphere. [[maya-brought-on-an-audio-contractor-to-handle-the--27f4a6be]]
 - Maya decided on a playtime of three to four hours for Lighthouse Keeper, aligning with the length of other narrative games she respects. [[maya-decided-on-a-playtime-of-three-to-four-hours--abb970e6]]
 - Maya added a text-size option and full subtitle support after a playtester with low vision struggled to read the logbook font. [[maya-added-a-text-size-option-and-full-subtitle-su--c0e26acf]]
@@ -38,7 +38,6 @@ Lighthouse Keeper is a narrative-driven puzzle game focused on atmosphere and my
 
 ## Open questions
 
-- How will the optional hint system affect the player's perception of the game's atmosphere?
-- What role will the audio design play in reinforcing the narrative and puzzle-solving experience?
+- How will the choice to share or keep the captain's story affect the player's experience beyond the logbook?
 
 <!-- memsub:distill:end -->

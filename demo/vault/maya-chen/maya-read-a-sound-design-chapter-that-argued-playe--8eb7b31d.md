@@ -1,33 +1,33 @@
 ---
-id: "8577b873c6a1c8cc36a776fba8ecea7c77b591f1"
+id: "8eb7b31d9831817d5dcc44178793609789ad2671"
 namespace: "maya-chen"
 kind: "fact"
 type: "observed"
 status: "active"
-created: "2026-01-30T12:09:00"
-last_updated: "2026-01-30T12:09:00"
-content_hash: "b3e9a0cf7d5f6fe2"
+created: "2026-02-08T15:10:00"
+last_updated: "2026-02-08T15:10:00"
+content_hash: "ca20560e581947ee"
 ---
 
-# Maya started noticing wrist pain from long typing sessions and began looking int
+# Maya read a sound-design chapter that argued players are drawn more by an irregu
 
 ## Content
 
-Maya started noticing wrist pain from long typing sessions and began looking into ergonomic keyboards.
+Maya read a sound-design chapter that argued players are drawn more by an irregular, unpredictable rhythm than a steady, mechanical one, and she noted it as a principle worth reusing beyond just sound.
 
 ## Provenance
 
 - Run: `demo-build-2026-07-20`
-- Session: `maya-2026-01-30`
+- Session: `maya-2026-02-08`
 - channel: user_stated
-- channel_sig: 461b1460c073fce8774e14242d8b0a22a3e0bcb6434b108c8dd7f2c9096b6cdd
+- channel_sig: 3cc7fcfe50b34a8be3fab42853625b79f5e11443785f2621616538dd96ee5346
 - origin: demo_build
 - persona: maya-chen
-- tag: health.wrist_pain
+- tag: reading.attention_rhythm
 
 ### Audit events
 
-- 2026-07-20T18:22:46  **graphed**
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

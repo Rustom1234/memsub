@@ -27,8 +27,8 @@ Maya started sending itemized invoices with per-project time logs after Fintrack
 
 ### Audit events
 
-- 2026-07-20T18:23:12  **fused_into**  by=fusion:ed6f1ac263537e49 entity=Fintrack
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:40  **fused_into**  by=fusion:ed6f1ac263537e49 entity=Fintrack
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

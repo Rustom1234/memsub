@@ -6,30 +6,30 @@ type: "observed"
 status: "active"
 created: "2026-04-10T15:44:00"
 last_updated: "2026-04-10T15:44:00"
-content_hash: "34281ebd0422509f"
+content_hash: "ef8e3559dbc6ff53"
 ---
 
-# Wren Callahan introduced Maya to two other small publishers who were seeking cov
+# Wren Callahan referred Maya to two other small publishers looking for cover illu
 
 ## Content
 
-Wren Callahan introduced Maya to two other small publishers who were seeking cover illustration work.
+Wren Callahan referred Maya to two other small publishers looking for cover illustration work.
 
 ## Provenance
 
 - Run: `demo-build-2026-07-20`
 - Session: `maya-2026-04-10`
 - channel: user_stated
-- channel_sig: dcb778cc95ec3e5d1d55ace8a0a25a1874cbf08c9f3dc1ddd8cfe90962272d07
+- channel_sig: cb35571284563e709c9f73f3da2873d5f1eb54e63c4c7eeb049ee622c2726a57
 - origin: demo_build
 - persona: maya-chen
 - tag: freelance.bramble_referral
 
 ### Audit events
 
-- 2026-07-20T18:23:13  **fused_into**  by=fusion:90645f5b005be07f entity=Wren
-- 2026-07-20T18:23:09  **fused_into**  by=fusion:98145a1cb7975189 entity=Callahan
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:41  **fused_into**  by=fusion:90645f5b005be07f entity=Wren
+- 2026-07-21T02:58:38  **fused_into**  by=fusion:98145a1cb7975189 entity=Callahan
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

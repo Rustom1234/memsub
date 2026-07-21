@@ -27,10 +27,10 @@ Maya put together a press kit featuring Sofia Reyes's background art and a short
 
 ### Audit events
 
-- 2026-07-20T18:23:06  **fused_into**  by=fusion:8ec6ed55e150dac0 entity=Sofia
-- 2026-07-20T18:23:05  **fused_into**  by=fusion:eae1718b7c0c0c88 entity=Reyes
-- 2026-07-20T18:23:03  **fused_into**  by=fusion:c5d75101d000d642 entity=Unity
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:35  **fused_into**  by=fusion:8ec6ed55e150dac0 entity=Sofia
+- 2026-07-21T02:58:32  **fused_into**  by=fusion:eae1718b7c0c0c88 entity=Reyes
+- 2026-07-21T02:58:31  **fused_into**  by=fusion:4c1416c3a62c1ea0 entity=Unity
+- 2026-07-21T02:58:13  **graphed**
 
 ## Links
 

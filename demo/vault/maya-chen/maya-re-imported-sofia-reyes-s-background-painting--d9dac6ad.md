@@ -27,11 +27,11 @@ Maya re-imported Sofia Reyes's background paintings into the new Unity project d
 
 ### Audit events
 
-- 2026-07-20T18:23:06  **fused_into**  by=fusion:8ec6ed55e150dac0 entity=Sofia
-- 2026-07-20T18:23:05  **fused_into**  by=fusion:eae1718b7c0c0c88 entity=Reyes
-- 2026-07-20T18:23:03  **fused_into**  by=fusion:c5d75101d000d642 entity=Unity
-- 2026-07-20T18:22:59  **fused_into**  by=fusion:3e4af01038bcab04 entity=Maya
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:35  **fused_into**  by=fusion:8ec6ed55e150dac0 entity=Sofia
+- 2026-07-21T02:58:32  **fused_into**  by=fusion:eae1718b7c0c0c88 entity=Reyes
+- 2026-07-21T02:58:31  **fused_into**  by=fusion:4c1416c3a62c1ea0 entity=Unity
+- 2026-07-21T02:58:25  **fused_into**  by=fusion:8e069a60803a51d9 entity=Maya
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

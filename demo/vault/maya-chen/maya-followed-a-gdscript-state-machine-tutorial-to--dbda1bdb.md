@@ -27,8 +27,8 @@ Maya followed a GDScript state-machine tutorial to structure the lighthouse keep
 
 ### Audit events
 
-- 2026-07-20T18:23:14  **fused_into**  by=fusion:7d2bfae451c308ce entity=GDScript
-- 2026-07-20T18:22:46  **graphed**
+- 2026-07-21T02:58:42  **fused_into**  by=fusion:7d2bfae451c308ce entity=GDScript
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

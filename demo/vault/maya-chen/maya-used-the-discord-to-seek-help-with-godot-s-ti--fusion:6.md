@@ -6,20 +6,20 @@ type: "observed"
 status: "active"
 created: "2026-06-05T14:57:00"
 last_updated: "2026-06-05T14:57:00"
-content_hash: "9f8703eac35bd1f9"
+content_hash: "6afefb1a441d5704"
 ---
 
-# Maya used Discord to seek help with Godot's TileMap layering, opened a small Dis
+# Maya used the Discord to seek help with Godot's TileMap layering, opened a small
 
 ## Content
 
-Maya used Discord to seek help with Godot's TileMap layering, opened a small Discord server for Lighthouse Keeper to answer questions, and shared the Unity vertical-slice trailer with a small feedback Discord while revising the pacing of the opening shot.
+Maya used the Discord to seek help with Godot's TileMap layering, opened a small Discord server for Lighthouse Keeper to answer questions, and shared the Unity vertical-slice trailer with a small feedback Discord.
 
 ## Provenance
 
 - Run: `demo-build-2026-07-20`
 - Session: `consolidate:fusion`
-- Generated at: 2026-07-20T18:22:47
+- Generated at: 2026-07-21T02:58:13
 - backend: ollama
 - entity: Discord
 - fused_from: ['3dac6b4dad62f934586a70d75c249bb75227a9da', 'c0b88100745b8d5f31f7e0655108da9ebb1b7949', 'efd73226246b6a280bffff4e38b222bdce502f71']

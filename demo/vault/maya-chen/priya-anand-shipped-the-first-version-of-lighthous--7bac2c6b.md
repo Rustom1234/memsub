@@ -5,7 +5,7 @@ kind: "fact"
 type: "observed"
 status: "superseded"
 created: "2026-02-20T08:39:00"
-last_updated: "2026-07-20T18:23:29"
+last_updated: "2026-07-21T02:58:57"
 content_hash: "a590032348db2325"
 ---
 
@@ -27,8 +27,8 @@ Priya Anand shipped the first version of Lighthouse Keeper's save system using G
 
 ### Audit events
 
-- 2026-07-20T18:23:29  **superseded**  by=7aaee85580fa6d732012fc95f1c876fcfce6d097 judge_model=qwen3:8b reason=contradiction
-- 2026-07-20T18:22:46  **graphed**
+- 2026-07-21T02:58:57  **superseded**  by=7aaee85580fa6d732012fc95f1c876fcfce6d097 judge_model=qwen3:8b reason=contradiction
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

@@ -27,9 +27,10 @@ Maya's core idea for Lighthouse Keeper is a solitary lighthouse keeper solving t
 
 ### Audit events
 
-- 2026-07-20T18:23:02  **fused_into**  by=fusion:94f25872dd9862a0 entity=Lighthouse
-- 2026-07-20T18:22:59  **fused_into**  by=fusion:3e4af01038bcab04 entity=Maya
-- 2026-07-20T18:22:46  **graphed**
+- 2026-07-21T02:58:29  **fused_into**  by=fusion:2141c700f1e77b2f entity=Lighthouse
+- 2026-07-21T02:58:27  **fused_into**  by=fusion:c8ce3a139463c678 entity=Keeper
+- 2026-07-21T02:58:25  **fused_into**  by=fusion:8e069a60803a51d9 entity=Maya
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

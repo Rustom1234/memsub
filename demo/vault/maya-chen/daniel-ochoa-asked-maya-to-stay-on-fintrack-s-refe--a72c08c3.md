@@ -27,10 +27,10 @@ Daniel Ochoa asked Maya to stay on Fintrack's referral list for future contract 
 
 ### Audit events
 
-- 2026-07-20T18:23:22  **fused_into**  by=fusion:de1db579d49f8bbf entity=Ochoa
-- 2026-07-20T18:23:20  **fused_into**  by=fusion:d776dbb4e409c221 entity=Daniel
-- 2026-07-20T18:23:12  **fused_into**  by=fusion:ed6f1ac263537e49 entity=Fintrack
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:51  **fused_into**  by=fusion:de1db579d49f8bbf entity=Ochoa
+- 2026-07-21T02:58:49  **fused_into**  by=fusion:d776dbb4e409c221 entity=Daniel
+- 2026-07-21T02:58:40  **fused_into**  by=fusion:ed6f1ac263537e49 entity=Fintrack
+- 2026-07-21T02:58:13  **graphed**
 
 ## Links
 
@@ -40,5 +40,5 @@ Daniel Ochoa asked Maya to stay on Fintrack's referral list for future contract 
 - shares entity **Daniel** with [[maya-s-fintrack-contract-with-daniel-ochoa-ended-a--4befa4f7]]
 - shares entity **Daniel** with [[daniel-ochoa-fintrack-s-product-lead-became-maya-s--fusion:d]]
 - shares entity **Daniel** with [[daniel-ochoa-fintrack-s-product-lead-became-maya-s--fusion:d]]
-- shares entity **Daniel** with [[maya-worked-as-a-freelance-motion-graphics-animato--fusion:e]]
+- shares entity **Daniel** with [[maya-took-on-a-freelance-motion-graphics-contract--fusion:e]]
 - shares entity **Fintrack** with [[maya-set-her-freelance-rate-for-fintrack-work-at-s--17f706b6]]

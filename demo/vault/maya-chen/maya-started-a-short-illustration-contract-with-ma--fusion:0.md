@@ -19,7 +19,7 @@ Maya started a short illustration contract with Marrow Editions, a poetry press 
 
 - Run: `demo-build-2026-07-20`
 - Session: `consolidate:fusion`
-- Generated at: 2026-07-20T18:22:47
+- Generated at: 2026-07-21T02:58:13
 - backend: ollama
 - entity: Editions
 - fused_from: ['78a396ed454f8fe43ef24c87e66f8cc8c3765a82', 'cd96872688b7bedfd540e343aa29e6783af4b551']
@@ -34,7 +34,7 @@ Maya started a short illustration contract with Marrow Editions, a poetry press 
 
 - shares entity **Callahan** with [[wren-callahan-an-editor-at-bramble-and-co-briefed--929765f6]]
 - shares entity **Callahan** with [[maya-finished-three-cover-illustrations-for-brambl--26f3dfc3]]
-- shares entity **Callahan** with [[wren-callahan-introduced-maya-to-two-other-small-p--64b2ec96]]
+- shares entity **Callahan** with [[wren-callahan-referred-maya-to-two-other-small-pub--64b2ec96]]
 - shares entity **Callahan** with [[maya-shipped-the-redesigned-book-listing-pages-for--5ae745ee]]
 - shares entity **Callahan** with [[maya-worked-with-bramble-and-co-a-small-indie-book--fusion:7]]
 - shares entity **Callahan** with [[maya-raised-her-freelance-rate-to-a-hundred-dollar--26f6e62d]]

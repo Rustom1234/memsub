@@ -4,15 +4,15 @@ namespace: "topics"
 slug: "key-project-decisions"
 member_count: 12
 member_hash: "9427a352edaa4fa6"
-created: "2026-07-20T18:24:40"
-updated: "2026-07-20T18:24:40"
+created: "2026-07-21T03:00:02"
+updated: "2026-07-21T03:00:02"
 ---
 
 <!-- memsub:distill:begin -->
 
 # Maya's Lighthouse Keeper Journey
 
-Maya developed Lighthouse Keeper as a solo project, balancing creative choices with practical considerations like tooling and pricing. She adapted her workflow and approach over time, prioritizing readability, manageability, and financial stability.
+Maya developed Lighthouse Keeper as a solo project, balancing creative choices with practical considerations like tools, art style, and monetization. She adapted to changing circumstances, such as switching engines and adjusting her work schedule, while maintaining a focus on player experience and project manageability.
 
 ## Key facts
 
@@ -32,6 +32,7 @@ Maya developed Lighthouse Keeper as a solo project, balancing creative choices w
 ## Open questions
 
 - How did Maya balance her creative vision with the practical challenges of solo development?
-- What role did community feedback play in shaping Lighthouse Keeper's design and features?
+- What impact did the switch from Godot to Unity have on the development process?
+- How did Maya's rate changes affect her overall workload and project timeline?
 
 <!-- memsub:distill:end -->

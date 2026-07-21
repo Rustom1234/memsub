@@ -27,11 +27,12 @@ Maya hired Priya Anand for ten hours a week of Godot contract work to help with 
 
 ### Audit events
 
-- 2026-07-20T18:23:17  **fused_into**  by=fusion:af94b9a9e0b84755 entity=Priya
-- 2026-07-20T18:23:16  **fused_into**  by=fusion:7be5809a90fc74a3 entity=Anand
-- 2026-07-20T18:23:08  **fused_into**  by=fusion:4270244e077b37c8 entity=Godot
-- 2026-07-20T18:23:02  **fused_into**  by=fusion:94f25872dd9862a0 entity=Lighthouse
-- 2026-07-20T18:22:46  **graphed**
+- 2026-07-21T02:58:45  **fused_into**  by=fusion:af94b9a9e0b84755 entity=Priya
+- 2026-07-21T02:58:44  **fused_into**  by=fusion:7be5809a90fc74a3 entity=Anand
+- 2026-07-21T02:58:36  **fused_into**  by=fusion:4270244e077b37c8 entity=Godot
+- 2026-07-21T02:58:29  **fused_into**  by=fusion:2141c700f1e77b2f entity=Lighthouse
+- 2026-07-21T02:58:27  **fused_into**  by=fusion:c8ce3a139463c678 entity=Keeper
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

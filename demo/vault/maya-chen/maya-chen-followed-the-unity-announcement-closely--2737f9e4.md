@@ -27,11 +27,11 @@ Maya Chen followed the Unity announcement closely, noting the new Indie Growth t
 
 ### Audit events
 
-- 2026-07-20T18:23:26  **fused_into**  by=fusion:680fb72481e2798a entity=Chen
-- 2026-07-20T18:23:25  **fused_into**  by=fusion:f8db28d8834ef513 entity=Indie
-- 2026-07-20T18:23:24  **fused_into**  by=fusion:2ee9d60906ab69e4 entity=Growth
-- 2026-07-20T18:23:03  **fused_into**  by=fusion:c5d75101d000d642 entity=Unity
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:55  **fused_into**  by=fusion:680fb72481e2798a entity=Chen
+- 2026-07-21T02:58:53  **fused_into**  by=fusion:f8db28d8834ef513 entity=Indie
+- 2026-07-21T02:58:53  **fused_into**  by=fusion:2ee9d60906ab69e4 entity=Growth
+- 2026-07-21T02:58:31  **fused_into**  by=fusion:4c1416c3a62c1ea0 entity=Unity
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

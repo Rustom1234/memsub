@@ -27,15 +27,15 @@ Maya hit a wall with Godot's TileMap layering for the lighthouse interior and sp
 
 ### Audit events
 
-- 2026-07-20T18:23:23  **fused_into**  by=fusion:60355d9c15e4102a entity=Discord
-- 2026-07-20T18:23:08  **fused_into**  by=fusion:4270244e077b37c8 entity=Godot
-- 2026-07-20T18:22:46  **graphed**
+- 2026-07-21T02:58:52  **fused_into**  by=fusion:60355d9c15e4102a entity=Discord
+- 2026-07-21T02:58:36  **fused_into**  by=fusion:4270244e077b37c8 entity=Godot
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 
 - shares entity **Discord** with [[maya-opened-a-small-discord-server-for-lighthouse--efd73226]]
 - shares entity **Discord** with [[maya-shared-the-unity-vertical-slice-trailer-with--c0b88100]]
-- shares entity **Discord** with [[maya-used-discord-to-seek-help-with-godot-s-tilema--fusion:6]]
+- shares entity **Discord** with [[maya-used-the-discord-to-seek-help-with-godot-s-ti--fusion:6]]
 - shares entity **Godot** with [[maya-compared-godot-4-and-unity-licensing-costs-fo--b56d1170]]
 - shares entity **Godot** with [[maya-decided-to-build-lighthouse-keeper-in-godot-4--c86a4f4f]]
 - shares entity **Godot** with [[maya-finished-the-official-godot-your-first-2d-gam--30f56afa]]

@@ -6,29 +6,28 @@ type: "observed"
 status: "active"
 created: "2026-02-08T13:28:00"
 last_updated: "2026-02-08T13:28:00"
-content_hash: "8c0657e4d4d16c35"
+content_hash: "b5ebe5d7aa304f42"
 ---
 
 # Maya tried using painterly gouache-style backgrounds for the same lighthouse int
 
 ## Content
 
-Maya tried using painterly gouache-style backgrounds for the same lighthouse interior scene and thought it captured the mood much better than pixel art.
+Maya tried using painterly gouache-style backgrounds for the same lighthouse interior scene and found they captured the mood much better than pixel art.
 
 ## Provenance
 
 - Run: `demo-build-2026-07-20`
 - Session: `maya-2026-02-08`
 - channel: user_stated
-- channel_sig: 962c798ca70957a54b976813ece5c6e779dcc0e4d3b2196dd2c7be0ad263ec1e
+- channel_sig: 047eae9d5af71ddcc9538413b4049f050b8e9f1bcb0ec6e8c7f7f69ba911aa3b
 - origin: demo_build
 - persona: maya-chen
 - tag: art.painterly_test
 
 ### Audit events
 
-- 2026-07-20T18:22:59  **fused_into**  by=fusion:3e4af01038bcab04 entity=Maya
-- 2026-07-20T18:22:46  **graphed**
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

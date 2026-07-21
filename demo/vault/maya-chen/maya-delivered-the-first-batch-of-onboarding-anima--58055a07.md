@@ -5,7 +5,7 @@ kind: "fact"
 type: "observed"
 status: "superseded"
 created: "2026-01-20T16:08:00"
-last_updated: "2026-07-20T18:23:29"
+last_updated: "2026-07-21T02:58:57"
 content_hash: "35f2b6d43466a96b"
 ---
 
@@ -27,8 +27,8 @@ Maya delivered the first batch of onboarding animations to Fintrack, and Daniel 
 
 ### Audit events
 
-- 2026-07-20T18:23:29  **superseded**  by=4befa4f75d4c95049f6b849d3e5f933a30e376f9 judge_model=qwen3:8b reason=contradiction
-- 2026-07-20T18:22:46  **graphed**
+- 2026-07-21T02:58:57  **superseded**  by=4befa4f75d4c95049f6b849d3e5f933a30e376f9 judge_model=qwen3:8b reason=contradiction
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 
@@ -39,5 +39,5 @@ Maya delivered the first batch of onboarding animations to Fintrack, and Daniel 
 - shares entity **Daniel** with [[daniel-ochoa-asked-maya-to-stay-on-fintrack-s-refe--a72c08c3]]
 - shares entity **Daniel** with [[daniel-ochoa-fintrack-s-product-lead-became-maya-s--fusion:d]]
 - shares entity **Daniel** with [[daniel-ochoa-fintrack-s-product-lead-became-maya-s--fusion:d]]
-- shares entity **Daniel** with [[maya-worked-as-a-freelance-motion-graphics-animato--fusion:e]]
+- shares entity **Daniel** with [[maya-took-on-a-freelance-motion-graphics-contract--fusion:e]]
 - shares entity **Fintrack** with [[maya-set-her-freelance-rate-for-fintrack-work-at-s--17f706b6]]

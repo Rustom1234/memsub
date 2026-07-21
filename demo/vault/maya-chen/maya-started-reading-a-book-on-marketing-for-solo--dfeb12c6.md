@@ -6,28 +6,28 @@ type: "observed"
 status: "active"
 created: "2026-05-20T10:17:00"
 last_updated: "2026-05-20T10:17:00"
-content_hash: "8adefcd359a4c098"
+content_hash: "72d08585f7a235c3"
 ---
 
-# Maya started reading a book on marketing for solo indie developers, focusing on 
+# Maya started reading a book on marketing for solo indie developers, focused on w
 
 ## Content
 
-Maya started reading a book on marketing for solo indie developers, focusing on wishlist growth before launch.
+Maya started reading a book on marketing for solo indie developers, focused on wishlist growth before launch.
 
 ## Provenance
 
 - Run: `demo-build-2026-07-20`
 - Session: `maya-2026-05-20`
 - channel: user_stated
-- channel_sig: f0db469855592d1ab621e539c09d0e2185c8dd4c2bdbb521dcb4dabe84660e46
+- channel_sig: 97b1f526089009a527e1d317fb0d562acf54657af21c73fed9f91d5acffcaba8
 - origin: demo_build
 - persona: maya-chen
 - tag: reading.marketing_book
 
 ### Audit events
 
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:13  **graphed**
 
 ## Links
 

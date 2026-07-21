@@ -1,6 +1,6 @@
 # maya-chen
 
-144 memories.
+146 memories.
 
 ## decision (15)
 
@@ -20,7 +20,7 @@
 - [[maya-settled-on-a-core-loop-of-exploring-the-light--7d2199f8]]: Maya settled on a core loop of exploring the lighthouse and coastline by day and
 - [[maya-committed-to-waking-up-at-six-a-m-to-get-focu--f86e3bcf]] *(superseded)*: Maya committed to waking up at six a.m. to get focused Lighthouse Keeper work do
 
-## fact (94)
+## fact (95)
 
 - [[maya-tallied-the-total-engine-related-costs-for-li--ed87fcca]]: Maya tallied the total engine-related costs for Lighthouse Keeper and discovered
 - [[maya-added-an-email-newsletter-signup-to-the-steam--43bdc25a]]: Maya added an email newsletter signup to the Steam page a few weeks before the d
@@ -28,8 +28,8 @@
 - [[maya-started-listening-to-a-solo-indie-dev-podcast--88b0e1ce]]: Maya started listening to a solo-indie-dev podcast episode about pricing a first
 - [[maya-applied-to-a-small-narrative-games-showcase-f--3e4900ac]]: Maya applied to a small narrative-games showcase festival for a demo slot in the
 - [[daniel-ochoa-asked-maya-to-stay-on-fintrack-s-refe--a72c08c3]]: Daniel Ochoa asked Maya to stay on Fintrack's referral list for future contract 
-- [[maya-shared-the-unity-vertical-slice-trailer-with--c0b88100]]: Maya shared the Unity vertical-slice trailer with a small feedback Discord and r
-- [[maya-s-fintrack-contract-with-daniel-ochoa-ended-a--4befa4f7]]: Maya's Fintrack contract with Daniel Ochoa ended after she completed the final r
+- [[maya-shared-the-unity-vertical-slice-trailer-with--c0b88100]]: Maya shared the Unity vertical-slice trailer with a small feedback Discord, then
+- [[maya-s-fintrack-contract-with-daniel-ochoa-ended-a--4befa4f7]]: Maya's Fintrack contract with Daniel Ochoa ended after they completed the final 
 - [[maya-ran-a-local-ten-kilometer-coastal-race-her-lo--01082e64]]: Maya ran a local ten-kilometer coastal race, her longest run since starting Ligh
 - [[maya-finalized-lighthouse-keeper-s-title-screen-us--b25c897c]]: Maya finalized Lighthouse Keeper's title screen, using a slow pan across the lig
 - [[the-lighthouse-keeper-s-steam-wishlist-crossed-fiv--6b5c60a9]]: The Lighthouse Keeper's Steam wishlist crossed five hundred adds after the new s
@@ -37,31 +37,31 @@
 - [[sofia-reyes-handled-the-tide-pools-and-cliffside-c--16042666]]: Sofia Reyes handled the tide-pools and cliffside-cave backgrounds, leaving the w
 - [[maya-decided-on-a-playtime-of-three-to-four-hours--abb970e6]]: Maya decided on a playtime of three to four hours for Lighthouse Keeper, alignin
 - [[maya-put-together-a-press-kit-featuring-sofia-reye--85bb54d2]]: Maya put together a press kit featuring Sofia Reyes's background art and a short
-- [[maya-started-reading-a-book-on-marketing-for-solo--dfeb12c6]]: Maya started reading a book on marketing for solo indie developers, focusing on 
+- [[maya-started-reading-a-book-on-marketing-for-solo--dfeb12c6]]: Maya started reading a book on marketing for solo indie developers, focused on w
 - [[maya-chen-completed-a-stable-vertical-slice-for-th--7aaee855]]: Maya Chen completed a stable vertical slice for the Lighthouse Keeper's Unity bu
 - [[maya-brought-on-an-audio-contractor-to-handle-the--27f4a6be]]: Maya brought on an audio contractor to handle the ambient lighthouse and coastli
-- [[maya-began-setting-aside-one-evening-each-week-for--3c202462]]: Maya began setting aside one evening each week for friends after noticing that f
+- [[maya-began-setting-aside-one-no-work-evening-each--3c202462]]: Maya began setting aside one no-work evening each week for friends after noticin
 - [[maya-updated-the-lighthouse-keeper-s-steam-page-sc--15edff9f]]: Maya updated the Lighthouse Keeper's Steam page screenshots to include Sofia Rey
 - [[maya-added-a-dynamic-lighting-pass-in-unity-so-the--2e42af85]]: Maya added a dynamic lighting pass in Unity so the lighthouse beam sweeps across
 - [[after-the-unity-migration-a-second-playtest-showed--e038713c]]: After the Unity migration, a second playtest showed that the tide-based act stru
-- [[maya-s-wrist-pain-stayed-manageable-through-the-un--eed6be46]]: Maya's wrist pain stayed manageable through the Unity migration, thanks to the e
+- [[maya-s-wrist-pain-remained-under-control-during-th--eed6be46]]: Maya's wrist pain remained under control during the Unity migration because she 
 - [[maya-started-a-short-illustration-contract-with-on--78a396ed]]: Maya started a short illustration contract with one of Wren Callahan's referrals
 - [[maya-designed-lighthouse-keeper-s-ui-icons-to-matc--0c98928b]]: Maya designed Lighthouse Keeper's UI icons to match Sofia Reyes's painterly styl
-- [[after-the-second-playtest-revealed-players-had-mis--8e9a3fe5]]: After the second playtest revealed players had missed a key clue about the ship'
-- [[maya-read-a-chapter-on-ambient-sound-design-in-gam--227cd674]]: Maya read a chapter on ambient sound design in games, and shared the insights wi
+- [[after-the-second-playtest-revealed-players-missed--8e9a3fe5]]: After the second playtest revealed players missed a key clue about the ship's fa
+- [[maya-read-a-chapter-on-ambient-sound-design-in-gam--227cd674]]: Maya read a chapter on ambient sound design in games, which informed the brief s
 - [[maya-rebuilt-the-save-system-in-unity-using-json-s--16b2b155]]: Maya rebuilt the save system in Unity using JSON serialization, following Priya 
 - [[maya-raised-her-freelance-rate-to-a-hundred-dollar--26f6e62d]]: Maya raised her freelance rate to a hundred dollars an hour after Wren Callahan'
 - [[maya-re-imported-sofia-reyes-s-background-painting--d9dac6ad]]: Maya re-imported Sofia Reyes's background paintings into the new Unity project d
 - [[maya-shipped-the-redesigned-book-listing-pages-for--5ae745ee]]: Maya shipped the redesigned book-listing pages for Bramble and Co, and Wren Call
 - [[maya-opened-a-small-discord-server-for-lighthouse--efd73226]]: Maya opened a small Discord server for Lighthouse Keeper and answered questions 
 - [[maya-spent-a-week-porting-lighthouse-keeper-s-core--3888bb65]]: Maya spent a week porting Lighthouse Keeper's core movement and interaction scri
-- [[maya-published-a-devlog-explaining-the-switch-from--2dba0043]]: Maya published a devlog explaining the switch from Godot to Unity, and it receiv
-- [[after-a-long-crunch-week-during-the-unity-migratio--8f519f61]]: After a long crunch week during the Unity migration, Maya set an hourly posture 
+- [[maya-published-a-devlog-explaining-the-switch-from--2dba0043]]: Maya published a devlog explaining the switch from Godot to Unity, and it drew m
+- [[maya-set-an-hourly-posture-reminder-after-a-long-c--8f519f61]]: Maya set an hourly posture reminder after a long crunch week during the Unity mi
 - [[maya-and-priya-anand-agreed-to-wind-down-the-save--16fc424e]]: Maya and Priya Anand agreed to wind down the save-system contract, and Priya rec
 - [[maya-and-sofia-reyes-locked-the-final-gouache-pale--cb0a801f]]: Maya and Sofia Reyes locked the final gouache palette to prevent any more area b
 - [[maya-read-an-analysis-of-firewatch-s-isolated-sett--440535f2]]: Maya read an analysis of Firewatch's isolated-setting pacing, which she found di
 - [[maya-bookmarked-a-kickstarter-campaign-page-for-a--aed57031]] *(quarantined)*: Maya bookmarked a Kickstarter campaign page for a competing ljghthouse-themed ad
-- [[wren-callahan-introduced-maya-to-two-other-small-p--64b2ec96]]: Wren Callahan introduced Maya to two other small publishers who were seeking cov
+- [[wren-callahan-referred-maya-to-two-other-small-pub--64b2ec96]]: Wren Callahan referred Maya to two other small publishers looking for cover illu
 - [[maya-worried-that-the-console-porting-story-for-he--8c35e601]]: Maya worried that the console-porting story for her current engine was still thi
 - [[maya-linked-the-tide-based-act-structure-directly--8ac084e6]]: Maya linked the tide-based act structure directly to Sofia Reyes's color script,
 - [[maya-began-working-through-unity-s-official-c-scri--57974379]]: Maya began working through Unity's official C# scripting documentation in prepar
@@ -77,14 +77,14 @@
 - [[maya-kept-up-her-running-habit-for-two-months-and--b0131f3c]]: Maya kept up her running habit for two months, and the coastline runs fed direct
 - [[maya-wrapped-the-fintrack-settings-flow-animations--f7d6d8ec]]: Maya wrapped the Fintrack settings-flow animations at the new rate, and Daniel O
 - [[when-godot-4-3-was-released-maya-upgraded-the-ligh--a812566e]]: When Godot 4.3 was released, Maya upgraded the Lighthouse Keeper project and fix
-- [[sofia-reyes-delivered-a-color-script-that-mapped-e--efe3e075]]: Sofia Reyes delivered a color script that mapped each area's palette to the stor
+- [[sofia-reyes-created-a-color-script-that-mapped-eac--efe3e075]]: Sofia Reyes created a color script that mapped each area's palette to the story'
 - [[maya-played-through-what-remains-of-edith-finch-to--c5219401]]: Maya played through What Remains of Edith Finch to study how to pace a slow, let
 - [[after-a-full-day-of-engine-migration-work-that-lef--592360da]]: After a full day of engine-migration work that left her eyes strained, Maya star
 - [[maya-and-priya-anand-spent-two-hours-debugging-a-s--908c2521]]: Maya and Priya Anand spent two hours debugging a save-corruption bug that only a
 - [[maya-wrote-the-first-draft-of-the-letters-found-in--dfe4e60d]]: Maya wrote the first draft of the letters found in the wrecked pier area, which 
 - [[maya-raised-her-hourly-rate-to-eighty-five-dollars--60645440]] *(superseded)*: Maya raised her hourly rate to eighty-five dollars, beginning with new contracts
-- [[maya-set-up-lighthouse-keeper-s-steam-page-and-upl--f5eba20f]]: Maya set up Lighthouse Keeper's Steam page and uploaded early screenshots from t
-- [[maya-read-an-analysis-of-gone-home-s-use-of-found--c4e6e21a]]: Maya read an analysis of Gone Home's use of found documents, which she found dir
+- [[maya-set-up-lighthouse-keeper-s-steam-page-with-ea--f5eba20f]]: Maya set up Lighthouse Keeper's Steam page with early screenshots from the proto
+- [[maya-read-an-analysis-of-gone-home-s-use-of-found--c4e6e21a]]: Maya read an analysis of Gone Home's use of found documents, which directly infl
 - [[maya-started-sending-itemized-invoices-with-per-pr--2adb45b2]]: Maya started sending itemized invoices with per-project time logs after Fintrack
 - [[maya-read-a-chapter-on-gouache-color-theory-which--f7ae4caa]]: Maya read a chapter on gouache color theory, which influenced the style-guide di
 - [[maya-scoped-lighthouse-keeper-s-map-to-five-explor--695e7faf]]: Maya scoped Lighthouse Keeper's map to five explorable areas: the lighthouse tow
@@ -93,8 +93,9 @@
 - [[priya-anand-shipped-the-first-version-of-lighthous--7bac2c6b]] *(superseded)*: Priya Anand shipped the first version of Lighthouse Keeper's save system using G
 - [[maya-finished-three-cover-illustrations-for-brambl--26f3dfc3]]: Maya finished three cover illustrations for Bramble and Co's spring catalog, and
 - [[maya-subscribed-to-a-narrative-design-newsletter-t--d859ce04]]: Maya subscribed to a narrative-design newsletter that regularly covers environme
-- [[maya-stopped-drinking-caffeine-after-two-p-m-after--2b2bac50]]: Maya stopped drinking caffeine after two p.m. after realizing it was messing up 
+- [[maya-cut-caffeine-after-two-p-m-after-noticing-it--2b2bac50]]: Maya cut caffeine after two p.m. after noticing it was wrecking her wake-up sche
 - [[maya-interviewed-priya-anand-a-freelance-godot-con--8be9e037]]: Maya interviewed Priya Anand, a freelance Godot contractor, about taking on the 
+- [[maya-read-a-sound-design-chapter-that-argued-playe--8eb7b31d]]: Maya read a sound-design chapter that argued players are drawn more by an irregu
 - [[maya-tried-using-painterly-gouache-style-backgroun--0fff48a3]]: Maya tried using painterly gouache-style backgrounds for the same lighthouse int
 - [[maya-bought-a-split-ergonomic-keyboard-and-the-wri--9706ed1f]]: Maya bought a split ergonomic keyboard, and the wrist pain eased within two week
 - [[maya-read-a-postmortem-on-braid-s-puzzle-design-an--d3b4bfa1]]: Maya read a postmortem on Braid's puzzle design and took notes on how its mechan
@@ -102,7 +103,7 @@
 - [[maya-published-the-first-lighthouse-keeper-devlog--4c9c357d]]: Maya published the first Lighthouse Keeper devlog post, introducing the premise 
 - [[maya-started-an-illustration-and-web-contract-with--af505fef]]: Maya started an illustration and web contract with Bramble and Co, a small indie
 - [[wren-callahan-an-editor-at-bramble-and-co-briefed--929765f6]]: Wren Callahan, an editor at Bramble and Co, briefed Maya on cover-style illustra
-- [[maya-started-noticing-wrist-pain-from-long-typing--8577b873]]: Maya started noticing wrist pain from long typing sessions and began looking int
+- [[maya-began-experiencing-wrist-pain-from-long-typin--8577b873]]: Maya began experiencing wrist pain from long typing sessions and started looking
 - [[maya-mocked-up-the-lighthouse-tower-interior-in-si--d8d52d92]]: Maya mocked up the lighthouse tower interior in sixteen-by-sixteen pixel art and
 - [[maya-followed-a-gdscript-state-machine-tutorial-to--dbda1bdb]]: Maya followed a GDScript state-machine tutorial to structure the lighthouse keep
 - [[maya-bookmarked-the-godot-documentation-s-tilemap--5e46a979]]: Maya bookmarked the Godot documentation's TileMap and Resource sections as ongoi
@@ -111,26 +112,27 @@
 - [[maya-started-running-three-times-a-week-along-the--dc073e2e]]: Maya started running three times a week along the coastline, partly to research 
 - [[maya-picked-up-the-art-of-game-design-by-jesse-sch--24affab2]]: Maya picked up *The Art of Game Design* by Jesse Schell to get ideas for the puz
 - [[maya-switched-to-a-standing-desk-after-long-develo--29e97770]]: Maya switched to a standing desk after long development sessions left her lower 
-- [[maya-read-through-unity-s-per-seat-subscription-ti--4d9fb986]]: Maya read through Unity's per-seat subscription tiers and runtime fee terms, fin
+- [[maya-read-through-unity-s-per-seat-subscription-ti--4d9fb986]]: Maya read through Unity's per-seat subscription tiers and runtime fee terms, and
 - [[maya-compared-godot-4-and-unity-licensing-costs-fo--b56d1170]]: Maya compared Godot 4 and Unity licensing costs for a solo indie developer befor
 - [[maya-took-on-a-freelance-motion-graphics-contract--19312e81]]: Maya took on a freelance motion-graphics contract with Fintrack, a fintech start
 - [[daniel-ochoa-fintrack-s-product-lead-became-maya-s--e721ab2f]]: Daniel Ochoa, Fintrack's product lead, became Maya's main point of contact for t
 - [[maya-set-her-freelance-rate-for-fintrack-work-at-s--17f706b6]] *(superseded)*: Maya set her freelance rate for Fintrack work at sixty-five dollars an hour, the
 
-## fusion (23)
+## fusion (24)
 
-- [[maya-s-lighthouse-keeper-is-a-narrative-driven-gam--fusion:3]]: Maya's Lighthouse Keeper is a narrative-driven game where a solitary lighthouse 
-- [[maya-developed-lighthouse-keeper-a-narrative-puzzl--fusion:9]]: Maya developed Lighthouse Keeper, a narrative puzzle game set in a solitary ligh
-- [[maya-switched-lighthouse-keeper-from-godot-to-unit--fusion:c]]: Maya switched Lighthouse Keeper from Godot to Unity after Unity's Indie Growth p
-- [[maya-set-up-lighthouse-keeper-s-steam-page-uploade--fusion:d]]: Maya set up Lighthouse Keeper's Steam page, uploaded early screenshots from the 
+- [[maya-developed-lighthouse-keeper-a-narrative-myste--fusion:2]]: Maya developed Lighthouse Keeper, a narrative mystery game set in a solitary lig
+- [[maya-switched-lighthouse-keeper-from-godot-to-unit--fusion:4]]: Maya switched Lighthouse Keeper from Godot to Unity after Unity's Indie Growth p
+- [[maya-s-core-idea-for-lighthouse-keeper-is-a-solita--fusion:8]]: Maya's core idea for Lighthouse Keeper is a solitary lighthouse keeper solving t
+- [[maya-developed-lighthouse-keeper-a-solitary-lighth--fusion:c]]: Maya developed Lighthouse Keeper, a solitary lighthouse keeper mystery game set 
+- [[maya-set-up-lighthouse-keeper-s-steam-page-with-ea--fusion:d]]: Maya set up Lighthouse Keeper's Steam page with early screenshots from the proto
 - [[maya-hired-sofia-reyes-a-freelance-illustrator-to--fusion:8]]: Maya hired Sofia Reyes, a freelance illustrator, to paint the background art for
 - [[maya-hired-sofia-reyes-a-freelance-illustrator-to--fusion:e]]: Maya hired Sofia Reyes, a freelance illustrator, to paint the background art for
 - [[maya-started-developing-lighthouse-keeper-in-godot--fusion:4]]: Maya started developing Lighthouse Keeper in Godot 4 due to its zero-royalty ope
 - [[maya-used-gdscript-in-godot-to-prototype-lighthous--fusion:7]]: Maya used GDScript in Godot to prototype Lighthouse Keeper, which helped clarify
 - [[daniel-ochoa-fintrack-s-product-lead-became-maya-s--fusion:d]]: Daniel Ochoa, Fintrack's product lead, became Maya's main point of contact for t
 - [[daniel-ochoa-fintrack-s-product-lead-became-maya-s--fusion:d]]: Daniel Ochoa, Fintrack's product lead, became Maya's main point of contact for t
-- [[maya-worked-as-a-freelance-motion-graphics-animato--fusion:e]]: Maya worked as a freelance motion-graphics animator for Fintrack, a fintech star
-- [[maya-used-discord-to-seek-help-with-godot-s-tilema--fusion:6]]: Maya used Discord to seek help with Godot's TileMap layering, opened a small Dis
+- [[maya-took-on-a-freelance-motion-graphics-contract--fusion:e]]: Maya took on a freelance motion-graphics contract with Fintrack, a fintech start
+- [[maya-used-the-discord-to-seek-help-with-godot-s-ti--fusion:6]]: Maya used the Discord to seek help with Godot's TileMap layering, opened a small
 - [[maya-started-a-short-illustration-contract-with-ma--fusion:0]]: Maya started a short illustration contract with Marrow Editions, a poetry press 
 - [[wren-callahan-an-editor-at-bramble-and-co-initiall--fusion:9]]: Wren Callahan, an editor at Bramble and Co, initially briefed Maya on cover-styl
 - [[wren-callahan-an-editor-at-bramble-and-co-initiall--fusion:9]]: Wren Callahan, an editor at Bramble and Co, initially briefed Maya on cover-styl
@@ -140,21 +142,21 @@
 - [[maya-worked-with-bramble-and-co-a-small-indie-book--fusion:7]]: Maya worked with Bramble and Co, a small indie book publisher, on cover-style il
 - [[maya-chen-switched-lighthouse-keeper-from-godot-to--fusion:2]]: Maya Chen switched Lighthouse Keeper from Godot to Unity after Unity's Indie Gro
 - [[maya-chen-decided-to-switch-lighthouse-keeper-from--fusion:f]]: Maya Chen decided to switch Lighthouse Keeper from Godot to Unity after Unity's 
-- [[maya-was-inspired-by-edith-finch-s-approach-to-sto--fusion:7]]: Maya was inspired by Edith Finch's approach to storytelling and pacing, and she 
-- [[maya-was-inspired-by-edith-finch-s-approach-to-sto--fusion:a]]: Maya was inspired by Edith Finch's approach to storytelling and pacing, and want
+- [[maya-was-drawn-to-edith-finch-for-its-pacing-of-a--fusion:7]]: Maya was drawn to Edith Finch for its pacing of a slow, letter-driven mystery an
+- [[maya-was-drawn-to-the-way-the-story-of-edith-finch--fusion:a]]: Maya was drawn to the way the story of Edith Finch unfolded through quiet, perso
 
 ## idea (11)
 
 - [[maya-plans-to-block-one-full-freelance-free-week-e--fd7716ea]]: Maya plans to block one full freelance-free week each quarter once Lighthouse Ke
 - [[maya-wrote-a-devlog-reflecting-that-starting-in-go--94ac5f64]]: Maya wrote a devlog reflecting that starting in Godot wasn't wasted time, as the
-- [[maya-and-sofia-reyes-created-a-short-style-guide-t--2fac2f7f]]: Maya and Sofia Reyes created a short style guide that explains the gouache palet
+- [[maya-and-sofia-reyes-wrote-a-short-style-guide-doc--2fac2f7f]]: Maya and Sofia Reyes wrote a short style guide documenting the gouache palette r
 - [[maya-imagined-a-post-credits-scene-where-the-recov--1c21c82f]]: Maya imagined a post-credits scene where the recovered letters are displayed in 
 - [[maya-started-blocking-freelance-work-to-three-afte--2835df7e]]: Maya started blocking freelance work to three afternoons a week so Lighthouse Ke
 - [[maya-imagined-an-ending-where-the-player-could-cho--1cd64ac3]]: Maya imagined an ending where the player could choose whether to keep the vanish
 - [[maya-wanted-to-borrow-edith-finch-s-trick-of-chang--2783af13]]: Maya wanted to borrow Edith Finch's trick of changing controls per memory sequen
 - [[maya-s-idea-was-a-logbook-mechanic-where-the-playe--3f3e0752]]: Maya's idea was a logbook mechanic where the player physically writes short note
 - [[maya-wrote-a-reusable-freelance-contract-template--e612c9bc]]: Maya wrote a reusable freelance contract template after the Fintrack negotiation
-- [[maya-planned-to-use-jesse-schell-s-lens-of-the-pro--dc00fb12]]: Maya planned to use Jesse Schell's 'lens of the problem' approach on the tide-po
+- [[maya-decided-to-apply-jesse-schell-s-lens-of-the-p--dc00fb12]]: Maya decided to apply Jesse Schell's 'lens of the problem' to the tide-pools puz
 - [[maya-s-core-idea-for-lighthouse-keeper-is-a-solita--8616f5f3]]: Maya's core idea for Lighthouse Keeper is a solitary lighthouse keeper solving t
 
 ## milestone (1)

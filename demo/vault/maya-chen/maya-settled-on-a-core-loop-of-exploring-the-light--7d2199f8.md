@@ -27,8 +27,8 @@ Maya settled on a core loop of exploring the lighthouse and coastline by day and
 
 ### Audit events
 
-- 2026-07-20T18:22:59  **fused_into**  by=fusion:3e4af01038bcab04 entity=Maya
-- 2026-07-20T18:22:46  **graphed**
+- 2026-07-21T02:58:25  **fused_into**  by=fusion:8e069a60803a51d9 entity=Maya
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

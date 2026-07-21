@@ -19,7 +19,7 @@ Maya Chen decided to switch Lighthouse Keeper from Godot to Unity after Unity's 
 
 - Run: `demo-build-2026-07-20`
 - Session: `consolidate:fusion`
-- Generated at: 2026-07-20T18:22:47
+- Generated at: 2026-07-21T02:58:13
 - backend: ollama
 - entity: Indie
 - fused_from: ['2737f9e4f48c00557f7ddd1285487452d700fbc3', '67c547d37eec5b9d1571251cd7525c9e928f0cce', '8049802db2f3ec2e658addf5a1c836d5066dbe13']

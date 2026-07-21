@@ -378,6 +378,16 @@ RECORDS = [
     ("reading.braid_postmortem", "2026-02-03", "fact", "user_stated",
      "Maya read a postmortem on Braid's puzzle design and took notes on "
      "how its mechanics were introduced without any tutorial text."),
+    # Idea-resonance showcase (2026-07-21): an old, distant note -- about
+    # player attention and sound design, nothing to do with the lighthouse
+    # beam on the surface -- for `python -m memsub.resonance` to surface
+    # later against Maya's "the lighthouse light should feel alive" idea.
+    # See docs/demo-2026-07-20.md and site/index.html's resonance tour step.
+    ("reading.attention_rhythm", "2026-02-08", "fact", "user_stated",
+     "Maya read a sound-design chapter arguing that a player's attention "
+     "is drawn far more by an irregular, unpredictable rhythm than by a "
+     "steady, mechanical one, and noted it as a principle worth reusing "
+     "beyond just sound."),
     ("reading.narrative_newsletter", "2026-02-15", "fact", "user_stated",
      "Maya subscribed to a narrative-design newsletter that regularly "
      "covers environmental storytelling techniques."),
@@ -516,7 +526,7 @@ TOPICS = {
     ],
     "reading-and-research": [
         "reading.art_of_game_design", "reading.godot_docs",
-        "reading.lens_100", "reading.braid_postmortem",
+        "reading.lens_100", "reading.braid_postmortem", "reading.attention_rhythm",
         "reading.narrative_newsletter", "reading.gone_home_analysis",
         "reading.what_remains", "reading.idea_journal_mechanic",
         "reading.unity_docs", "reading.firewatch_analysis",

@@ -6,30 +6,30 @@ type: "observed"
 status: "active"
 created: "2026-04-20T19:41:00"
 last_updated: "2026-04-20T19:41:00"
-content_hash: "6741b808d6e45fcb"
+content_hash: "267c9f1461964a44"
 ---
 
-# Maya published a devlog explaining the switch from Godot to Unity, and it receiv
+# Maya published a devlog explaining the switch from Godot to Unity, and it drew m
 
 ## Content
 
-Maya published a devlog explaining the switch from Godot to Unity, and it received more comments than any of her previous posts.
+Maya published a devlog explaining the switch from Godot to Unity, and it drew more comments than any previous post.
 
 ## Provenance
 
 - Run: `demo-build-2026-07-20`
 - Session: `maya-2026-04-20`
 - channel: user_stated
-- channel_sig: 891f3387df086d2bd740bf5417b23aedfb5ce7c3d994ba1d6dca088ef2e78248
+- channel_sig: 9b5fa8bd9549b311f37e085e6ad3e2bfd1f5eaff676e9a8d153e11882a7600dc
 - origin: demo_build
 - persona: maya-chen
 - tag: marketing.devlog2
 
 ### Audit events
 
-- 2026-07-20T18:23:08  **fused_into**  by=fusion:4270244e077b37c8 entity=Godot
-- 2026-07-20T18:23:03  **fused_into**  by=fusion:c5d75101d000d642 entity=Unity
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:36  **fused_into**  by=fusion:4270244e077b37c8 entity=Godot
+- 2026-07-21T02:58:31  **fused_into**  by=fusion:4c1416c3a62c1ea0 entity=Unity
+- 2026-07-21T02:58:12  **graphed**
 
 ## Links
 

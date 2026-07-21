@@ -27,9 +27,9 @@ Maya bookmarked a Kickstarter campaign page for a competing ljghthouse-themed ad
 
 ### Audit events
 
-- 2026-07-20T18:23:29  **quarantined**  claimed_channel=imported reason=signature_invalid
-- 2026-07-20T18:22:47  **graphed**
-- 2026-07-20T18:22:46  **demo_tampered**  reason=quarantine_showcase
+- 2026-07-21T02:58:57  **quarantined**  claimed_channel=imported reason=signature_invalid
+- 2026-07-21T02:58:12  **graphed**
+- 2026-07-21T02:58:12  **demo_tampered**  reason=quarantine_showcase
 
 ## Links
 

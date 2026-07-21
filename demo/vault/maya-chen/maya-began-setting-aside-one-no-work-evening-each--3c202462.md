@@ -6,28 +6,28 @@ type: "observed"
 status: "active"
 created: "2026-05-18T16:05:00"
 last_updated: "2026-05-18T16:05:00"
-content_hash: "6b302b3d483db525"
+content_hash: "0817e25998f51959"
 ---
 
-# Maya began setting aside one evening each week for friends after noticing that f
+# Maya began setting aside one no-work evening each week for friends after noticin
 
 ## Content
 
-Maya began setting aside one evening each week for friends after noticing that freelance work and Lighthouse Keeper had taken every evening in March.
+Maya began setting aside one no-work evening each week for friends after noticing that freelance work and Lighthouse Keeper had taken every evening in March.
 
 ## Provenance
 
 - Run: `demo-build-2026-07-20`
 - Session: `maya-2026-05-18`
 - channel: user_stated
-- channel_sig: 70e835df424e116499dde0af10a0210dc002209fecc75b690ecf15a31586077f
+- channel_sig: f37ae346793d3eab5f4bffd5909ff01c5506957017c91adb86c81cbea1e3f58b
 - origin: demo_build
 - persona: maya-chen
 - tag: health.social_time
 
 ### Audit events
 
-- 2026-07-20T18:22:47  **graphed**
+- 2026-07-21T02:58:13  **graphed**
 
 ## Links
 
