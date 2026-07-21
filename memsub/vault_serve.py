@@ -1065,6 +1065,16 @@ ul.related-list.discovery { display: grid; gap: 0.4rem; }
 .graph-controls select, .graph-controls input[type=text] { width: auto; min-width: 8rem; padding: 0.4rem 0.6rem; font-size: 0.85rem; }
 .graph-status { font-size: 0.78rem; color: var(--text-dim); margin: 0.4rem 0; }
 .graph-status button.expand { background: none; border: 1px solid var(--border); color: var(--accent); border-radius: 6px; padding: 0.1rem 0.5rem; font-size: 0.78rem; cursor: pointer; margin-left: 0.5rem; }
+/* Page shell (including this wrap) renders instantly -- coordinates are
+   fetched async from /api/graph.json, this shimmer covers that gap so
+   first paint never waits on the server-side layout computation. */
+.graph-shimmer {
+  position: absolute; inset: 0;
+  background: linear-gradient(100deg, rgba(255,255,255,0.015) 40%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.015) 60%);
+  background-size: 200% 100%; animation: graph-shimmer-move 1.5s ease-in-out infinite;
+}
+@keyframes graph-shimmer-move { 0% { background-position: 140% 0; } 100% { background-position: -40% 0; } }
+@media (prefers-reduced-motion: reduce) { .graph-shimmer { animation: none; background: rgba(255,255,255,0.02); } }
 .graph-legend { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; font-size: 0.78rem; color: var(--text-dim); margin-bottom: 0.5rem; }
 .graph-legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
 .graph-legend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; box-shadow: 0 0 6px currentColor; }
@@ -1271,8 +1281,11 @@ _GRAPH_JS = """
   // pre-rendered once to an offscreen canvas and reused via drawImage every
   // frame. Building a CanvasGradient per node per frame is the expensive
   // way to get "radial gradient fill + bloom" -- this sprite-cache approach
-  // gets the same look at 60fps for hundreds of nodes on a phone.
-  var SPRITE_SIZE = 96;
+  // gets the same look at 60fps for hundreds of nodes on a phone. Falloff
+  // is deliberately tight (2026-07-21 review: the first pass's glow radius
+  // was so large adjacent nodes merged into fog) -- crispness over
+  // atmosphere, the sprite is mostly transparent past a small hot core.
+  var SPRITE_SIZE = 64;
   var spriteCache = {};
   function glowSprite(color){
     if (spriteCache[color]) return spriteCache[color];
@@ -1282,8 +1295,8 @@ _GRAPH_JS = """
     var cx = SPRITE_SIZE / 2;
     var grad = g.createRadialGradient(cx, cx, 0, cx, cx, cx);
     grad.addColorStop(0, color);
-    grad.addColorStop(0.35, color);
-    grad.addColorStop(0.65, color + "55");
+    grad.addColorStop(0.16, color);
+    grad.addColorStop(0.4, color + "70");
     grad.addColorStop(1, color + "00");
     g.fillStyle = grad;
     g.fillRect(0, 0, SPRITE_SIZE, SPRITE_SIZE);
@@ -1441,9 +1454,19 @@ _GRAPH_JS = """
       node.__r = r; node.__dim = dim; node.__focus = isFocus; node.__sx = sx; node.__sy = sy;
 
       var sprite = glowSprite(colorFor(node));
-      var glowR = r * (isHub ? 4.2 : 3.2) / view.scale;
+      // glow grows sub-linearly with r (sqrt term) so a big hub's halo
+      // doesn't balloon into a cloud the way a linear r-multiple did
+      var glowR = (r + Math.sqrt(r) * (isHub ? 2.4 : 1.7)) / view.scale;
       ctx.globalAlpha = dim ? 0.15 : (isFocus ? 1 : 0.92);
       ctx.drawImage(sprite, sx - glowR, sy - glowR, glowR * 2, glowR * 2);
+
+      // crisp bright core: a small fixed-screen-size solid disc so every
+      // node reads as a distinct point even where glows touch
+      var coreR = (isHub ? 3 : 2.2) / view.scale;
+      ctx.beginPath();
+      ctx.arc(sx, sy, coreR, 0, Math.PI * 2);
+      ctx.fillStyle = colorFor(node);
+      ctx.fill();
 
       if (isHub){
         ctx.globalAlpha = dim ? 0.2 : 0.85;
@@ -1465,10 +1488,14 @@ _GRAPH_JS = """
     });
 
     // pass 2: labels, drawn after every glow (never buried under a later
-    // node's sprite) and decluttered by priority -- focused node and its
-    // neighbors first, then hubs, then by connectivity -- so dense clumps
-    // of hub labels stop stacking illegibly on top of each other.
+    // node's sprite) and decluttered by priority -- the exact hovered/
+    // selected node first (the one label allowed to ignore collision),
+    // then its neighbors, then hubs, then by connectivity. Capped to ~12
+    // at rest (2026-07-21 review: "Kumo Both User Fable" collided into one
+    // smear) and grows as the user zooms in.
     ctx.globalAlpha = 1;
+    if ("letterSpacing" in ctx) ctx.letterSpacing = "0.4px";
+    var cap = clamp(Math.round(10 + Math.max(0, view.scale - 0.6) * 18), 8, 400);
     var candidates = sim.nodes.filter(function(node){
       var isHub = node.kind === "hub";
       return !node.__dim && (
@@ -1479,10 +1506,11 @@ _GRAPH_JS = """
       );
     });
     candidates.sort(function(a, b){
-      var pa = a.__focus ? 0 : (a.kind === "hub" ? 1 : 2);
-      var pb = b.__focus ? 0 : (b.kind === "hub" ? 1 : 2);
+      function pri(n){ return n === focus ? 0 : n.__focus ? 1 : (n.kind === "hub" ? 2 : 3); }
+      var pa = pri(a), pb = pri(b);
       return pa !== pb ? pa - pb : b.degree - a.degree;
     });
+    candidates = candidates.slice(0, cap);
     var placed = [];
     candidates.forEach(function(node){
       var fontSize = 10.5 / view.scale;
@@ -1494,10 +1522,12 @@ _GRAPH_JS = """
       var overlaps = placed.some(function(p){
         return !(rect[2] < p[0] || rect[0] > p[2] || rect[3] < p[1] || rect[1] > p[3]);
       });
-      if (overlaps && !node.__focus) return;
+      // the exact focused node is the only one allowed to ignore collision
+      // -- every other label (including its neighbors) must fit cleanly
+      if (overlaps && node !== focus) return;
       placed.push(rect);
-      ctx.lineWidth = 3 / view.scale;
-      ctx.strokeStyle = "rgba(6,7,10,0.8)";
+      ctx.lineWidth = 4 / view.scale;
+      ctx.strokeStyle = "rgba(4,5,7,0.9)";
       ctx.strokeText(label, lx, ly);
       ctx.fillStyle = "#e4e7ee";
       ctx.fillText(label, lx, ly);
@@ -1599,6 +1629,8 @@ _GRAPH_JS = """
     }
 
     function start(data){
+      var shimmer = wrap.querySelector(".graph-shimmer");
+      if (shimmer) shimmer.remove();
       var s = size();
       sim = makeSim(data, s.W, s.H, mode);
       settleFrames = 0;
@@ -2049,6 +2081,7 @@ def render_graph_page(idx: VaultIndex, graph) -> bytes:
         'data-status="graph-status" data-search="graph-search" data-namespace="graph-namespace" '
         'data-period="graph-period" data-limit="graph-limit">'
         '<canvas class="graph-canvas"></canvas>'
+        '<div class="graph-shimmer" aria-hidden="true"></div>'
         "</div>"
         f"{empty_note}"
         f"{_GRAPH_JS}"

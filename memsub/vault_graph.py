@@ -329,31 +329,43 @@ def _jittered(seed_text: str, spread: float) -> tuple[float, float]:
     return (r * math.cos(angle), r * math.sin(angle))
 
 
-def _percentile(sorted_vals: list[float], p: float) -> float:
-    if not sorted_vals:
-        return 0.0
-    idx = p * (len(sorted_vals) - 1)
-    lo, hi = int(idx), min(int(idx) + 1, len(sorted_vals) - 1)
-    frac = idx - lo
-    return sorted_vals[lo] * (1 - frac) + sorted_vals[hi] * frac
+def _ranks(vals: list[float]) -> list[float]:
+    """0-indexed average rank of each value (ties share the mean rank of
+    their tied block), aligned with `vals`' input order."""
+    order = sorted(range(len(vals)), key=lambda i: vals[i])
+    ranks = [0.0] * len(vals)
+    i = 0
+    while i < len(order):
+        j = i
+        while j + 1 < len(order) and vals[order[j + 1]] == vals[order[i]]:
+            j += 1
+        avg_rank = (i + j) / 2.0
+        for k in range(i, j + 1):
+            ranks[order[k]] = avg_rank
+        i = j + 1
+    return ranks
 
 
-def _clip_outliers(coords: dict[str, tuple[float, float]], lo_p: float = 0.03, hi_p: float = 0.97) -> None:
-    """A handful of unusual documents (very short, or oddly-worded) can land
-    far outside where the bulk of the corpus sits on a raw SVD projection --
-    that single outlier then stretches the whole layout's bounding box,
-    squeezing every real cluster into a corner when the client fits the
-    view to it. Clipping each axis to its 3rd/97th percentile keeps genuine
-    cluster shape intact while capping how far one outlier can drag the
-    frame. Mutates `coords` in place."""
-    if len(coords) < 10:
+def _rank_normalize(coords: dict[str, tuple[float, float]]) -> None:
+    """Density-equalizing transform: replace each coordinate with its rank
+    percentile along that axis (independently for x and y), mapped to a
+    fixed [-0.5, 0.5] range. A raw SVD-2D projection on real text corpora
+    tends to crush most documents into one narrow band while a handful of
+    outliers stretch the axis wide (2026-07-21 real-vault screenshot: ~80%
+    of nodes crushed into one horizontal band) -- rank order is monotonic
+    with the raw value, so genuine cluster separation survives, but density
+    becomes uniform along each axis by construction, which is what makes
+    islands fill the canvas instead of striping it. Mutates in place."""
+    if len(coords) < 3:
         return
-    xs = sorted(p[0] for p in coords.values())
-    ys = sorted(p[1] for p in coords.values())
-    x_lo, x_hi = _percentile(xs, lo_p), _percentile(xs, hi_p)
-    y_lo, y_hi = _percentile(ys, lo_p), _percentile(ys, hi_p)
-    for rel, (x, y) in list(coords.items()):
-        coords[rel] = (min(max(x, x_lo), x_hi), min(max(y, y_lo), y_hi))
+    keys = list(coords.keys())
+    n = len(keys)
+    x_rank = _ranks([coords[k][0] for k in keys])
+    y_rank = _ranks([coords[k][1] for k in keys])
+    for i, k in enumerate(keys):
+        rx = (x_rank[i] / (n - 1) - 0.5) if n > 1 else 0.0
+        ry = (y_rank[i] / (n - 1) - 0.5) if n > 1 else 0.0
+        coords[k] = (rx, ry)
 
 
 def compute_layout(idx, graph: GraphIndex, content_notes: set[str]) -> None:
@@ -368,14 +380,14 @@ def compute_layout(idx, graph: GraphIndex, content_notes: set[str]) -> None:
         components = _svd2(vectors, relpaths)
         coords: dict[str, tuple[float, float]] = {}
         empty = [r for r in relpaths if not vectors.get(r)]
-        nonempty_xs = [components[0][i] for i, r in enumerate(relpaths) if vectors.get(r)]
-        spread = (max(nonempty_xs) - min(nonempty_xs)) / 2 if len(nonempty_xs) > 1 else 1.0
         for i, rel in enumerate(relpaths):
             if vectors.get(rel):
                 coords[rel] = (components[0][i], components[1][i])
+        # rank-normalize the real (non-jittered) notes only, so density
+        # equalization reflects genuine content signal, not filler jitter
+        _rank_normalize(coords)
         for rel in empty:
-            coords[rel] = _jittered(rel, spread or 1.0)
-        _clip_outliers(coords)
+            coords[rel] = _jittered(rel, 0.5)
         if len(_LAYOUT_CACHE) >= _LAYOUT_CACHE_MAX:
             _LAYOUT_CACHE.pop(next(iter(_LAYOUT_CACHE)))
         _LAYOUT_CACHE[key] = coords

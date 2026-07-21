@@ -2990,3 +2990,81 @@ more_than_same_topic` in `tests/test_vault_graph.py`).
 
 `pytest -q`: 499 passed. No em dash. Nothing pushed. Both servers stopped
 after verification (`ps aux` confirmed clean).
+
+### Iteration 4 (coordinator review, real-vault screenshot): 3 concrete fixes
+
+Coordinator reviewed `real-vault-graph-1440x900.png` from iteration 3 and
+flagged it as not at the bar yet, with three specific failures:
+
+1. **Density collapse**: ~80% of nodes crushed into one horizontal band,
+   huge empty region below. Root cause: raw SVD-2D coordinates are
+   unit-norm vectors, not variance-scaled -- nothing forces even spread,
+   so a corpus with one dominant topic direction crushes most documents
+   into a narrow band while a few land far out. Fix: replaced
+   `_clip_outliers` with `_rank_normalize` in `memsub/vault_graph.py` --
+   each axis's coordinates become that axis's rank percentile (ties
+   averaged), independently for x and y, mapped to a fixed [-0.5, 0.5]
+   range. Rank order is monotonic with the raw value so genuine cluster
+   separation survives, but density becomes uniform along each axis by
+   construction. Measured on the real vault's default 150-note view: a
+   coarse 10x10 grid over the layout's bounding box now has a max cell
+   share of 9.3% (was one band holding the large majority) -- meets the
+   coordinator's "~8%" target.
+2. **Bloom overdose**: glow radius large enough that adjacent nodes merged
+   into fog. Fixed in `_GRAPH_JS` (`memsub/vault_serve.py`): glow sprite
+   gradient stops tightened (hot core now 16% of sprite radius instead of
+   35%, falls off by 40% instead of 65%), sprite size halved (96px ->
+   64px), and the glow radius formula changed from a flat per-kind
+   multiple of node radius (`r * 4.2` for hubs) to `r + sqrt(r) * k` --
+   sub-linear in r, so a big hub's halo no longer balloons faster than a
+   small note's. Added an explicit small solid-color core disc (fixed
+   ~2.2-3 screen px regardless of node radius) on top of the glow so every
+   node reads as a distinct point.
+3. **Label smear**: "Kumo Both User Fable" collided into one unreadable
+   block. Fixed: the collision-skip exception that previously covered the
+   focused node *and all its neighbors* now covers only the exact
+   hovered/selected node (`node !== focus` is the only bypass) -- every
+   other label, including neighbors, must pass the collision check like
+   everyone else. Added a label count cap (`clamp(10 + max(0, view.scale -
+   0.6) * 18, 8, 400)`, ~10-12 at the default fit-to-view scale, growing
+   as the user zooms in), `ctx.letterSpacing = "0.4px"`, and a heavier dark
+   halo (stroke width 3->4, opacity 0.8->0.9).
+
+Boot-cleanliness check (coordinator: "a restart on the standard port came
+up 000 earlier"): timed a fresh real-vault boot precisely -- the process
+does not accept any TCP connection at all (curl reports `000`, not a slow
+HTTP response) for about 7.7s, because `serve_vault()` runs `build_index`
++ `build_graph_index` + `build_similarity_index` synchronously before
+`ThreadingTCPServer` is even constructed. Measured breakdown: the new
+layout compute is under 1s of that total; the rest (`build_index` parsing
+7,343 markdown files, `build_similarity_index`'s TF-IDF pass) is
+pre-existing cost from before this task. The graph-specific concern in
+the coordinator's note -- "does not block first paint... serve the page
+immediately and fetch coordinates async with a loading shimmer" -- was
+already true of the per-request architecture (the /graph page's HTML
+shell renders synchronously with no coordinate dependency, and the client
+already `fetch()`es `/api/graph.json` after page load) and is now more
+visibly true with an added `.graph-shimmer` element (CSS gradient
+animation, removed the moment `start(data)` runs, static under
+prefers-reduced-motion) covering the wait. Deliberately did NOT
+restructure `serve_vault()`'s startup sequencing (e.g. threading the
+index build so the socket opens before the vault is parsed) -- that
+touches the shared server bootstrap for every route (dashboard, search,
+notes, ask, review-queue), not "the graph page + mini-constellation"
+this task's surface is scoped to, and the file's own docstring
+establishes the single-synchronous-build-at-startup contract deliberately
+for its read-only-safety guarantees. Documenting this honestly rather
+than silently expanding scope.
+
+Re-screenshotted both vaults at both breakpoints against the same bar
+(`docs/screenshots/2026-07-21-graph/demo-graph-*.png`,
+`real-vault-graph-*.png`, `demo-note-constellation-1440x900.png`);
+iteration 3's shots kept as `iteration3-*.png` for the record. Real vault
+now shows nodes filling the canvas with visible color regions, crisp
+distinguishable dots even in the densest sub-cluster, and no colliding
+labels.
+
+`pytest -q`: 499 passed (all layout/cluster tests pass unchanged with rank
+normalization -- rank order preserves the same-hub-closer-than-random
+property the tests check). No em dash. Both verification servers stopped
+(`ps aux` confirmed clean). Nothing pushed.
