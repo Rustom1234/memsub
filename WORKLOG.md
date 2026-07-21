@@ -1,4 +1,171 @@
 
+## 2026-07-21 03:20: Idea resonance + one-line install + demo/site quality pass
+
+### Scope (3 tasks, verbatim from the brief)
+
+1. Idea resonance: drop an idea, get back distant-but-resonant memories
+   with an AI-written bridge, plus a UI surface and a persisted memory.
+2. One-line install: `bash scripts/install.sh`, portable, idempotent.
+3. Demo visual quality: regenerate the site's Maya tour screenshots,
+   add a resonance tour step, reframe the hero copy to the living-brain
+   arc.
+
+Own-paths-only throughout: memsub/resonance.py (new), scripts/install.sh
+(new), site/, vault_serve.py (additive routes only), scripts/build_demo_vault.py
++ scripts/_demo_persona_data.py (additive), tests, docs, this file. Never
+touched memsub/ask.py, store.py, distill.py, cli.py, hybrid.py, rerank.py,
+answer_policy.py (other agents' uncommitted WIP found at session start,
+confirmed still present and unstaged after every commit below).
+
+### Task 1: memsub/resonance.py
+
+Pure distance-selection logic (`find_resonances`, no LLM, stub-testable):
+embed the idea and every active episode with the same embedder, score by
+cosine, group the resonant candidates (score >= floor) by a cheap topic
+proxy (the episode's most specific linked entity: lowest-degree of its
+graph-linked entities, so a generic entity like the vault owner's own
+name -- linked to nearly everything -- never dominates the grouping),
+exclude whichever cluster the single closest match belongs to (that one
+is the obvious connection, not a surprising one), then keep the
+best-scoring episode from each remaining cluster, capped at 3. One
+qwen3:8b call per surviving match writes a 2-3 sentence bridge
+("These connect because..."). Honesty rule: nothing clearing the floor,
+or everything clearing it sharing the top cluster, returns "nothing
+resonates yet" -- never a fabricated connection. The idea itself is
+persisted via `MemoryClient.add(..., channel="user_stated")`, the same
+public write path every other caller uses.
+
+`python -m memsub.resonance "idea text"` is the module-main CLI entry
+(not routed through cli.py, which is off-limits this round).
+`memsub/vault_serve.py` gets an additive `/resonate` page and
+`/api/resonate` route, reusing the existing `ask_backend` (qwen3:8b) and
+the same per-request-`MemoryClient` pattern `/api/ask` already
+established (sqlite connections are thread-bound; the backend holds no
+sqlite state so it's safe to share).
+
+Calibration finding worth recording: on the real demo vault (single
+namespace, one person, ~140 active episodes), hashing-embedder cosine
+scores run 0.01-0.40 with mean ~0.21 -- most content in a small
+single-topic vault scores moderately against *any* on-topic idea just
+from shared vocabulary (the person's own name, the project's name). The
+floor (0.15) only needs to reject genuine noise; distance is enforced by
+cluster exclusion, not the floor. Entity-based clustering is also only a
+proxy for "topic," not perfect -- confirmed live (see Task 3 below): a
+deliberately-seeded, genuinely-distant memory scored well above the
+floor but still landed just outside the exact top 3 for one particular
+idea phrasing, because a small single-topic vault's literal vocabulary
+overlap dominates even real (ollama) embeddings. Documented honestly in
+the site copy rather than papered over.
+
+11 new tests (`tests/test_resonance.py`, a hand-built `FakeEmbedder` for
+exact deterministic cosine control) plus 3 route tests
+(`tests/test_vault_serve.py`, `MockBackend`, real `HashingEmbedder` with
+manually-linked entities to get a real, checked-by-hand cluster-exclusion
+outcome). Commit: `acd8d50`.
+
+### Task 2: scripts/install.sh
+
+Portable installer (`$HOME` + the script's own location only, no
+hardcoded paths): checks python3.10+ (hard requirement) and a local
+ollama daemon (soft -- installs everything else and degrades gracefully
+with a clear message if missing), creates a venv (`uv venv`/`uv pip
+install` when `uv` is on PATH -- this sandbox's system python has no
+`ensurepip`/`python3-venv`, a real portability gap the stdlib `venv`
+module can't work around, and it's also literally how this repo's own
+real `.venv` was built, confirmed via `pyvenv.cfg`), initializes the
+store and vault dirs, installs the extraction/consolidate/vault-sync cron
+jobs and the Claude Code `UserPromptSubmit` recall hook idempotently.
+
+Ported and generalized from `~/scripts/install-durable-capture.sh`: only
+the pieces genuinely part of this repo are wired (`daily_extract.sh`
+cron, `vault apply` cron, `repo_watchdog.sh` cron rescoped to just this
+repo via `REPO_WATCHDOG_REPOS`, the recall hook); the personal
+transcript-capture layer that lives outside the repo
+(`memsub-inbox.sh`/`memsub-inbox-sweep.sh`, the `SessionEnd`/
+`PreCompact` hooks) is deliberately not ported -- it would either
+silently fail on any other machine or require inventing a new
+personal-glue layer that isn't part of the memsub product. Documented in
+`docs/install-2026-07-21.md`.
+
+Sandbox test (real bug found and fixed in the test harness, not the
+script): `HOME` pointed at a throwaway tmp dir, a fake `crontab` script
+logged to a state file instead of the real crontab, and the repo was
+copied to scratch so venv creation never touched the real working
+`.venv`. First version of the fake `crontab` lost earlier lines on every
+call -- root cause: `crontab -` was implemented as `cat > $STATE`, which
+truncates the file the instant the process starts, racing the `crontab
+-l` on the other side of the same `(crontab -l; echo new) | crontab -`
+pipeline (both sides of a shell pipe start concurrently). Fixed by
+writing to a temp file and `mv`-ing over `$STATE` only after stdin
+closes (atomic rename, no truncation race). This is purely an artifact
+of faking `crontab` as two separate shell-script invocations; the real
+`crontab` binary is one atomic C program and never has this problem.
+
+Verified: fresh install (venv/store/vault/3 cron lines/hook all created,
+exit 0), idempotent rerun (everything "already present", zero new
+entries), the no-ollama degraded path (`PATH` with ollama's directory
+excluded -- still exits 0, installs everything else), and confirmed
+byte-for-byte that the real crontab, `~/.claude/settings.json`, and this
+repo's real working `.venv` were all untouched. Wrapped as 3 pytest
+tests (`tests/test_install_sh.py`, skips cleanly without network).
+Commit: `856241c`.
+
+### Task 3: demo regeneration + site quality
+
+Added one engineered persona record to `scripts/_demo_persona_data.py`
+(a sound-design note on player attention and irregular rhythm, dated
+months before the idea it's meant to resonate with) and reran
+`scripts/build_demo_vault.py --fresh` end to end (147 episodes after
+also persisting the demo idea for real, 139 active, 7 superseded, 1
+quarantined, 48 entities, 371 entity-episode links -- the entity/link
+counts happened to land on the exact same numbers as the prior build,
+everything else shifted by the one new record plus the persisted idea).
+Then ran `python -m memsub.resonance` for real against the fresh
+`demo/memory.db` -- the output used on the site is genuinely unedited
+tool output, not hand-written (see the honesty note above: the seeded
+note itself didn't make the literal top 3 for this idea phrasing, and
+the site says so rather than silently swapping in a nicer-looking fake
+result).
+
+Site: hero copy reframed to the living-brain arc (install one line, it
+keeps extracting/pruning/resolving contradictions/summarizing on its
+own, watch it happen, your AI never forgets). New tour step 6
+("Resonance") with the real top-3 cards and verbatim qwen3:8b bridge
+text. Dashboard/ripple stat numbers in the tour captions and the
+animated terminal replay updated to match the regenerated data.
+
+Screenshots: consistent 1440px-wide headless Chrome captures
+(`--force-prefers-reduced-motion`, matching the existing convention),
+tight-cropped to each page's real content bounds with a small ad-hoc PIL
+script (not committed -- lived in /tmp, not part of the product) instead
+of shipping mostly-empty frames (the old `/ask` screenshot was ~80%
+black void below the form; the old dashboard screenshot cut off
+mid-sentence at a hard 900px height). Verified the new tour step 6 by
+temporarily flipping its slide/button to `active` for a screenshot, then
+reverting via the backed-up original file (confirmed byte-identical
+after revert) -- the click-toggle JS itself was not touched. Reviewed
+the rendered tour twice (once right after building, once again after
+fixing an em-dash violation introduced in the new copy -- the file's
+existing convention uses `&mdash;` throughout, but the global "no em
+dashes, ever" rule applies to text this session wrote, so new copy uses
+colons/commas/restructured sentences instead, existing untouched text
+left as-is). Saved under `docs/screenshots/2026-07-21-demo-v2/` and
+copied into `site/assets/img/`. Commit: `9a12860`.
+
+### Verification
+
+`pytest -q`: 516 passed throughout (started at 499, +11 resonance +3
+route +3 install = 516). No em dash in any file this session wrote or
+edited (existing `&mdash;` usage in site/index.html left untouched).
+Every commit's `git log -1 --stat` checked immediately after committing
+to confirm only this session's own surface paths were included, never
+`ask.py`/`store.py`/`distill.py`/`cli.py`/`hybrid.py`/`rerank.py`/
+`answer_policy.py`. All servers started for manual verification
+(`vault serve` on 8768, a plain `http.server` on 8899 for the site) were
+stopped and confirmed gone (`ps aux`) before finishing. Nothing pushed.
+Bundle: `~/repo-bundles/memory-sublayer-20260721-0330.bundle` (or
+whatever timestamp the final bundle command below actually produces).
+
 ## 2026-07-17 18:55 (Fable orchestrator, remote session)
 - Durable capture layer 1 built and tested: ~/scripts/memsub-inbox.sh (SessionEnd/PreCompact hook target), ~/scripts/memsub-inbox-sweep.sh (5-min cron sweep, tested live, captured 2 transcripts into ~/.memsub/inbox/).
 - Crontab install and ~/.claude/settings.json hook edit are blocked for agent sessions by the permission classifier. One-shot installer for Rustom: bash ~/scripts/install-durable-capture.sh (idempotent, installs 3 cron lines + 2 hooks with jq merge and .bak).
