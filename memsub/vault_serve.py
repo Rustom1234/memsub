@@ -71,6 +71,12 @@ MERMAID_CDN = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"
 SEARCH_CAP = 200
 SERVE_VERSION = "0.2.0"  # mirrors pyproject.toml's memsub version line for the footer stamp
 
+# Same 8-color jewel-tone palette as _GRAPH_JS's client-side PALETTE array
+# (kept in sync by hand -- this is only ever the static legend swatch strip,
+# never used to pick a color, so there's nothing to import/compute here).
+_CLUSTER_PALETTE = ["#7cb0ff", "#6fd6ff", "#7fe0b0", "#e6c860", "#ffb37c", "#ff8aa8", "#b98cff", "#8ce0e0"]
+_CLUSTER_SWATCHES = "".join(f'<span class="dot" style="background:{c}"></span>' for c in _CLUSTER_PALETTE)
+
 _FRONTMATTER_RE = re.compile(r"^---\r?\n(.*?)\r?\n---\r?\n?", re.DOTALL)
 _FENCE_RE = re.compile(r"^```(\S*)\s*$")
 _WIKILINK_RE = re.compile(r"\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]+))?\]\]")
@@ -1040,23 +1046,29 @@ ul.related-list.discovery { display: grid; gap: 0.4rem; }
 .related-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.8rem; }
 .related-card .why { margin: 0.2rem 0 0; color: var(--text-faint); font-size: 0.78rem; }
 
-/* Layer 2: graph canvas (full page + mini constellation), shared styling */
-.graph-canvas-wrap { position: relative; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+/* Layer 2: graph canvas (full page + mini constellation), shared styling.
+   Dark radial-gradient backdrop lives on the wrap (not repainted on canvas
+   every frame -- cheaper, and the canvas stays transparent so it shows
+   through), matching the product's --bg/--bg-card tones. */
+.graph-canvas-wrap {
+  position: relative; border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 42%, #181c24 0%, #0e1015 55%, #08090b 100%);
+}
 .graph-canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
 .graph-canvas:active { cursor: grabbing; }
 .graph-hint { font-size: 0.72rem; color: var(--text-faint); padding: 0.4rem 0.7rem; margin: 0; }
 .constellation { margin-top: 1.5rem; }
 .constellation h3 { font-size: 0.9rem; margin-bottom: 0.5rem; }
-.constellation .graph-canvas-wrap { height: 220px; }
+.constellation .graph-canvas-wrap { height: 260px; }
 .graph-canvas-wrap.graph-page { height: 62vh; min-height: 360px; }
 .graph-controls { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0; align-items: center; }
 .graph-controls select, .graph-controls input[type=text] { width: auto; min-width: 8rem; padding: 0.4rem 0.6rem; font-size: 0.85rem; }
 .graph-status { font-size: 0.78rem; color: var(--text-dim); margin: 0.4rem 0; }
 .graph-status button.expand { background: none; border: 1px solid var(--border); color: var(--accent); border-radius: 6px; padding: 0.1rem 0.5rem; font-size: 0.78rem; cursor: pointer; margin-left: 0.5rem; }
-.graph-legend { display: flex; gap: 1rem; font-size: 0.78rem; color: var(--text-dim); margin-bottom: 0.5rem; }
+.graph-legend { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; font-size: 0.78rem; color: var(--text-dim); margin-bottom: 0.5rem; }
 .graph-legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
-.graph-legend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
-.graph-preview-card { position: absolute; z-index: 30; max-width: 16rem; background: var(--bg-raised); border: 1px solid var(--border); border-radius: 8px; padding: 0.55rem 0.75rem; font-size: 0.82rem; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); }
+.graph-legend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; box-shadow: 0 0 6px currentColor; }
+.graph-preview-card { position: absolute; z-index: 30; max-width: 16rem; background: var(--bg-raised); border: 1px solid var(--border); border-radius: 8px; padding: 0.55rem 0.75rem; font-size: 0.82rem; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6); }
 .graph-preview-card strong { display: block; margin-bottom: 0.3rem; }
 .graph-preview-card a { font-size: 0.78rem; }
 
@@ -1237,14 +1249,81 @@ _GRAPH_JS = """
 (function(){
   function esc(s){ var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
   function matchesQ(node, q){ return !q || node.label.toLowerCase().indexOf(q) !== -1; }
+  function clamp(x, lo, hi){ return Math.max(lo, Math.min(hi, x)); }
+  function hashStr(s){
+    var h = 0;
+    for (var i = 0; i < s.length; i++){ h = (h * 31 + s.charCodeAt(i)) | 0; }
+    return Math.abs(h);
+  }
 
-  function makeSim(data, W, H){
+  // Curated 8-color jewel-tone palette, desaturated for a dark canvas and
+  // spaced for colorblind distinguishability (adapted from Okabe-Ito).
+  // Cluster index comes from the server (memsub/vault_graph.py's
+  // _assign_clusters: a stable hash of a note's biggest hub entity, or its
+  // namespace as fallback) -- -1 means no hub/namespace, drawn neutral.
+  var PALETTE = ["#7cb0ff", "#6fd6ff", "#7fe0b0", "#e6c860", "#ffb37c", "#ff8aa8", "#b98cff", "#8ce0e0"];
+  var NEUTRAL = "#6b7280";
+  function colorFor(node){
+    return node.cluster >= 0 && node.cluster < PALETTE.length ? PALETTE[node.cluster] : NEUTRAL;
+  }
+
+  // Soft-glow node sprites: one radial-gradient disc per palette color,
+  // pre-rendered once to an offscreen canvas and reused via drawImage every
+  // frame. Building a CanvasGradient per node per frame is the expensive
+  // way to get "radial gradient fill + bloom" -- this sprite-cache approach
+  // gets the same look at 60fps for hundreds of nodes on a phone.
+  var SPRITE_SIZE = 96;
+  var spriteCache = {};
+  function glowSprite(color){
+    if (spriteCache[color]) return spriteCache[color];
+    var c = document.createElement("canvas");
+    c.width = c.height = SPRITE_SIZE;
+    var g = c.getContext("2d");
+    var cx = SPRITE_SIZE / 2;
+    var grad = g.createRadialGradient(cx, cx, 0, cx, cx, cx);
+    grad.addColorStop(0, color);
+    grad.addColorStop(0.35, color);
+    grad.addColorStop(0.65, color + "55");
+    grad.addColorStop(1, color + "00");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, SPRITE_SIZE, SPRITE_SIZE);
+    spriteCache[color] = c;
+    return c;
+  }
+
+  // "full" (the /graph page): nodes are seeded from the server's semantic
+  // layout (memsub/vault_graph.py compute_layout), fit to the container.
+  // "mini" (note-page constellation): too small to be a hairball, keeps a
+  // plain random-seeded local force layout -- see WORKLOG.md 2026-07-21.
+  function makeSim(data, W, H, mode){
+    var full = mode !== "mini";
+    var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    if (full){
+      data.nodes.forEach(function(n){
+        minX = Math.min(minX, n.x || 0); maxX = Math.max(maxX, n.x || 0);
+        minY = Math.min(minY, n.y || 0); maxY = Math.max(maxY, n.y || 0);
+      });
+      if (!isFinite(minX)){ minX = maxX = minY = maxY = 0; }
+    }
+    var rangeX = Math.max(1e-6, maxX - minX), rangeY = Math.max(1e-6, maxY - minY);
+    var worldSize = Math.max(W, H) * 0.9;
+    var scaleTo = worldSize / Math.max(rangeX, rangeY);
+    var midX = (minX + maxX) / 2, midY = (minY + maxY) / 2;
+
     var nodes = data.nodes.map(function(n){
+      var x, y;
+      if (full){
+        x = (n.x - midX) * scaleTo + W / 2;
+        y = (n.y - midY) * scaleTo + H / 2;
+      } else {
+        x = W / 2 + (Math.random() - 0.5) * W * 0.7;
+        y = H / 2 + (Math.random() - 0.5) * H * 0.7;
+      }
       return {
         id: n.id, kind: n.kind, label: n.label, degree: n.degree || 0,
-        x: W / 2 + (Math.random() - 0.5) * W * 0.8,
-        y: H / 2 + (Math.random() - 0.5) * H * 0.8,
-        vx: 0, vy: 0, fixed: false
+        cluster: typeof n.cluster === "number" ? n.cluster : -1,
+        x: x, y: y, homeX: x, homeY: y, vx: 0, vy: 0, fixed: false,
+        phase: Math.random() * Math.PI * 2, neighbors: null
       };
     });
     var byId = {};
@@ -1252,14 +1331,34 @@ _GRAPH_JS = """
     var edges = [];
     (data.edges || []).forEach(function(e){
       var s = byId[e.source], t = byId[e.target];
-      if (s && t) edges.push({ s: s, t: t, w: e.weight || 1 });
+      if (!s || !t) return;
+      // stable per-edge curve bend (from a hash, not Math.random) so the
+      // curve shape never reshuffles between redraws
+      var h = (hashStr(e.source + "|" + e.target) % 1000) / 1000;
+      edges.push({ s: s, t: t, w: e.weight || 1, bend: (h - 0.5) * 2 });
     });
-    return { nodes: nodes, edges: edges, byId: byId };
+    nodes.forEach(function(n){ n.neighbors = new Set(); });
+    edges.forEach(function(e){ e.s.neighbors.add(e.t); e.t.neighbors.add(e.s); });
+    return { nodes: nodes, edges: edges, byId: byId, full: full };
   }
 
+  // Gentle local relax, not global physics: the semantic layout already
+  // carries cluster structure, so repulsion only acts between nodes that
+  // are already close (never fights the seeded positions apart), and a
+  // weak pull back toward each node's seeded "home" position keeps a
+  // dragged/jostled node from drifting out of its cluster. Mini mode keeps
+  // the original stronger full force-directed constants -- it's seeded
+  // randomly and needs real convergence, not a relax.
   function step(sim, W, H){
     var nodes = sim.nodes, n = nodes.length;
-    var repel = Math.min(2200, 70000 / Math.max(1, n));
+    var repel = sim.full ? Math.min(140, 2200 / Math.max(1, n)) : Math.min(2200, 70000 / Math.max(1, n));
+    var localCutoff2 = sim.full ? 6000 : Infinity;
+    var homePull = sim.full ? 0.01 : 0;
+    var centerPull = sim.full ? 0 : 0.002;
+    var damping = sim.full ? 0.5 : 0.55;
+    var springTarget = sim.full ? 40 : 70;
+    var springStrength = sim.full ? 0.006 : 0.02;
+
     for (var i = 0; i < n; i++){
       var a = nodes[i];
       if (a.fixed) continue;
@@ -1269,61 +1368,110 @@ _GRAPH_JS = """
         var b = nodes[j];
         var dx = a.x - b.x, dy = a.y - b.y;
         var d2 = dx * dx + dy * dy + 0.01;
+        if (d2 > localCutoff2) continue;
         var f = repel / d2;
         fx += dx * f; fy += dy * f;
       }
-      fx += (W / 2 - a.x) * 0.002;
-      fy += (H / 2 - a.y) * 0.002;
-      a.vx = (a.vx + fx) * 0.55;
-      a.vy = (a.vy + fy) * 0.55;
+      fx += (W / 2 - a.x) * centerPull + (a.homeX - a.x) * homePull;
+      fy += (H / 2 - a.y) * centerPull + (a.homeY - a.y) * homePull;
+      a.vx = (a.vx + fx) * damping;
+      a.vy = (a.vy + fy) * damping;
     }
     sim.edges.forEach(function(e){
       var dx = e.t.x - e.s.x, dy = e.t.y - e.s.y;
       var dist = Math.sqrt(dx * dx + dy * dy) || 1;
-      var f = (dist - 70) * 0.02;
+      var f = (dist - springTarget) * springStrength;
       var fx = (dx / dist) * f, fy = (dy / dist) * f;
       if (!e.s.fixed){ e.s.vx += fx; e.s.vy += fy; }
       if (!e.t.fixed){ e.t.vx -= fx; e.t.vy -= fy; }
     });
     nodes.forEach(function(a){
       if (a.fixed) return;
-      a.x += Math.max(-8, Math.min(8, a.vx));
-      a.y += Math.max(-8, Math.min(8, a.vy));
-      a.x = Math.max(10, Math.min(W - 10, a.x));
-      a.y = Math.max(10, Math.min(H - 10, a.y));
+      a.x += clamp(a.vx, -8, 8);
+      a.y += clamp(a.vy, -8, 8);
+      a.x = clamp(a.x, 10, W - 10);
+      a.y = clamp(a.y, 10, H - 10);
     });
   }
 
-  function draw(ctx, sim, W, H, view, dpr, opts){
+  function draw(ctx, sim, W, H, view, dpr, opts, clock){
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
     ctx.setTransform(view.scale * dpr, 0, 0, view.scale * dpr, view.tx * dpr, view.ty * dpr);
-    ctx.lineWidth = 1 / view.scale;
+
+    var focus = opts.hovered || opts.selected;
+    var focusSet = focus ? focus.neighbors : null;
+    function dimmed(node){
+      if (!matchesQ(node, opts.q)) return true;
+      if (focus && node !== focus && !(focusSet && focusSet.has(node))) return true;
+      return false;
+    }
+
+    // edges: slightly curved quadratics, alpha proportional to weight --
+    // most sit near-invisible at rest, the trick that kills the hairball
     sim.edges.forEach(function(e){
-      var dim = !matchesQ(e.s, opts.q) && !matchesQ(e.t, opts.q);
-      ctx.strokeStyle = dim ? "rgba(90,95,107,0.12)" : "rgba(90,95,107,0.45)";
+      var dim = dimmed(e.s) || dimmed(e.t);
+      var base = clamp(0.04 + 0.09 * e.w, 0.04, 0.5);
+      ctx.strokeStyle = "rgba(140,150,168," + (dim ? base * 0.25 : base) + ")";
+      ctx.lineWidth = clamp(0.6 + 0.3 * e.w, 0.6, 2.2) / view.scale;
+      var mx = (e.s.x + e.t.x) / 2, my = (e.s.y + e.t.y) / 2;
+      var dx = e.t.x - e.s.x, dy = e.t.y - e.s.y;
+      var cx = mx - dy * e.bend * 0.14, cy = my + dx * e.bend * 0.14;
       ctx.beginPath();
-      ctx.moveTo(e.s.x, e.s.y); ctx.lineTo(e.t.x, e.t.y);
+      ctx.moveTo(e.s.x, e.s.y);
+      ctx.quadraticCurveTo(cx, cy, e.t.x, e.t.y);
       ctx.stroke();
     });
+
+    var t = clock || 0;
     sim.nodes.forEach(function(node){
       var isHub = node.kind === "hub";
-      var r = (isHub ? 7 : 3.5) + Math.min(6, Math.sqrt(node.degree || 0));
-      var dim = !matchesQ(node, opts.q);
-      ctx.globalAlpha = dim ? 0.15 : 1;
-      ctx.fillStyle = isHub ? "#6fd6ff" : "#7cb0ff";
-      ctx.beginPath();
-      ctx.arc(node.x, node.y, r / view.scale, 0, Math.PI * 2);
-      ctx.fill();
-      if (node === opts.selected){
-        ctx.strokeStyle = "#f0f2f6"; ctx.lineWidth = 2 / view.scale; ctx.stroke();
+      var r = (isHub ? 6.5 : 3) + Math.min(7, Math.sqrt(node.degree || 0));
+      var dim = dimmed(node);
+      var isFocus = node === focus || (focusSet && focusSet.has(node));
+      var dx = opts.drift ? Math.sin(t * 0.35 + node.phase) * 1.6 : 0;
+      var dy = opts.drift ? Math.cos(t * 0.27 + node.phase) * 1.6 : 0;
+      var sx = node.x + dx, sy = node.y + dy;
+
+      var sprite = glowSprite(colorFor(node));
+      var glowR = r * (isHub ? 4.2 : 3.2) / view.scale;
+      ctx.globalAlpha = dim ? 0.15 : (isFocus ? 1 : 0.92);
+      ctx.drawImage(sprite, sx - glowR, sy - glowR, glowR * 2, glowR * 2);
+
+      if (isHub){
+        ctx.globalAlpha = dim ? 0.2 : 0.85;
+        ctx.strokeStyle = "rgba(240,242,246,0.55)";
+        ctx.lineWidth = 1 / view.scale;
+        ctx.beginPath();
+        ctx.arc(sx, sy, r / view.scale, 0, Math.PI * 2);
+        ctx.stroke();
       }
-      if (view.scale > 0.75 && (isHub || node === opts.selected) && !dim){
-        ctx.fillStyle = "#d8dbe2";
-        ctx.font = (10 / view.scale) + "px sans-serif";
-        ctx.fillText(node.label.slice(0, 30), node.x + r / view.scale + 3, node.y + 3);
+      if (node === opts.selected){
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = "#f0f2f6";
+        ctx.lineWidth = 2 / view.scale;
+        ctx.beginPath();
+        ctx.arc(sx, sy, (r + 3) / view.scale, 0, Math.PI * 2);
+        ctx.stroke();
       }
       ctx.globalAlpha = 1;
+
+      var showLabel = !dim && (
+        isFocus ||
+        (isHub && view.scale > 0.45) ||
+        (view.scale > 1.4 && node.degree >= 3) ||
+        view.scale > 2.4
+      );
+      if (showLabel){
+        ctx.font = (10.5 / view.scale) + "px sans-serif";
+        var label = node.label.slice(0, 32);
+        var lx = sx + r / view.scale + 4, ly = sy + 3;
+        ctx.lineWidth = 3 / view.scale;
+        ctx.strokeStyle = "rgba(6,7,10,0.8)";
+        ctx.strokeText(label, lx, ly);
+        ctx.fillStyle = "#e4e7ee";
+        ctx.fillText(label, lx, ly);
+      }
     });
   }
 
@@ -1349,13 +1497,25 @@ _GRAPH_JS = """
     var periodEl = document.getElementById(wrap.dataset.period || "");
     var limitEl = document.getElementById(wrap.dataset.limit || "");
 
+    var reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     var view = { scale: 1, tx: 0, ty: 0 };
-    var opts = { q: "", selected: null };
-    var sim = null, settleFrames = 0, raf = null, previewCard = null;
+    var target = { scale: 1, tx: 0, ty: 0 };
+    var opts = { q: "", selected: null, hovered: null, drift: !reducedMotion };
+    var sim = null, settleFrames = 0, raf = null, rafIsTimeout = false, previewCard = null, clockStart = 0;
+    var dragTarget = null, panning = false;
+
+    function schedule(fn, active){
+      rafIsTimeout = !active;
+      return active ? requestAnimationFrame(fn) : setTimeout(fn, 90);
+    }
+    function cancelScheduled(id){
+      if (id == null) return;
+      if (rafIsTimeout) clearTimeout(id); else cancelAnimationFrame(id);
+    }
 
     function size(){
       var rect = wrap.getBoundingClientRect();
-      var dpr = window.devicePixelRatio || 1;
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.max(1, rect.width * dpr);
       canvas.height = Math.max(1, rect.height * dpr);
       return { W: rect.width, H: rect.height, dpr: dpr };
@@ -1364,35 +1524,72 @@ _GRAPH_JS = """
     function redraw(){
       var s = size();
       var ctx = canvas.getContext("2d");
-      draw(ctx, sim, s.W, s.H, view, s.dpr, opts);
+      var clock = (performance.now() - clockStart) / 1000;
+      draw(ctx, sim, s.W, s.H, view, s.dpr, opts, clock);
     }
 
-    function settleLoop(){
+    // smooth zoom-to-fit / zoom-to-cursor: wheel and window resize only set
+    // `target`, this lerps `view` toward it a little every scheduled frame
+    function lerpView(){
+      var d = Math.abs(view.scale - target.scale) + Math.abs(view.tx - target.tx) + Math.abs(view.ty - target.ty);
+      if (d < 0.02){ view.scale = target.scale; view.tx = target.tx; view.ty = target.ty; return false; }
+      view.scale += (target.scale - view.scale) * 0.22;
+      view.tx += (target.tx - view.tx) * 0.22;
+      view.ty += (target.ty - view.ty) * 0.22;
+      return true;
+    }
+
+    function fitView(s){
+      if (!sim || !sim.nodes.length) return;
+      var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      sim.nodes.forEach(function(n){
+        minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x);
+        minY = Math.min(minY, n.y); maxY = Math.max(maxY, n.y);
+      });
+      var w = Math.max(40, maxX - minX), h = Math.max(40, maxY - minY);
+      var sc = clamp(Math.min(s.W / w, s.H / h) * 0.86, 0.15, 4);
+      target.scale = sc;
+      target.tx = s.W / 2 - (minX + maxX) / 2 * sc;
+      target.ty = s.H / 2 - (minY + maxY) / 2 * sc;
+      if (reducedMotion){ view.scale = target.scale; view.tx = target.tx; view.ty = target.ty; }
+    }
+
+    function animate(){
       var s = size();
-      if (settleFrames < 220){
-        step(sim, s.W, s.H);
-        settleFrames++;
-        redraw();
-        raf = requestAnimationFrame(settleLoop);
+      var settleCap = sim && sim.full ? 50 : 140;
+      var stillSettling = settleFrames < settleCap;
+      var stillZooming = lerpView();
+      if (stillSettling){ step(sim, s.W, s.H); settleFrames++; }
+      var active = stillSettling || stillZooming || !!dragTarget || panning;
+      redraw();
+      if (active || opts.drift){
+        raf = schedule(animate, active);
       } else {
-        redraw();
         raf = null;
       }
     }
 
     function start(data){
       var s = size();
-      sim = makeSim(data, s.W, s.H);
+      sim = makeSim(data, s.W, s.H, mode);
       settleFrames = 0;
-      opts.selected = null;
+      opts.selected = null; opts.hovered = null;
       hidePreview();
-      if (raf) cancelAnimationFrame(raf);
-      settleLoop();
+      clockStart = performance.now();
+      if (sim.full){ fitView(s); } else { target.scale = view.scale = 1; target.tx = view.tx = 0; target.ty = view.ty = 0; }
+      if (reducedMotion){
+        var cap = sim.full ? 50 : 140;
+        for (var k = 0; k < cap; k++){ step(sim, s.W, s.H); }
+        settleFrames = cap;
+      }
+      cancelScheduled(raf);
+      raf = schedule(animate, true);
     }
 
     function reheat(){
       settleFrames = 0;
-      if (!raf) settleLoop();
+      cancelScheduled(raf);
+      raf = schedule(animate, true);
     }
 
     function hidePreview(){
@@ -1408,16 +1605,17 @@ _GRAPH_JS = """
         : "/note/" + node.id.slice(5).split("/").map(encodeURIComponent).join("/");
       var sub = node.kind === "hub" ? node.degree + " note(s)" : "note";
       previewCard.innerHTML = "<strong>" + esc(node.label) + "</strong>" +
-        "<span>" + esc(sub) + "</span><br><a href=\\"" + href + "\\">open &rarr;</a>";
+        "<span>" + esc(sub) + "</span><br><a href='" + href + "'>open &rarr;</a>";
       wrap.appendChild(previewCard);
       var rect = wrap.getBoundingClientRect();
       previewCard.style.left = Math.max(4, Math.min(cssX, rect.width - 200)) + "px";
       previewCard.style.top = Math.max(4, cssY) + "px";
     }
 
-    // pointer interaction: drag node, pan background, click = preview/open
+    // pointer interaction: hover = focus mode, drag node, pan background,
+    // click = preview/open
     var activePointers = {};
-    var dragTarget = null, panning = false, moved = false, lastX = 0, lastY = 0;
+    var moved = false, lastX = 0, lastY = 0;
 
     canvas.addEventListener("pointerdown", function(e){
       canvas.setPointerCapture(e.pointerId);
@@ -1429,9 +1627,15 @@ _GRAPH_JS = """
       } else {
         panning = true; lastX = e.offsetX; lastY = e.offsetY;
       }
+      cancelScheduled(raf);
+      raf = schedule(animate, true);
     });
     canvas.addEventListener("pointermove", function(e){
-      if (!(e.pointerId in activePointers)) return;
+      if (!(e.pointerId in activePointers)){
+        var hover = sim ? nodeAt(sim, view, e.offsetX, e.offsetY) : null;
+        if (hover !== opts.hovered){ opts.hovered = hover; redraw(); }
+        return;
+      }
       activePointers[e.pointerId] = { x: e.offsetX, y: e.offsetY };
       if (dragTarget){
         moved = true;
@@ -1441,9 +1645,13 @@ _GRAPH_JS = """
       } else if (panning){
         moved = true;
         view.tx += e.offsetX - lastX; view.ty += e.offsetY - lastY;
+        target.tx = view.tx; target.ty = view.ty;
         lastX = e.offsetX; lastY = e.offsetY;
         redraw();
       }
+    });
+    canvas.addEventListener("pointerleave", function(){
+      if (opts.hovered){ opts.hovered = null; redraw(); }
     });
     function endPointer(e){
       delete activePointers[e.pointerId];
@@ -1465,14 +1673,20 @@ _GRAPH_JS = """
     canvas.addEventListener("pointercancel", endPointer);
     canvas.addEventListener("wheel", function(e){
       e.preventDefault();
-      var factor = e.deltaY < 0 ? 1.1 : 0.9;
-      var newScale = Math.max(0.3, Math.min(4, view.scale * factor));
+      var factor = e.deltaY < 0 ? 1.15 : 0.87;
+      var newScale = clamp(target.scale * factor, 0.15, 6);
       var wx = (e.offsetX - view.tx) / view.scale;
       var wy = (e.offsetY - view.ty) / view.scale;
-      view.tx = e.offsetX - wx * newScale;
-      view.ty = e.offsetY - wy * newScale;
-      view.scale = newScale;
-      redraw();
+      target.tx = e.offsetX - wx * newScale;
+      target.ty = e.offsetY - wy * newScale;
+      target.scale = newScale;
+      if (reducedMotion){
+        view.scale = target.scale; view.tx = target.tx; view.ty = target.ty;
+        redraw();
+        return;
+      }
+      cancelScheduled(raf);
+      raf = schedule(animate, true);
     }, { passive: false });
 
     function hitTap(node, cssX, cssY){
@@ -1518,7 +1732,12 @@ _GRAPH_JS = """
       if (el) el.addEventListener("change", load);
     });
 
-    window.addEventListener("resize", function(){ if (sim) redraw(); });
+    window.addEventListener("resize", function(){
+      if (!sim) return;
+      if (sim.full){ fitView(size()); }
+      cancelScheduled(raf);
+      raf = schedule(animate, true);
+    });
 
     if (mode === "mini"){
       var script = wrap.querySelector("script.graph-data");
@@ -1696,7 +1915,7 @@ def _render_constellation(relpath: str, graph) -> str:
         "<h3>Constellation</h3>"
         '<div class="graph-canvas-wrap" data-mode="mini">'
         f'<script type="application/json" class="graph-data">{payload}</script>'
-        '<canvas class="graph-canvas" height="220"></canvas>'
+        '<canvas class="graph-canvas" height="260"></canvas>'
         '<p class="graph-hint">drag to explore &middot; tap a node to preview &middot; tap again to open</p>'
         "</div></section>"
         f"{_GRAPH_JS}"
@@ -1784,8 +2003,9 @@ def render_graph_page(idx: VaultIndex, graph) -> bytes:
         "<h1>Graph</h1>"
         f'<p class="count">{total_notes:,} note(s) &middot; {total_hubs} hub entit{"y" if total_hubs == 1 else "ies"}</p>'
         '<div class="graph-legend">'
-        '<span><span class="dot" style="background:#6fd6ff"></span>hub (biggest entities)</span>'
-        '<span><span class="dot" style="background:#7cb0ff"></span>note</span>'
+        '<span><span class="dot" style="background:#e4e7ee;box-shadow:0 0 6px #e4e7ee88;'
+        'border:1px solid rgba(240,242,246,0.7)"></span>hub (biggest entities, ringed)</span>'
+        f'<span>note, colored by topic cluster: {_CLUSTER_SWATCHES}</span>'
         "</div>"
         '<div class="graph-controls">'
         '<input type="text" id="graph-search" placeholder="search node labels...">'

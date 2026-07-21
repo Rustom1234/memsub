@@ -163,6 +163,17 @@ def test_filter_and_cap_and_constellation_payloads_carry_coordinates(tmp_path):
     payload = filter_and_cap(graph)
     for node in payload["nodes"]:
         assert "x" in node and "y" in node
+        assert "cluster" in node
     star = note_constellation(graph, "a.md")
     for node in star["nodes"]:
         assert "x" in node and "y" in node
+        assert "cluster" in node
+
+
+def test_cluster_color_shared_by_hub_and_its_members(tmp_path):
+    idx = _small_vault(tmp_path)
+    graph = build_graph_index(idx)
+    hub = graph.hubs["X"]
+    assert 0 <= hub.cluster < 8
+    assert graph.notes["a.md"].cluster == hub.cluster
+    assert graph.notes["b.md"].cluster == hub.cluster

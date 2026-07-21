@@ -44,6 +44,12 @@ LAYOUT_COMPONENTS = 2
 LAYOUT_ITER = 24
 LAYOUT_SEED = 42
 
+# Cluster color index: 8 slots, matched client-side to a curated jewel-tone
+# palette (vault_serve.py's _GRAPH_JS). Assigned by stable hash of a label
+# (a note's primary hub entity, or its namespace as fallback) so the same
+# entity always lands on the same color across page loads and filters.
+CLUSTER_COUNT = 8
+
 
 @dataclass
 class GraphNode:
@@ -55,6 +61,7 @@ class GraphNode:
     degree: int = 0
     x: float = 0.0  # layout position (semantic 2D projection, see compute_layout)
     y: float = 0.0
+    cluster: int = -1  # 0..CLUSTER_COUNT-1 palette slot, -1 = no hub/namespace (neutral)
 
 
 @dataclass
@@ -149,7 +156,37 @@ def build_graph_index(idx, top_entities: int = DEFAULT_TOP_ENTITIES) -> GraphInd
             graph.notes[rel].degree += 1
 
     compute_layout(idx, graph, content_notes)
+    _assign_clusters(graph)
     return graph
+
+
+def _cluster_of_label(label: str) -> int:
+    return int(hashlib.sha1(label.encode("utf-8")).hexdigest()[:8], 16) % CLUSTER_COUNT
+
+
+def _assign_clusters(graph: GraphIndex) -> None:
+    """Each note's cluster color follows the biggest hub entity it belongs
+    to (falls back to namespace, then neutral) so nodes that share a hub in
+    the graph also share a color region -- render quality's "cluster-colored"
+    requirement, computed once here rather than re-derived per request."""
+    note_to_hubs: dict[str, list[str]] = defaultdict(list)
+    for entity, hub in graph.hubs.items():
+        for rel in graph.entity_notes.get(entity, ()):
+            if rel in graph.notes:
+                note_to_hubs[rel].append(entity)
+
+    for rel, node in graph.notes.items():
+        candidates = note_to_hubs.get(rel)
+        if candidates:
+            primary = max(candidates, key=lambda e: graph.hubs[e].degree)
+            node.cluster = _cluster_of_label(primary)
+        elif node.namespace:
+            node.cluster = _cluster_of_label(node.namespace)
+        else:
+            node.cluster = -1
+
+    for entity, hub in graph.hubs.items():
+        hub.cluster = _cluster_of_label(entity)
 
 
 # ---------------------------------------------------------------------------
@@ -390,6 +427,7 @@ def filter_and_cap(
             "degree": n.degree,
             "x": round(n.x, 4),
             "y": round(n.y, 4),
+            "cluster": n.cluster,
         }
         for n in shown_notes
     ] + [
@@ -401,6 +439,7 @@ def filter_and_cap(
             "degree": h.degree,
             "x": round(h.x, 4),
             "y": round(h.y, 4),
+            "cluster": h.cluster,
         }
         for entity, h in graph.hubs.items()
         if h.id in hub_ids
@@ -463,7 +502,15 @@ def note_constellation(graph: GraphIndex, relpath: str, hops: int = 1) -> dict:
             n = graph.hubs.get(node_id[len("hub:"):])
         if n is None:
             return None
-        return {"id": n.id, "kind": n.kind, "label": n.label, "degree": n.degree, "x": round(n.x, 4), "y": round(n.y, 4)}
+        return {
+            "id": n.id,
+            "kind": n.kind,
+            "label": n.label,
+            "degree": n.degree,
+            "x": round(n.x, 4),
+            "y": round(n.y, 4),
+            "cluster": n.cluster,
+        }
 
     nodes_out = [x for x in (_node_for(nid) for nid in visited) if x is not None]
     seen_edges = set()
