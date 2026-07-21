@@ -46,9 +46,11 @@ from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
 from . import ask as ask_mod
+from . import resonance as resonance_mod
 from .backends import build_backend
 from .sdk import MemoryClient
 from .store import EpisodicStore, TERMINAL_EVENTS
+from .vault import namespace_dirname, note_filename
 from .vault_graph import (
     DEFAULT_NODE_LIMIT,
     MAX_NODE_LIMIT,
@@ -1118,6 +1120,31 @@ a.cite-chip { display: inline-block; background: var(--accent-dim); color: var(-
 ol.ask-sources, ul.ask-nearest { margin: 0.6rem 0 0; padding-left: 1.4rem; font-size: 0.85rem; color: var(--text-dim); }
 ol.ask-sources li, ul.ask-nearest li { padding: 0.15rem 0; }
 .ask-meta { color: var(--text-faint); font-size: 0.75rem; margin-top: 0.4rem; }
+
+/* Idea resonance: drop-an-idea form + connection cards */
+.resonance-intro { color: var(--text-dim); font-size: 0.92rem; max-width: 42rem; }
+.resonance-form { display: flex; gap: 0.5rem; margin: 0.9rem 0 0.5rem; }
+.resonance-form textarea {
+  flex: 1; min-height: 2.6rem; max-height: 10rem; padding: 0.65rem 0.8rem; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--bg-raised); color: var(--text);
+  font-family: var(--sans); font-size: 1rem; resize: vertical;
+}
+.resonance-form textarea:focus { outline: none; border-color: var(--accent); }
+.resonance-form button { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); border-radius: 8px; padding: 0 1.1rem; font-family: var(--sans); font-size: 1rem; cursor: pointer; align-self: flex-start; }
+.resonance-form button:disabled { opacity: 0.5; cursor: default; }
+.resonance-status { color: var(--text-dim); font-size: 0.85rem; margin: 0.4rem 0; }
+.resonance-nothing { color: var(--text-dim); font-style: italic; margin-top: 1rem; }
+.resonance-error { color: #ff8a8a; font-size: 0.88rem; margin-top: 0.6rem; }
+.resonance-idea { font-family: var(--mono); color: #f0f2f6; font-size: 0.95rem; margin: 1.25rem 0 0.75rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+.resonance-idea:first-child { border-top: none; padding-top: 0; }
+.resonance-cards { display: grid; gap: 0.75rem; }
+.resonance-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 0.9rem 1rem; }
+.resonance-card .score { display: inline-block; font-family: var(--mono); font-size: 0.72rem; color: var(--text-faint); margin-bottom: 0.35rem; }
+.resonance-card .memory-title { display: block; font-weight: 600; margin-bottom: 0.15rem; }
+.resonance-card .memory-title.plain { color: var(--text); }
+.resonance-card .memory-date { color: var(--text-faint); font-size: 0.78rem; margin-bottom: 0.5rem; }
+.resonance-card .bridge { color: var(--text-dim); font-size: 0.9rem; margin: 0.5rem 0 0; padding-top: 0.5rem; border-top: 1px dashed var(--border); }
+.resonance-card .bridge strong { color: var(--accent); }
 """
 
 _MERMAID_INIT = f"""
@@ -1830,6 +1857,7 @@ def _page(
         f"{crumb}"
         '<span class="nav-spacer"></span>'
         '<a class="nav-btn" href="/ask">ask</a>'
+        '<a class="nav-btn" href="/resonate">resonate</a>'
         '<a class="nav-btn" href="/graph">graph</a>'
         '<a class="nav-btn" href="/random">random</a>'
         '<a class="nav-btn" href="/review">review queue</a>'
@@ -2199,6 +2227,149 @@ def render_ask_page(idx: VaultIndex, graph=None) -> bytes:
     return _page("Ask your brain", content, note_count=len(idx.notes), breadcrumb="ask")
 
 
+# --------------------------------------------------------------------------- #
+# Idea resonance: "drop an idea" -> distant-but-resonant memories with an
+# AI-written bridge (memsub/resonance.py owns the distance-selection logic
+# and the bridge call; this file only owns the page chrome, the route, and
+# rendering resonance_mod.ResonanceResult into JSON/HTML).
+# --------------------------------------------------------------------------- #
+_RESONANCE_JS = """
+<script>
+(function(){
+  var form = document.getElementById('resonance-form');
+  var input = document.getElementById('resonance-input');
+  var button = document.getElementById('resonance-submit');
+  var status = document.getElementById('resonance-status');
+  var conversation = document.getElementById('resonance-conversation');
+  if (!form) return;
+
+  function esc(s){ var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  function renderTurn(idea, data){
+    var turn = document.createElement('div');
+    turn.className = 'resonance-turn';
+    var qEl = document.createElement('div');
+    qEl.className = 'resonance-idea';
+    qEl.textContent = idea;
+    turn.appendChild(qEl);
+
+    if (data.error) {
+      var err = document.createElement('p');
+      err.className = 'resonance-error';
+      err.textContent = data.error;
+      turn.appendChild(err);
+    } else if (!data.matches || !data.matches.length) {
+      var nothing = document.createElement('p');
+      nothing.className = 'resonance-nothing';
+      nothing.textContent = data.message || 'Nothing resonates yet.';
+      turn.appendChild(nothing);
+    } else {
+      var cards = document.createElement('div');
+      cards.className = 'resonance-cards';
+      data.matches.forEach(function(m){
+        var card = document.createElement('div');
+        card.className = 'resonance-card';
+        var titleHtml = m.href
+          ? '<a class="memory-title" href="' + m.href + '">' + esc(m.title) + '</a>'
+          : '<span class="memory-title plain">' + esc(m.title) + '</span>';
+        card.innerHTML =
+          '<span class="score">resonance ' + m.score.toFixed(3) + '</span>' +
+          titleHtml +
+          (m.date ? '<div class="memory-date">' + esc(m.date) + '</div>' : '') +
+          (m.bridge ? '<p class="bridge"><strong>Why this connects:</strong> ' + esc(m.bridge) + '</p>' : '');
+        cards.appendChild(card);
+      });
+      turn.appendChild(cards);
+      if (data.bridge_error) {
+        var berr = document.createElement('p');
+        berr.className = 'resonance-error';
+        berr.textContent = data.bridge_error;
+        turn.appendChild(berr);
+      }
+    }
+    if (data.persisted_id) {
+      var meta = document.createElement('p');
+      meta.className = 'resonance-status';
+      meta.style.display = '';
+      meta.textContent = 'saved as a memory (' + data.persisted_id + ')';
+      turn.appendChild(meta);
+    }
+    conversation.insertBefore(turn, conversation.firstChild);
+  }
+
+  function drop(idea){
+    if (!idea) return;
+    button.disabled = true;
+    status.style.display = '';
+    status.textContent = 'listening for resonance...';
+    fetch('/api/resonate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idea: idea })
+    }).then(function(resp){ return resp.json(); }).then(function(data){
+      renderTurn(idea, data);
+    }).catch(function(err){
+      renderTurn(idea, { error: 'request failed: ' + err });
+    }).then(function(){
+      button.disabled = false;
+      status.style.display = 'none';
+      input.value = '';
+      input.focus();
+    });
+  }
+
+  form.addEventListener('submit', function(ev){
+    ev.preventDefault();
+    drop(input.value.trim());
+  });
+})();
+</script>
+"""
+
+
+def render_resonate_page(idx: VaultIndex, graph=None) -> bytes:
+    content = (
+        "<h1>Resonance</h1>"
+        '<p class="resonance-intro">Drop an idea. It gets matched against everything already in your '
+        "brain, and the most surprising connections come back: memories similar enough to relate, "
+        "far enough away that you probably weren't thinking of them. Each card's bridge is written by "
+        "a local model, not a canned template. The idea itself is saved as a new memory.</p>"
+        '<form id="resonance-form" class="resonance-form">'
+        '<textarea id="resonance-input" autocomplete="off" placeholder="here\'s an idea..."></textarea>'
+        '<button type="submit" id="resonance-submit">drop it</button>'
+        "</form>"
+        '<p class="resonance-status" id="resonance-status" style="display:none">listening for resonance...</p>'
+        '<div id="resonance-conversation"></div>'
+        f"{_RESONANCE_JS}"
+    )
+    return _page("Resonance", content, note_count=len(idx.notes), breadcrumb="resonate")
+
+
+def _resonance_match_payload(m: "resonance_mod.ResonanceMatch", idx: VaultIndex) -> dict:
+    ep = m.episode
+    relpath = f"{namespace_dirname(ep.namespace)}/{note_filename(ep)}"
+    if relpath in idx.notes:
+        title = note_title(relpath, idx)
+        href = "/note/" + urllib.parse.quote(relpath)
+    else:
+        title = _fallback_title_for_content(ep.content)
+        href = None
+    return {
+        "score": round(m.score, 4),
+        "title": title,
+        "href": href,
+        "date": _iso_date(ep.ts),
+        "bridge": m.bridge,
+    }
+
+
+def _fallback_title_for_content(content: str, max_len: int = 120) -> str:
+    text = " ".join(content.split())
+    m = re.search(r"[.!?](?:\s|$)", text)
+    title = text[: m.end()].strip() if m else text
+    return title if len(title) <= max_len else title[:max_len].rstrip() + "..."
+
+
 def render_index_page(
     idx: VaultIndex, query: str = "", db_path: Path | None = None, graph=None, sim_index=None
 ) -> bytes:
@@ -2300,6 +2471,10 @@ def make_handler(
 
             if parsed.path == "/ask":
                 self._send(render_ask_page(idx, graph))
+                return
+
+            if parsed.path == "/resonate":
+                self._send(render_resonate_page(idx, graph))
                 return
 
             if parsed.path == "/api/graph.json":
@@ -2407,6 +2582,55 @@ def make_handler(
                 ]
                 result = ask_mod.answer(question, clients, idx, ask_backend)
                 self._send(json.dumps(result).encode("utf-8"), content_type="application/json; charset=utf-8")
+                return
+
+            if parsed.path == "/api/resonate":
+                length = int(self.headers.get("Content-Length", 0) or 0)
+                raw = self.rfile.read(length) if length else b"{}"
+                try:
+                    data = json.loads(raw.decode("utf-8"))
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    data = {}
+                idea = str(data.get("idea", "")).strip()
+                requested_ns = str(data.get("namespace") or "").strip() or None
+
+                if db_path is None or not db_path.exists():
+                    payload = json.dumps({
+                        "idea": idea,
+                        "matches": [],
+                        "message": (
+                            "no local store is configured for this vault-serve instance "
+                            "(vault-only mode) -- resonance needs --db."
+                        ),
+                    }).encode("utf-8")
+                    self._send(payload, content_type="application/json; charset=utf-8")
+                    return
+
+                # Fresh per-request MemoryClient, same thread-safety reasoning as
+                # /api/ask (EpisodicStore's sqlite connection is thread-bound;
+                # ask_backend is reused since it holds no sqlite state). Default
+                # (hashing) embedder, same choice /api/ask's client makes: fast,
+                # deterministic, no network dependency for an interactive route.
+                namespaces = sorted({ns for ns, _ in _namespace_breakdown(idx)}) or ["default"]
+                persist_ns = requested_ns or namespaces[0]
+                client = MemoryClient(db_path=db_path, namespace=persist_ns)
+                try:
+                    result = resonance_mod.resonate(idea, client.store, client.embedder, ask_backend)
+                    persisted_id = None
+                    if idea:
+                        persisted = client.add(idea, kind="idea", channel="user_stated")
+                        persisted_id = persisted.id[:8]
+                finally:
+                    client.close()
+
+                payload = json.dumps({
+                    "idea": result.idea,
+                    "message": result.message,
+                    "bridge_error": result.bridge_error,
+                    "persisted_id": persisted_id,
+                    "matches": [_resonance_match_payload(m, idx) for m in result.matches],
+                }).encode("utf-8")
+                self._send(payload, content_type="application/json; charset=utf-8")
                 return
 
             self._send(b"not found", status=404, content_type="text/plain")

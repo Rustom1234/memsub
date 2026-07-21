@@ -16,6 +16,7 @@ from memsub.vault_serve import (
     search_notes,
     serve_vault,
 )
+from memsub.store import EpisodicStore
 from memsub.vault_similarity import build_similarity_index
 
 
@@ -377,3 +378,106 @@ def test_api_ask_end_to_end_with_mock_backend_returns_cited_answer(tmp_path):
         httpd.shutdown()
         httpd.server_close()
         thread.join(timeout=5)
+
+
+# --------------------------------------------------------------------------- #
+# Idea resonance (2026-07-21): /resonate page + /api/resonate route
+# --------------------------------------------------------------------------- #
+def test_resonate_page_renders_form(tmp_path):
+    from memsub.vault_serve import render_resonate_page
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    page = render_resonate_page(idx, graph).decode("utf-8")
+    assert 'id="resonance-form"' in page
+    assert 'id="resonance-input"' in page
+    assert '<a class="nav-btn" href="/resonate">resonate</a>' in page
+
+
+def test_api_resonate_without_store_gives_honest_vault_only_message(tmp_path):
+    import json
+    import socketserver
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    handler = make_handler(idx, None, graph, sim)  # no db -- vault-only mode
+    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), handler)
+    port = httpd.server_address[1]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        conn.request(
+            "POST", "/api/resonate", body=json.dumps({"idea": "anything"}),
+            headers={"Content-Type": "application/json"},
+        )
+        resp = conn.getresponse()
+        assert resp.status == 200
+        payload = json.loads(resp.read())
+        assert payload["matches"] == []
+        assert "vault-only mode" in payload["message"]
+        conn.close()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+
+
+def test_api_resonate_end_to_end_finds_distant_match_and_persists_idea(tmp_path):
+    import json
+    import socketserver
+
+    from memsub.backends import MockBackend
+    from memsub.sdk import MemoryClient
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    db_path = tmp_path / "memory.db"
+    seed_client = MemoryClient(db_path=db_path, namespace="claude-code")
+    ep_lighthouse = seed_client.add(
+        "Maya wrote about the tide and coastline near the lighthouse, and how alive it felt at dusk."
+    )
+    ep_rhythm = seed_client.add(
+        "Maya read that irregular rhythm patterns near the tide and coastline feel alive to visitors."
+    )
+    store = seed_client.store
+    store.upsert_entity("claude-code::lighthouse", "claude-code", "TOPIC", ep_lighthouse.ts)
+    store.link_entity("claude-code::lighthouse", ep_lighthouse.id, ep_lighthouse.ts)
+    store.upsert_entity("claude-code::rhythm", "claude-code", "TOPIC", ep_rhythm.ts)
+    store.link_entity("claude-code::rhythm", ep_rhythm.id, ep_rhythm.ts)
+    before_count = store.count()
+    seed_client.close()
+
+    backend = MockBackend(responder=lambda s, m: "These connect because both are about shared imagery.")
+    handler = make_handler(idx, db_path, graph, sim, backend)
+    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), handler)
+    port = httpd.server_address[1]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        idea = "the tide and rhythm of the coastline feel alive to me lately"
+        conn.request(
+            "POST", "/api/resonate", body=json.dumps({"idea": idea}),
+            headers={"Content-Type": "application/json"},
+        )
+        resp = conn.getresponse()
+        assert resp.status == 200
+        payload = json.loads(resp.read())
+        assert len(payload["matches"]) == 1
+        match = payload["matches"][0]
+        assert "lighthouse" in match["title"]
+        assert match["bridge"] == "These connect because both are about shared imagery."
+        assert payload["persisted_id"]
+        conn.close()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+
+    # the idea itself was persisted through the public write API
+    verify_store = EpisodicStore(db_path)
+    try:
+        assert verify_store.count() == before_count + 1
+        newest = verify_store.all()[-1]
+        assert newest.content == idea
+        assert newest.provenance.get("channel") == "user_stated"
+    finally:
+        verify_store.close()
