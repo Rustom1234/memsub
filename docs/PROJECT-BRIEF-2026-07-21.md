@@ -35,13 +35,15 @@ cognee, MIRIX):
 
 ## 2. Measured standing (claim discipline is absolute)
 
-- LOCOMO benchmark, n=80 holdout slice, blind Sonnet judge: 63.75% overall
-  with the LOCAL 8B answerer (graph + decomposition + dated context, budget
-  2000). mem0's independently REPRODUCED result is ~61.7 (their 2025 paper
-  config). We beat that. mem0's newer 92.5 is an unreproduced managed-
-  platform claim with proprietary optimizations; never claim we beat it;
-  our differentiator is that our number runs offline on one GPU.
-  Single-hop: 85% vs their published 67.1. Full ladder + deviations:
+- LOCOMO benchmark, n=80 holdout slice, blind Sonnet judge. Two separate
+  claims, NEVER fused: (a) with a frontier (Sonnet CLI) answerer over
+  memsub retrieval: 63.75% overall (graph + decomposition + dated context,
+  budget 2000), beating mem0's independently REPRODUCED ~61.7 (their 2025
+  paper config); matched-row single-hop 80.0%. (b) fully local 8B answerer:
+  51.25% overall, single-hop 80%, the only measured fully-offline number in
+  this category (it does NOT beat mem0 reproduced; never claim it does).
+  mem0's newer 92.5 is an unreproduced managed-platform claim; never claim
+  we beat it. Full ladder + deviations:
   docs/locomo-v3-2026-07-18.md, docs/locomo-frontier-v2-2026-07-18.md.
 - Retrieval latency 2.8ms p95 over the live store; ripple ~30ms; extraction
   is cron-batched (30 min) on local compute.
