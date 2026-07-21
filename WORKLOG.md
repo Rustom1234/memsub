@@ -2937,3 +2937,56 @@ Forbidden (other agents' uncommitted WIP, left untouched even if dirty in
   `site/`, `ask.py`, `store.py`, `distill.py`, `cli.py`, `hybrid.py`,
   `rerank.py`, `answer_policy.py`).
 - Nothing pushed.
+
+### Result
+
+Rebuilt in 3 checkpoints (commits), plus a mid-flight port substitution
+noted below. Layout method: SVD-2D directly, sequential power iteration
+with Gram-Schmidt deflation (2 components, 24 iterations), pure stdlib.
+Chosen over 50-dim + t-SNE per the spec's own fallback clause.
+
+Two real bugs found and fixed during visual iteration (not caught by unit
+tests, only by looking at actual screenshots -- exactly why the brief
+insisted on brutal visual verification):
+
+1. **A handful of outlier notes stretched the SVD bounding box**, squeezing
+   every real cluster into a corner once the client fit-to-view logic
+   normalized against min/max. Fixed by clipping each axis to its
+   3rd/97th percentile server-side (`_clip_outliers` in
+   `memsub/vault_graph.py`) before coordinates are ever served -- not a
+   client-side workaround, the served `x`/`y` themselves are now robust to
+   one weird document.
+2. **Edges and hub labels were still too busy at rest** on the first
+   render pass: edge alpha was visible enough to read as a bright fan
+   near high-degree hubs once hundreds overlapped, and every hub within
+   the default zoom always drew a label regardless of crowding. Fixed by
+   halving the edge alpha formula and rewriting the node draw pass into
+   two ordered passes (glows, then a priority-sorted, collision-decluttered
+   label pass) in `_GRAPH_JS`.
+
+Port note: port 8770 (the brief's suggested demo-vault port) is held by
+something outside this session's visibility (not owned by this user, no
+matching process in `ps`/`ss`, `sudo` unavailable to investigate) --
+verified with a raw `socket.bind` test that every other port tried (8768,
+8771, 8772, 18770, 8080) binds cleanly. Used port 8771 for the demo vault
+instead; port 8768 (the real-vault port) was free and used as specified.
+
+Screenshots (3 iteration passes for the demo vault, final pass for both
+vaults) in `docs/screenshots/2026-07-21-graph/`:
+`iteration1-demo-graph-1440x900.png` (broken: skewed into a corner,
+edges/labels too busy), `iteration2-demo-graph-1440x900.png` (outlier
+clip applied, labels/edges still busy), `demo-graph-1440x900.png` /
+`demo-graph-390x844.png` (final), `real-vault-graph-1440x900.png` /
+`real-vault-graph-390x844.png` (real vault, 7,343 notes, final),
+`demo-note-constellation-1440x900.png` (mini constellation, same visual
+treatment, force layout kept as designed).
+
+Quality check beyond eyeballing screenshots: on the real vault, notes
+sharing a hub entity land roughly 2x closer to each other in layout space
+than random note pairs (measured directly, not asserted in a test since
+it depends on the real vault's actual content -- the equivalent check
+against a synthetic fixture is `test_layout_separates_unrelated_topics_
+more_than_same_topic` in `tests/test_vault_graph.py`).
+
+`pytest -q`: 499 passed. No em dash. Nothing pushed. Both servers stopped
+after verification (`ps aux` confirmed clean).

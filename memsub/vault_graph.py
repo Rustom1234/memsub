@@ -329,6 +329,33 @@ def _jittered(seed_text: str, spread: float) -> tuple[float, float]:
     return (r * math.cos(angle), r * math.sin(angle))
 
 
+def _percentile(sorted_vals: list[float], p: float) -> float:
+    if not sorted_vals:
+        return 0.0
+    idx = p * (len(sorted_vals) - 1)
+    lo, hi = int(idx), min(int(idx) + 1, len(sorted_vals) - 1)
+    frac = idx - lo
+    return sorted_vals[lo] * (1 - frac) + sorted_vals[hi] * frac
+
+
+def _clip_outliers(coords: dict[str, tuple[float, float]], lo_p: float = 0.03, hi_p: float = 0.97) -> None:
+    """A handful of unusual documents (very short, or oddly-worded) can land
+    far outside where the bulk of the corpus sits on a raw SVD projection --
+    that single outlier then stretches the whole layout's bounding box,
+    squeezing every real cluster into a corner when the client fits the
+    view to it. Clipping each axis to its 3rd/97th percentile keeps genuine
+    cluster shape intact while capping how far one outlier can drag the
+    frame. Mutates `coords` in place."""
+    if len(coords) < 10:
+        return
+    xs = sorted(p[0] for p in coords.values())
+    ys = sorted(p[1] for p in coords.values())
+    x_lo, x_hi = _percentile(xs, lo_p), _percentile(xs, hi_p)
+    y_lo, y_hi = _percentile(ys, lo_p), _percentile(ys, hi_p)
+    for rel, (x, y) in list(coords.items()):
+        coords[rel] = (min(max(x, x_lo), x_hi), min(max(y, y_lo), y_hi))
+
+
 def compute_layout(idx, graph: GraphIndex, content_notes: set[str]) -> None:
     """Populate `x`/`y` on every note and hub node in place. Cached
     per-process on (note count, content hash) so repeated calls against an
@@ -348,6 +375,7 @@ def compute_layout(idx, graph: GraphIndex, content_notes: set[str]) -> None:
                 coords[rel] = (components[0][i], components[1][i])
         for rel in empty:
             coords[rel] = _jittered(rel, spread or 1.0)
+        _clip_outliers(coords)
         if len(_LAYOUT_CACHE) >= _LAYOUT_CACHE_MAX:
             _LAYOUT_CACHE.pop(next(iter(_LAYOUT_CACHE)))
         _LAYOUT_CACHE[key] = coords

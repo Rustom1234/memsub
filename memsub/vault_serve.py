@@ -1408,10 +1408,13 @@ _GRAPH_JS = """
     }
 
     // edges: slightly curved quadratics, alpha proportional to weight --
-    // most sit near-invisible at rest, the trick that kills the hairball
+    // most sit near-invisible at rest, the trick that kills the hairball.
+    // Base alpha deliberately low: with hundreds of edges converging near a
+    // hub, even a faint per-edge alpha reads as a bright fan once they
+    // overlap, so "near-invisible" has to mean near-invisible per edge.
     sim.edges.forEach(function(e){
       var dim = dimmed(e.s) || dimmed(e.t);
-      var base = clamp(0.04 + 0.09 * e.w, 0.04, 0.5);
+      var base = clamp(0.02 + 0.045 * e.w, 0.02, 0.35);
       ctx.strokeStyle = "rgba(140,150,168," + (dim ? base * 0.25 : base) + ")";
       ctx.lineWidth = clamp(0.6 + 0.3 * e.w, 0.6, 2.2) / view.scale;
       var mx = (e.s.x + e.t.x) / 2, my = (e.s.y + e.t.y) / 2;
@@ -1423,6 +1426,9 @@ _GRAPH_JS = """
       ctx.stroke();
     });
 
+    // pass 1: glows + rings, computed once per node and cached on the node
+    // itself (screen position, dim/focus state) so the label pass below
+    // doesn't redo this work
     var t = clock || 0;
     sim.nodes.forEach(function(node){
       var isHub = node.kind === "hub";
@@ -1432,6 +1438,7 @@ _GRAPH_JS = """
       var dx = opts.drift ? Math.sin(t * 0.35 + node.phase) * 1.6 : 0;
       var dy = opts.drift ? Math.cos(t * 0.27 + node.phase) * 1.6 : 0;
       var sx = node.x + dx, sy = node.y + dy;
+      node.__r = r; node.__dim = dim; node.__focus = isFocus; node.__sx = sx; node.__sy = sy;
 
       var sprite = glowSprite(colorFor(node));
       var glowR = r * (isHub ? 4.2 : 3.2) / view.scale;
@@ -1455,23 +1462,45 @@ _GRAPH_JS = """
         ctx.stroke();
       }
       ctx.globalAlpha = 1;
+    });
 
-      var showLabel = !dim && (
-        isFocus ||
+    // pass 2: labels, drawn after every glow (never buried under a later
+    // node's sprite) and decluttered by priority -- focused node and its
+    // neighbors first, then hubs, then by connectivity -- so dense clumps
+    // of hub labels stop stacking illegibly on top of each other.
+    ctx.globalAlpha = 1;
+    var candidates = sim.nodes.filter(function(node){
+      var isHub = node.kind === "hub";
+      return !node.__dim && (
+        node.__focus ||
         (isHub && view.scale > 0.45) ||
         (view.scale > 1.4 && node.degree >= 3) ||
         view.scale > 2.4
       );
-      if (showLabel){
-        ctx.font = (10.5 / view.scale) + "px sans-serif";
-        var label = node.label.slice(0, 32);
-        var lx = sx + r / view.scale + 4, ly = sy + 3;
-        ctx.lineWidth = 3 / view.scale;
-        ctx.strokeStyle = "rgba(6,7,10,0.8)";
-        ctx.strokeText(label, lx, ly);
-        ctx.fillStyle = "#e4e7ee";
-        ctx.fillText(label, lx, ly);
-      }
+    });
+    candidates.sort(function(a, b){
+      var pa = a.__focus ? 0 : (a.kind === "hub" ? 1 : 2);
+      var pb = b.__focus ? 0 : (b.kind === "hub" ? 1 : 2);
+      return pa !== pb ? pa - pb : b.degree - a.degree;
+    });
+    var placed = [];
+    candidates.forEach(function(node){
+      var fontSize = 10.5 / view.scale;
+      ctx.font = fontSize + "px sans-serif";
+      var label = node.label.slice(0, 32);
+      var lx = node.__sx + node.__r / view.scale + 4, ly = node.__sy + 3;
+      var w = ctx.measureText(label).width, h = fontSize * 1.15;
+      var rect = [lx, ly - h, lx + w, ly + h * 0.3];
+      var overlaps = placed.some(function(p){
+        return !(rect[2] < p[0] || rect[0] > p[2] || rect[3] < p[1] || rect[1] > p[3]);
+      });
+      if (overlaps && !node.__focus) return;
+      placed.push(rect);
+      ctx.lineWidth = 3 / view.scale;
+      ctx.strokeStyle = "rgba(6,7,10,0.8)";
+      ctx.strokeText(label, lx, ly);
+      ctx.fillStyle = "#e4e7ee";
+      ctx.fillText(label, lx, ly);
     });
   }
 
