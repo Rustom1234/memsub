@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>memsub: local-first memory for AI, with receipts</title>
+<meta name="description" content="memsub builds your second brain from your own sessions: local, cryptographically yours, benchmarked above the market leader's reproduced score. Ask it anything and get answers with receipts.">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <span class="brand">memsub<span class="accent">::</span>site</span>
+  <div class="links">
+    <a href="#demo">Demo</a>
+    <a href="#how-it-works">How it works</a>
+    <a href="#trust">Trust</a>
+    <a href="#benchmarks">Benchmarks</a>
+  </div>
+</nav>
+
+<!-- ================= HERO ================= -->
+<header class="hero">
+  <div class="glow glow-1"></div>
+  <svg class="hero-graph" viewBox="0 0 900 560" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+      <filter id="hero-blur" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="6" />
+      </filter>
+    </defs>
+    <g stroke="#6fd6ff" stroke-opacity="0.14" stroke-width="1">
+      <line x1="620" y1="70" x2="740" y2="150"/>
+      <line x1="740" y1="150" x2="700" y2="260"/>
+      <line x1="620" y1="70" x2="700" y2="260"/>
+      <line x1="700" y1="260" x2="800" y2="300"/>
+      <line x1="800" y1="300" x2="760" y2="410"/>
+      <line x1="700" y1="260" x2="620" y2="360"/>
+      <line x1="620" y1="360" x2="760" y2="410"/>
+      <line x1="620" y1="360" x2="540" y2="440"/>
+      <line x1="540" y1="440" x2="600" y2="500"/>
+      <line x1="740" y1="150" x2="850" y2="120"/>
+      <line x1="620" y1="70" x2="540" y2="30"/>
+      <line x1="700" y1="260" x2="850" y2="230"/>
+      <line x1="540" y1="440" x2="440" y2="470"/>
+      <line x1="620" y1="360" x2="700" y2="440"/>
+    </g>
+    <g fill="#6fd6ff">
+      <circle cx="620" cy="70" r="5" fill-opacity="0.5"/>
+      <circle cx="740" cy="150" r="10" fill-opacity="0.7" filter="url(#hero-blur)"/>
+      <circle cx="700" cy="260" r="14" fill-opacity="0.85" filter="url(#hero-blur)"/>
+      <circle cx="800" cy="300" r="6" fill-opacity="0.4"/>
+      <circle cx="760" cy="410" r="8" fill-opacity="0.55"/>
+      <circle cx="620" cy="360" r="11" fill-opacity="0.75" filter="url(#hero-blur)"/>
+      <circle cx="540" cy="440" r="6" fill-opacity="0.4"/>
+      <circle cx="600" cy="500" r="4" fill-opacity="0.35"/>
+      <circle cx="850" cy="120" r="5" fill-opacity="0.35"/>
+      <circle cx="540" cy="30" r="4" fill-opacity="0.3"/>
+      <circle cx="850" cy="230" r="5" fill-opacity="0.35"/>
+      <circle cx="440" cy="470" r="4" fill-opacity="0.3"/>
+      <circle cx="700" cy="440" r="5" fill-opacity="0.4"/>
+    </g>
+  </svg>
+  <div class="container hero-inner">
+    <span class="eyebrow">local-first memory for AI</span>
+    <h1>Your second brain.<br>Not theirs.</h1>
+    <p class="lede">Your AI forgets you, and the labs' memory features live on their servers. <strong>memsub</strong> builds your second brain from your own sessions: local, cryptographically yours, and benchmarked above the market leader's reproduced score. Ask it anything and get answers with receipts. Change your mind, and it shows you every idea that decision touched: impact analysis for your beliefs.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#demo">See the demo</a>
+      <a class="btn btn-ghost" href="#benchmarks">Read the numbers</a>
+    </div>
+  </div>
+</header>
+
+<!-- ================= DEMO ================= -->
+<section id="demo">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">the product</span>
+      <h2>Watch it work</h2>
+      <p>A guided tour through <strong>Maya Chen's</strong> memory: a fully synthetic, public-safe persona brain (an indie game developer building "Lighthouse Keeper" while freelancing), built end to end through memsub's real write paths &mdash; not a mockup. Zero data from Rustom's real vault appears anywhere on this page.</p>
+    </div>
+
+    <div class="tour reveal" data-tour>
+      <div class="tour-steps">
+        <button class="tour-step-btn active" data-step="1"><span class="n">01</span>Dashboard</button>
+        <button class="tour-step-btn" data-step="2"><span class="n">02</span>Graph</button>
+        <button class="tour-step-btn" data-step="3"><span class="n">03</span>A readable note</button>
+        <button class="tour-step-btn" data-step="4"><span class="n">04</span>Ask, with citations</button>
+        <button class="tour-step-btn" data-step="5"><span class="n">05</span>The ripple</button>
+      </div>
+
+      <div class="tour-panel">
+        <!-- step 1: dashboard -->
+        <div class="tour-slide active" data-step="1">
+          <div class="tour-frame">
+            <img src="assets/img/demo-dashboard.png" alt="memsub vault dashboard: 144 total memories, 136 active, 7 superseded, 1 quarantined, provenance donut, entity chips, recent activity and connection of the day.">
+          </div>
+          <div class="tour-caption">
+            <h3>144 memories, one glance</h3>
+            <p>Every stat on this dashboard is server-rendered from the real store: 136 active, 7 superseded, 1 quarantined (red, caught by provenance verification &mdash; see below). The entity chips (Maya, Keeper, Godot, Fintrack, Reyes&hellip;) come from a real <code>graph backfill</code> pass. "Connection of the day" is memsub's serendipity engine surfacing an unlinked-but-similar note pair, computed from existing embeddings, no LLM call at query time.</p>
+          </div>
+        </div>
+
+        <!-- step 2: graph -->
+        <div class="tour-slide" data-step="2">
+          <div class="placeholder-frame">
+            <span class="badge">interactive graph &middot; render landing shortly</span>
+          </div>
+          <div class="tour-caption">
+            <h3>Force-directed knowledge graph</h3>
+            <p>Nodes: evergreen topic notes (large, accent) and raw notes (small, dim, off by default). Edges: wikilinks plus shared-entity links, weighted by co-occurrence. Drag, zoom, search-to-highlight, and namespace/time filters ("what did my brain learn this week"). This screenshot slot swaps in as soon as the current graph-rendering rebuild lands; the abstract graph behind the hero above is drawn from the same idea.</p>
+          </div>
+        </div>
+
+        <!-- step 3: readable note -->
+        <div class="tour-slide" data-step="3">
+          <div class="tour-frame">
+            <img src="assets/img/demo-note-readable.png" alt="A readable memsub note: the Godot engine decision, with its supersede chain to the later Unity switch, a constellation graph, and related-ideas discovery panel.">
+          </div>
+          <div class="tour-caption">
+            <h3>Readable first, technical on demand</h3>
+            <p>Title is the memory's own first sentence, never a slug. The supersede chain is shown in prose &mdash; this is the exact memory the ripple story below is built on. IDs, hashes, and audit data collapse into one closed "Details" disclosure. "Related ideas" splits already-linked notes from similar-but-unlinked ones: the unlinked set is where discovery happens.</p>
+            <div class="tour-frame mt-3">
+              <img src="assets/img/demo-note.png" alt="An evergreen topic note, Maya's Engine Switch for Lighthouse Keeper, distilled from raw notes with wikilinked source facts.">
+            </div>
+            <p class="mt-2" style="font-size:0.85rem;color:var(--text-faint)">The distilled counterpart: one evergreen topic note per cluster, written by a local model, each fact wikilinked back to its raw source &mdash; the librarian layer that turns "a mess of notes" into something worth reading.</p>
+          </div>
+        </div>
+
+        <!-- step 4: ask -->
+        <div class="tour-slide" data-step="4">
+          <div class="tour-frame">
+            <img src="assets/img/demo-ask.png" alt="The Ask your brain interface, an empty question box with sample question chips grounded in the store's own entities.">
+          </div>
+          <div class="tour-caption">
+            <h3>Ask, grounded only in your own notes</h3>
+            <p>Real interface, real chips (pulled from the store's own top entities) &mdash; this page makes no live model call, so what follows replays memsub's actual, already-measured retrieval results for three planned demo questions, not a fabricated new answer.</p>
+          </div>
+          <div class="cite-panel mt-3">
+            <div class="cite-q">Q: <span>what has Maya decided about the art style</span></div>
+            <div class="cite-hit"><div class="cite-score">rank 1</div><div class="cite-content">"Maya decided to switch Lighthouse Keeper's background art to a painterly gouache style&hellip;" &mdash; the exactly-right memory, rank 1.</div></div>
+            <div class="cite-q mt-3">Q: <span>what engine is Maya using and why</span></div>
+            <div class="cite-hit"><div class="cite-score">on-topic</div><div class="cite-content">Top hits are all Unity-migration related: C# scripting docs, background re-import during the migration, the console-porting worry that drove the switch.</div></div>
+            <div class="cite-q mt-3">Q: <span>what does Maya charge</span></div>
+            <div class="cite-hit"><div class="cite-score">honest miss</div><div class="cite-content">Top hits are real freelance-client memories (Bramble and Co, Fintrack, Wren Callahan's brief) but the specific rate figures don't surface in the top 12 for this paraphrase. A direct query ("freelance rate") hits the right memory at rank 1.</div></div>
+            <div class="cite-note">This is a real, documented finding on a small demo corpus &mdash; a vocabulary-mismatch limit of hybrid retrieval, not a broken pipeline. Reported here because claim discipline means showing the miss too.</div>
+          </div>
+        </div>
+
+        <!-- step 5: ripple -->
+        <div class="tour-slide" data-step="5">
+          <div class="section-head" style="margin-bottom:1rem">
+            <h3>Changing your mind touches more than you think</h3>
+            <p>Maya decided to build "Lighthouse Keeper" in Godot 4. Months later, she switched to Unity. <code>ripple()</code> answers: what does that decision touch?</p>
+          </div>
+          <div class="ripple-wrap">
+            <div class="stat-grid">
+              <div class="stat-tile"><div class="stat-value accent">19</div><div class="stat-caption">affected items</div></div>
+              <div class="stat-tile"><div class="stat-value accent">42.5</div><div class="stat-caption">total impact score</div></div>
+              <div class="stat-tile"><div class="stat-value">3 / 3</div><div class="stat-caption">tiers lit up</div></div>
+              <div class="stat-tile"><div class="stat-value">~30ms</div><div class="stat-caption">zero LLM calls</div></div>
+            </div>
+
+            <div class="ripple-tier">
+              <h4>Derived directly &middot; 6 items</h4>
+              <div class="ripple-item"><div class="impact">3.0</div><div class="body"><b>Superseded</b> by the later "switch to Unity" decision.<span class="path">reason: engine_switch, a deliberate reversal</span></div></div>
+              <div class="ripple-item"><div class="impact">3.0</div><div class="body"><b>Cited as a source</b> in 3 separate real fusion episodes.<span class="path">consolidate()'s LLM-judged fusion pass grouped the Godot-related memories</span></div></div>
+              <div class="ripple-item"><div class="impact">3.0</div><div class="body"><b>Listed as a source</b> in 2 topic notes.<span class="path">engine-choice-and-tooling, key-project-decisions</span></div></div>
+            </div>
+
+            <div class="ripple-tier">
+              <h4>Derived transitively &middot; 4 items</h4>
+              <div class="ripple-item"><div class="impact">1.5</div><div class="body"><b>Second-order fusion wave.</b> The Unity-switch decision is itself a fusion source for 4 further fusion episodes over the same entity cluster.<span class="path">hop 2, weight 1.5x</span></div></div>
+            </div>
+
+            <div class="ripple-tier">
+              <h4>Associatively related &middot; 9 items <span style="color:var(--text-faint);font-weight:400">(correlation, not derivation)</span></h4>
+              <div class="ripple-item assoc"><div class="impact">0.5&times;</div><div class="body">Pricing research, 3 Godot tutorials, the contractor-hiring interview and decision, the Godot 4.3 upgrade, a devlog retro, and 2 more &mdash; entity-share neighbors (Godot / GDScript / Lighthouse Keeper), root-only, never chained.</div></div>
+            </div>
+            <p class="footnote">Real output from <code>ripple(store, engine_decision_id, max_hops=2)</code> against the committed <code>demo/memory.db</code> &mdash; exceeds the original 8&ndash;12 item design target; kept as-is because every item stayed genuinely on-topic. Full verbatim report and the exact command: <a href="../docs/ripple-2026-07-20.md">docs/ripple-2026-07-20.md</a>, <a href="../docs/demo-2026-07-20.md">docs/demo-2026-07-20.md</a>.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-head reveal mt-5" style="margin-bottom:1.25rem">
+      <span class="eyebrow">replay</span>
+      <h3>The runbook, animated</h3>
+    </div>
+    <div class="terminal reveal" data-terminal data-lines='[
+      {"type":"prompt","text":"python3 scripts/build_demo_vault.py --fresh"},
+      {"type":"out","text":"building demo vault ... ~121 content-generation calls, local qwen3:8b, think=False"},
+      {"type":"out","text":"graph backfill: 48 entities / 371 entity-episode links"},
+      {"type":"out","text":"consolidate: dedup + contradiction + fusion + decay ... done"},
+      {"type":"out","text":"144 episodes written (136 active, 7 superseded, 1 quarantined)"},
+      {"type":"out","text":"8 topic notes distilled -> demo/vault/topics/"},
+      {"type":"out","text":"done in ~9m40s"},
+      {"type":"prompt","text":"python3 -m memsub.cli vault serve --vault demo/vault --db demo/memory.db --port 8768"},
+      {"type":"out","text":"serving on http://127.0.0.1:8768/ ..."},
+      {"type":"prompt","text":"python3 -c \"ripple(store, engine_decision_id, max_hops=2)\""},
+      {"type":"out","text":"ripple: Maya decided to build Lighthouse Keeper in Godot 4 ..."},
+      {"type":"out","text":"total impact: 42.5  (19 affected item(s))"},
+      {"type":"out","text":"  derived directly: 6   derived transitively: 4   associatively related: 9"}
+    ]'></div>
+
+    <div class="section-head reveal mt-5" style="margin-bottom:1.25rem">
+      <span class="eyebrow">try it</span>
+      <h3>Run it yourself</h3>
+      <p>Exact commands from the demo runbook &mdash; regenerates the whole synthetic vault from scratch, then serves it locally.</p>
+    </div>
+    <div class="runbook reveal">
+      <pre>cd memory-sublayer
+python3 scripts/build_demo_vault.py --fresh   <span style="color:var(--text-faint)"># ~9-10 min, local qwen3:8b</span></pre>
+      <pre>python3 -m memsub.cli vault serve --vault demo/vault --db demo/memory.db --port 8768
+<span style="color:var(--text-faint)"># open http://127.0.0.1:8768/</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ================= HOW IT WORKS ================= -->
+<section id="how-it-works">
+  <div class="glow" style="width:700px;height:700px;top:0;right:-200px;"></div>
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">architecture</span>
+      <h2>How it works</h2>
+      <p>Six stages, each one small and testable. Everything except the extraction and consolidation-judgment LLM calls is deterministic local code.</p>
+    </div>
+
+    <svg class="pipeline-svg reveal" viewBox="0 0 1180 190" role="img" aria-label="Pipeline: capture, extract, consolidate, store, retrieve, recall/ask/ripple">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#6fd6ff" fill-opacity="0.55"/>
+        </marker>
+      </defs>
+      <g font-family="ui-monospace, monospace" font-size="13">
+        <!-- boxes -->
+        <g>
+          <rect x="10" y="55" width="170" height="70" rx="10" fill="#14161a" stroke="#262a33"/>
+          <text x="95" y="95" text-anchor="middle" fill="#f0f2f6">CAPTURE</text>
+        </g>
+        <g>
+          <rect x="210" y="55" width="170" height="70" rx="10" fill="#14161a" stroke="#262a33"/>
+          <text x="295" y="90" text-anchor="middle" fill="#f0f2f6">EXTRACT</text>
+          <text x="295" y="106" text-anchor="middle" fill="#6fd6ff" font-size="11">local 8B</text>
+        </g>
+        <g>
+          <rect x="410" y="55" width="180" height="70" rx="10" fill="#14161a" stroke="#262a33"/>
+          <text x="500" y="90" text-anchor="middle" fill="#f0f2f6">CONSOLIDATE</text>
+          <text x="500" y="106" text-anchor="middle" fill="#8b909c" font-size="11">dedup / contradict / quarantine</text>
+        </g>
+        <g>
+          <rect x="620" y="55" width="170" height="70" rx="10" fill="#14161a" stroke="#262a33"/>
+          <text x="705" y="90" text-anchor="middle" fill="#f0f2f6">STORE</text>
+          <text x="705" y="106" text-anchor="middle" fill="#8b909c" font-size="11">SQLite + vault</text>
+        </g>
+        <g>
+          <rect x="820" y="55" width="170" height="70" rx="10" fill="#14161a" stroke="#262a33"/>
+          <text x="905" y="90" text-anchor="middle" fill="#f0f2f6">RETRIEVE</text>
+          <text x="905" y="106" text-anchor="middle" fill="#8b909c" font-size="11">hybrid + graph + temporal</text>
+        </g>
+        <g>
+          <rect x="1000" y="45" width="170" height="90" rx="10" fill="#14161a" stroke="#6fd6ff" stroke-opacity="0.4"/>
+          <text x="1085" y="80" text-anchor="middle" fill="#f0f2f6">RECALL</text>
+          <text x="1085" y="98" text-anchor="middle" fill="#f0f2f6">ASK &middot; RIPPLE</text>
+          <text x="1085" y="116" text-anchor="middle" fill="#6fd6ff" font-size="11">the hero feature</text>
+        </g>
+        <g stroke="#6fd6ff" stroke-opacity="0.5" stroke-width="1.5" marker-end="url(#arrow)">
+          <line x1="180" y1="90" x2="207" y2="90"/>
+          <line x1="380" y1="90" x2="407" y2="90"/>
+          <line x1="590" y1="90" x2="617" y2="90"/>
+          <line x1="790" y1="90" x2="817" y2="90"/>
+          <line x1="990" y1="90" x2="997" y2="90"/>
+        </g>
+      </g>
+    </svg>
+
+    <div class="stage-grid mt-4 reveal" data-stagger="80">
+      <details class="stage reveal">
+        <summary><span class="stage-n">01</span>Capture</summary>
+        <div class="stage-body">Raw transcripts &mdash; JSONL or plain text, including Claude Code transcripts &mdash; via <code>memsub extract &lt;file&gt;</code>, batched over globs, resumable by default (checkpoint keyed on path + content hash). A daily cron sweep (<code>scripts/daily_extract.sh</code>, lock-protected, 05:00 line provided, not installed by default) runs extract &rarr; consolidate &rarr; vault sync over real transcripts unattended.</div>
+      </details>
+      <details class="stage reveal">
+        <summary><span class="stage-n">02</span>Extract (local 8B)</summary>
+        <div class="stage-body">Candidate memories with full provenance (source, turn span, model, confidence), produced by <code>qwen3:8b</code> via ollama by default (<code>--backend auto</code>: local whenever a daemon answers and no API key is set). Roughly 7s per 28-turn session. Reasoning blocks are stripped before JSON parsing.</div>
+      </details>
+      <details class="stage reveal">
+        <summary><span class="stage-n">03</span>Consolidate</summary>
+        <div class="stage-body">An explicit offline pass: dedups near-identical memories, lets new facts supersede contradicted stale ones (LLM-judged, superseded copies kept for audit &mdash; never deleted), forgets low-value memories by decay, and verifies every episode's HMAC-signed write channel (phase 0) &mdash; a failed signature is quarantined, not deleted. Optional <code>sleep</code> pass writes audited inferences that can never silently outrank an observed memory (98.0% clean recall under adversarial stale inferences; 0.0% with the rule disabled).</div>
+      </details>
+      <details class="stage reveal">
+        <summary><span class="stage-n">04</span>Store</summary>
+        <div class="stage-body">Append-only SQLite, ~350 bytes per memory on disk. Bi-temporal <code>valid_from</code>/<code>valid_to</code> fields for time-scoped facts. Additive <code>entities</code>/<code>entity_links</code> tables from a real <code>graph backfill</code> pass. Exports to a plain-markdown Obsidian-compatible vault: one note per memory plus evergreen topic notes, no plugin required.</div>
+      </details>
+      <details class="stage reveal">
+        <summary><span class="stage-n">05</span>Retrieve</summary>
+        <div class="stage-body">Default hybrid stack: stemmed BM25 + dense embeddings (zero-dependency hashed by default, or real <code>nomic-embed-text</code> via ollama) + temporal/speaker/session signals, fused with reciprocal rank fusion. Opt-in graph-aware and temporal-aware ranking layer on top without touching the default path. 2.8ms p95 warm retrieval over ~1,450 memories &mdash; no LLM in the search path at all.</div>
+      </details>
+      <details class="stage reveal">
+        <summary><span class="stage-n">06</span>Recall / Ask / Ripple</summary>
+        <div class="stage-body">Four MCP tools (<code>add_memory</code>, <code>search_memory</code>, <code>list_memories</code>, <code>forget_memory</code>) wire memsub into any coding agent. The <code>/ask</code> page answers questions grounded only in retrieved notes, with citations. <code>ripple()</code> is pure graph walking over indexes the store already maintains &mdash; zero LLM calls, ~30&ndash;35ms measured against a real ~5.4k-episode store.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TRUST ================= -->
+<section id="trust">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">provenance &amp; safety</span>
+      <h2>Trust is a write-time property, not a content guess</h2>
+      <p>Every memory is tagged with a cryptographically signed write channel at the moment it's written &mdash; trust is decided by which code path wrote it, never by what its content claims about itself.</p>
+    </div>
+
+    <div class="trust-grid">
+      <div class="reveal">
+        <h3>Channel provenance</h3>
+        <p style="color:var(--text-dim);font-size:0.92rem">HMAC-SHA256 over <code>(content, channel, timestamp, namespace)</code>, keyed by a local secret (<code>~/.memsub/provenance.key</code>, 0600, generated on first use, never leaves the machine). A signature that doesn't verify is quarantined: excluded from retrieval, can never win a supersede decision, flagged in the audit trail, never deleted.</p>
+        <div class="channel-diagram mt-3">
+          <div class="channel-row">
+            <span class="channel-name">user_stated</span>
+            <div class="channel-bar"><span style="width:100%"></span></div>
+            <span class="channel-rank">rank 2 &middot; highest</span>
+          </div>
+          <div class="channel-row">
+            <span class="channel-name">llm_inferred</span>
+            <div class="channel-bar"><span style="width:55%"></span></div>
+            <span class="channel-rank">rank 1</span>
+          </div>
+          <div class="channel-row">
+            <span class="channel-name">imported</span>
+            <div class="channel-bar"><span style="width:55%"></span></div>
+            <span class="channel-rank">rank 1</span>
+          </div>
+          <div class="channel-row">
+            <span class="channel-name">unsigned-legacy</span>
+            <div class="channel-bar"><span style="width:20%"></span></div>
+            <span class="channel-rank">never outranks signed</span>
+          </div>
+        </div>
+        <p class="mt-3" style="font-size:0.88rem;color:var(--text-dim)"><b style="color:var(--text)">Sovereignty:</b> a human edit to an evergreen note marks that section <code>human_verified</code>; re-distillation merges around it and never overwrites it. A human <code>reject</code> verdict kills a topic note outright.</p>
+      </div>
+
+      <div class="reveal">
+        <h3>Disguised-poison attack, before and after</h3>
+        <table class="poison-table mt-3">
+          <thead><tr><th>attack</th><th>defense</th><th>ASR</th><th>clean recall</th></tr></thead>
+          <tbody>
+            <tr><td>A: inferred-marked</td><td>old &amp; new (both)</td><td class="new">0.0%</td><td class="new">98.0%</td></tr>
+            <tr><td>B: disguised-as-observed</td><td>old (content heuristic)</td><td class="old">98.7%</td><td class="old">0.0%</td></tr>
+            <tr><td>B: disguised-as-observed</td><td>new (channel provenance)</td><td class="new">0.0%</td><td class="new">98.0%</td></tr>
+          </tbody>
+        </table>
+        <p class="footnote">Holdout seeds 6&ndash;10, n=150 queries/cell, 150 adversarial episodes/attack. The old rule fully defended Attack A but did nothing against Attack B (identical poison, disguised as an ordinary fact) &mdash; a formal ceiling (SMSR, arXiv:2606.12703), not a tuning gap. <a href="../docs/poisoning-provenance-2026-07-17.md">docs/poisoning-provenance-2026-07-17.md</a></p>
+
+        <div class="gap-list">
+          <div class="gap-item"><b>L2, coordinated fragments:</b> the true fact always wins the authority contest (0% &rarr; 100% gold recall), but roughly a fifth of disguised fragments still reach a user's context alongside it &mdash; clean recall only 41%. Channel provenance defends the head-to-head contest, not merely-coexisting noise that's never directly compared.</div>
+          <div class="gap-item"><b>L3, fusion synthesis:</b> the fusion judge prompt has zero channel awareness by direct code inspection &mdash; 33.9% of synthesized fusion episodes still carry a poisoned value. In this dataset shape, 0% were ever promoted over a clean fact (an independent upstream defense already protected it) &mdash; not evidence fusion itself is safe.</div>
+        </div>
+        <p class="footnote">Both gaps stated plainly, not glossed over: <a href="../docs/poisoning-tiers-2026-07-19.md">docs/poisoning-tiers-2026-07-19.md</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= BENCHMARKS ================= -->
+<section id="benchmarks">
+  <div class="glow" style="width:700px;height:700px;top:0;left:-250px;"></div>
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">measured, not claimed</span>
+      <h2>Read the numbers</h2>
+      <p>Every figure below comes from an executed run with a stated n. Deviations and honest gaps are footnoted, not hidden.</p>
+    </div>
+
+    <div class="reveal">
+      <div class="bench-hero">
+        <span class="big">63.75%</span>
+        <span class="vs">vs</span>
+        <span class="them">~61.7%</span>
+      </div>
+      <p style="color:var(--text-dim);max-width:640px">memsub, evaluated apples-to-apples with a frontier answerer (Sonnet via the <code>claude</code> CLI subscription, budget 2000) beats mem0's own reproduced score on the same LOCOMO holdout slice &mdash; both frontier-answered, both judged blind. mem0's separately publicized platform figure of ~92.5% has not been reproduced by this project (or, per the community record, by others) and is not compared against numerically here.</p>
+    </div>
+
+    <div class="bars mt-5 reveal" data-stagger="100">
+      <div class="bar-row reveal">
+        <div class="bar-label"><span class="cat">Single-hop</span><span class="delta up">+12.9pp</span></div>
+        <div class="bar-track"><div class="bar-fill us" style="width:80%"><span>memsub 80.0%</span></div></div>
+        <div class="bar-track mt-1"><div class="bar-fill them" style="width:67.1%"><span>mem0 67.1%</span></div></div>
+      </div>
+      <div class="bar-row reveal">
+        <div class="bar-label"><span class="cat">Temporal</span><span class="delta up">+14.5pp</span></div>
+        <div class="bar-track"><div class="bar-fill us" style="width:70%"><span>memsub 70.0%</span></div></div>
+        <div class="bar-track mt-1"><div class="bar-fill them" style="width:55.5%"><span>mem0 55.5%</span></div></div>
+      </div>
+      <div class="bar-row reveal">
+        <div class="bar-label"><span class="cat">Multi-hop</span><span class="delta down">-1.2pp (noise)</span></div>
+        <div class="bar-track"><div class="bar-fill us" style="width:50%"><span>memsub 50.0%</span></div></div>
+        <div class="bar-track mt-1"><div class="bar-fill them" style="width:51.2%"><span>mem0 51.2%</span></div></div>
+      </div>
+      <div class="bar-row reveal">
+        <div class="bar-label"><span class="cat">Open-domain</span><span class="delta down">-17.9pp</span></div>
+        <div class="bar-track"><div class="bar-fill us" style="width:55%"><span>memsub 55.0%</span></div></div>
+        <div class="bar-track mt-1"><div class="bar-fill them" style="width:72.9%"><span>mem0 72.9%</span></div></div>
+      </div>
+      <div class="bar-legend"><span><span class="dot us"></span>memsub v3, budget 2000</span><span><span class="dot them"></span>mem0, reproduced (arXiv:2504.19413)</span></div>
+    </div>
+
+    <div class="footnote reveal">
+      <p><b>n=80</b> LOCOMO holdout (conversations 4&ndash;10, <code>random.Random(123)</code>, up to 20 questions/category), blind Sonnet-CLI judge, one run per configuration &mdash; a real signal, not a repeated-trial statistical result. Open-domain is the one large remaining gap, untouched by this round's fixes. memsub still trails Zep's revised, disputed number (75.14% &plusmn; 0.17) by 11.39pp; mem0 itself disputes Zep's reproducibility as low as 58.44%. Full methodology: <a href="../docs/locomo-v3-2026-07-18.md">docs/locomo-v3-2026-07-18.md</a>.</p>
+    </div>
+
+    <div class="local8b-panel reveal">
+      <h3>Separately: the fully local, zero-cloud number</h3>
+      <p style="color:var(--text-dim);max-width:680px">A different protocol and metric &mdash; qwen3:8b as <em>both</em> memory backend and answerer, token-F1 (not the judged accuracy above). This is the "runs entirely on your laptop" configuration; it is not the number that beats mem0 above, and the two are never summed.</p>
+      <div class="stat-grid mt-3" data-stagger="80">
+        <div class="stat-tile reveal"><div class="stat-value accent">0.152</div><div class="stat-caption">memsub F1</div><div class="stat-sub">vs 0.117 naive top-k, 0.022 no memory</div></div>
+        <div class="stat-tile reveal"><div class="stat-value">73.8%</div><div class="stat-caption">evidence-all @1000tok</div><div class="stat-sub">vs 42.9% dense-only</div></div>
+        <div class="stat-tile reveal"><div class="stat-value">98.0%</div><div class="stat-caption">clean recall, consolidated</div><div class="stat-sub">vs 0.0% naive top-k</div></div>
+        <div class="stat-tile reveal"><div class="stat-value">0.238</div><div class="stat-caption">LongMemEval_S F1</div><div class="stat-sub">vs 0.206 naive (n=30, pre-registered)</div></div>
+      </div>
+      <p class="footnote">All from executed runs, stated n, `docs/benchmark.md` / `docs/benchmark-external.md`. The LongMemEval_S cross-check is a no-regression result (semantic-judge accuracy a statistical tie, 14/30 vs 15/30), not a superiority claim.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer id="footer">
+  <div class="container">
+    <p class="manifesto">memsub is built on the belief that your memory &mdash; every session, every decision, every idea you've had while working with an AI &mdash; belongs on your own machine, under your own key, readable in plain markdown decades from now regardless of which company still exists. No server process when your agent isn't running. No vector database. No account.</p>
+    <p class="manifesto mt-2" style="font-size:0.85rem">Licensing: Apache-style, exact terms to be finalized before public release.</p>
+    <div class="footer-meta">
+      <span>built by Rustom Dubash</span>
+      <span><a href="../README.md">README</a> &middot; <a href="../WORKLOG.md">WORKLOG</a> &middot; <a href="../LIMITS.md">LIMITS</a></span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/script.js"></script>
+</body>
+</html>
