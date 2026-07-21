@@ -2689,3 +2689,251 @@ demo/memory.db` starts cleanly, dashboard/`/graph`/topic notes all 200.
 Full runbook, exact commands, the 3 questions, and the ripple command are
 in `docs/demo-2026-07-20.md`.
 
+
+## 2026-07-21: Public website for build-week submission (`site/`)
+
+### Why
+
+Rustom, verbatim: "a professional level website which not only tells,
+gives full technical details but most importantly demonstrates the
+product." Public face of memsub for a build-week submission. My surfaces
+only: new `site/` directory, `docs/website-2026-07-21.md`, this file.
+Everything under `memsub/`, `scripts/`, and the forbidden list (`ask.py`,
+`store.py`, `distill.py`, `cli.py`, `hybrid.py`, `rerank.py`,
+`answer_policy.py`, `vault_*`) is read-only reference material, never
+touched.
+
+### Assumptions (Karpathy rule 1, stated before coding)
+
+1. **Static only, zero build step.** Plain HTML/CSS/vanilla JS in `site/`,
+   opens from `file://` and from any static server (`python3 -m
+   http.server`). No npm, no bundler, no framework. This is explicit in
+   the brief and matches the project's own "dependencies: numpy" ethos.
+2. **Palette matches the shipped product UI exactly**, read directly from
+   `memsub/vault_serve.py`'s `_CSS` block (read-only reference, not
+   edited): `--bg:#0a0b0d --bg-raised:#14161a --bg-card:#191c22
+   --border:#262a33 --text:#d8dbe2 --text-dim:#8b909c --accent:#6fd6ff`,
+   `ui-monospace` for headings. Reusing the real product's own tokens is
+   what "consistent with the product UIs" means operationally, not a
+   fresh design decision.
+3. **Demo screenshots must be Maya-persona (public-safe) only.**
+   `docs/screenshots/2026-07-20-demo/*` (dashboard, graph, topic note) are
+   the synthetic `demo/vault` persona and are safe to publish.
+   `docs/screenshots/2026-07-20-brain/*` and `docs/screenshots/2026-07-19/*`
+   are screenshots of Rustom's real, private vault (visible content
+   includes real personal notes, e.g. an AUTH-constraint note) and are
+   **excluded from this site entirely** -- `docs/demo-2026-07-20.md` itself
+   states the real vault is private and never used in the demo; publishing
+   those screenshots on a public site would violate that directly.
+4. **Missing demo screenshots (a readable note, ask-with-citations) are
+   captured fresh from a locally-run instance of the committed, public-safe
+   demo data**, per the brief's own fallback instruction. Ran
+   `vault serve --vault demo/vault --db demo/memory.db --port 8770`
+   (foreground-tracked background bash, killed immediately after capture)
+   and captured with headless `google-chrome --headless=new
+   --force-prefers-reduced-motion` (same flag the existing demo screenshots
+   used, for a consistent look): the engine-decision note page (the ripple
+   root memory, a good "readable note" exhibit since Layer-0 readability
+   redesign is on display) and the empty `/ask` interface (real chrome, no
+   LLM call made -- see assumption 5).
+5. **No live "ask" answer is generated for the site.** The task states "no
+   LLM calls" for this build. The `/ask` page's answer flow calls an LLM
+   backend, so the site shows the real, empty `/ask` UI chrome (a real
+   screenshot, no LLM call) and separately renders the ask-with-citations
+   *narrative* using the three planned demo questions' real, already-measured
+   search results from `docs/demo-2026-07-20.md`'s "Retrieval sanity"
+   section (verbatim hit content and scores, including the honest miss on
+   "what does Maya charge") -- styled as a citation panel, not a fabricated
+   new answer.
+6. **The ripple moment is rendered as styled HTML from real report data,
+   not a screenshot** -- `docs/ripple-2026-07-20.md` states UI wiring is a
+   later pass, so no live ripple page exists to screenshot. The mission
+   names the exact numbers to show (19 items, 42.5 impact); those are
+   `docs/demo-2026-07-20.md`'s real, already-executed
+   `ripple(store, eid('engine.decision.godot'), max_hops=2)` output on the
+   committed `demo/memory.db`, not invented for the site.
+7. **One factual correction to the brief's own paraphrase, made because
+   claim discipline is stated as absolute and overrides an inexact
+   instruction.** The brief's hero copy says "benchmarked above the market
+   leader's reproduced score on a laptop 8B" and its doc-list annotation
+   calls the 63.75% figure a "local 8B answerer" result. Checked directly
+   against `docs/locomo-v3-2026-07-18.md`: the 63.75% run (budget 2000, the
+   figure that beats mem0's reproduced ~61.7%) used **Sonnet as the
+   answerer via the `claude` CLI subscription, not qwen3:8b** -- confirmed
+   by that doc's own text ("Sonnet answerer + Sonnet judge") and by the
+   whole prior arc in `docs/locomo-jscore-2026-07-17.md` /
+   `docs/locomo-jscore-frontier-2026-07-18.md`, which exists specifically
+   because memsub's *local-8B-answerer* J-score (47.5%/48.75%) is
+   explicitly documented as "not comparable in absolute terms to
+   frontier-answerer competitor numbers" like mem0's -- the whole point of
+   the frontier-answerer experiments was to put memsub on the same
+   frontier-answerer footing mem0's own number already uses. Publishing
+   "beats mem0 on a laptop 8B" would misstate which model answered the
+   winning run -- a real accuracy problem on a page whose whole premise is
+   claim discipline. **Fix**: hero copy keeps "local, cryptographically
+   yours" (true of the product's storage/retrieval architecture and of
+   the separate, real local-8B numbers in `README.md`) and drops the
+   specific "on a laptop 8B" clause from the benchmark sentence; the
+   benchmarks section states plainly which run used which answerer, and
+   separately shows the genuine local-8B numbers (README's 0.152 vs 0.117
+   vs 0.022 token-F1) labeled as their own thing, never merged with the
+   Sonnet-answerer 63.75% figure. Same correction applies to "single-hop 85
+   vs their 67.1": 85.0% belongs to a different, lower-overall config (v2,
+   52.5% overall); the actual winning 63.75%-overall config's single-hop
+   row is 80.0% vs mem0's 67.1% (+12.9pp) -- the matched-row number from
+   `docs/locomo-v3-2026-07-18.md`'s own "per category" table is used
+   instead of splicing the higher number from a different row.
+8. **The 92.5% mem0 platform-claim figure is stated as told**, not sourced
+   from a doc in this repo -- the task brief supplied it directly as
+   context with an explicit instruction never to imply we beat it. Site
+   copy hedges it accordingly: named, marked unreproduced, not compared
+   against numerically.
+9. **Session-level ask-once gate**: the standing global rule (propose a
+   plan review before non-trivial work, ask once) was already satisfied --
+   asked once, the coordinator confirmed the spec itself is Rustom's own
+   detailed order and the reviewed plan. Not re-asking.
+
+### Build order (surgical, one thing at a time)
+
+1. `site/assets/img/`: copy + `convert`-recompress the 3 existing
+   Maya-persona screenshots + the 2 freshly captured ones (assumption 4).
+2. `site/assets/style.css`: tokens from assumption 2, phone-first (base
+   styles = 390px, `min-width` breakpoints up).
+3. `site/index.html`: the 7 sections in the brief's order (hero, demo,
+   how-it-works, trust, benchmarks, footer) -- content only from the source
+   docs, corrections from assumptions 7-8 applied.
+4. `site/assets/script.js`: demo-tour step switcher, terminal-replay
+   animation (`setInterval`/`textContent`, no dependency), architecture
+   stage expand/collapse, mobile nav toggle. No LLM calls, no network
+   calls -- everything is static content already in the page.
+5. Screenshot-verify at 390x844 and 1440x900 (headless chrome), iterate
+   visual quality at least twice, save to
+   `docs/screenshots/2026-07-21-site/`.
+6. Commit per checkpoint, own-paths-only, `git log -1` + `git status`
+   verified after each commit. No push.
+
+### Success criteria (Karpathy rule 4, stated before coding)
+
+- `site/index.html` opens correctly via `file://` (no console errors from
+  a missing asset) and via `python3 -m http.server` from `site/`.
+- Every numeric claim on the page traces to one of the named source docs
+  (or to README for the local-8B numbers), with the correction in
+  assumption 7 applied -- no figure is invented, rounded up, or borrowed
+  from a mismatched config row.
+- No em dash anywhere in `site/` or this entry.
+- No OpenClaw mention anywhere.
+- Screenshots exist at both breakpoints for hero, demo, how-it-works,
+  trust, and benchmarks sections, saved under
+  `docs/screenshots/2026-07-21-site/`, after at least two visual-quality
+  iteration passes.
+- `git log -1` after each commit shows only `site/`, `docs/`, or
+  `WORKLOG.md` paths touched -- nothing in the forbidden list staged.
+- Nothing pushed.
+
+## 2026-07-21: Graph visualization rebuild (memsub/vault_graph.py, vault_serve.py graph surfaces)
+
+Task: current /graph + mini constellation renders as a flat hairball
+(uniform blue dots, straight gray edges, physics that spreads everything
+into an even blob). Rebuild to the visual standard of Obsidian's graph
+view: organic clusters, glowing nodes, elegant motion. Scope: my surfaces
+only -- `memsub/vault_graph.py`, the graph page + mini-constellation
+markup/JS/CSS inside `memsub/vault_serve.py`, tests, docs, this file.
+Forbidden (other agents' uncommitted WIP, left untouched even if dirty in
+`git status`): `site/`, `memsub/ask.py`, `memsub/store.py`,
+`memsub/distill.py`, `memsub/cli.py`, `memsub/hybrid.py`,
+`memsub/rerank.py`, `memsub/answer_policy.py`.
+
+### Plan (Karpathy rule 1: assumptions stated before coding)
+
+1. **Session-level ask-once gate**: the standing global rule (propose a
+   plan review before non-trivial work, ask once) is satisfied by the
+   task spec itself -- it is Rustom's own detailed, numbered rebuild spec
+   with explicit rules including "Karpathy plan first," i.e. state the
+   plan here and proceed, same precedent as the 2026-07-21 site-build
+   session (WORKLOG.md, "Session-level ask-once gate" note). Not asking
+   again mid-task.
+2. **Layout method: SVD-2D directly, not 50-dim + t-SNE.** The spec
+   explicitly allows this fallback ("if a clean pure-python UMAP-
+   approximation is too heavy, SVD-2D directly is acceptable: judge by
+   results"). Chosen because: (a) stdlib-only is a hard rule, no numpy;
+   (b) the real vault is 7,343 content notes (measured directly, up from
+   the 4,334 remembered in old session notes -- it has grown), so the
+   layout algorithm must be O(nnz) per pass, not O(N^2); (c)
+   `build_similarity_index` already does a comparable one-pass TF-IDF
+   scan over all 7,343 docs in 1.6s (measured), so a handful of extra
+   power-iteration passes over the same sparse vectors is a bounded,
+   acceptable one-time server-start cost under the existing "no live
+   reload" contract `vault_graph.py`'s docstring already establishes.
+   Implementation: sequential power iteration with Gram-Schmidt deflation
+   for exactly the top-2 left singular vectors of the TF-IDF doc-term
+   matrix (classic LSA-2D text-clustering technique) -- reuses
+   `vault_similarity._tokenize`/`_content_text` by import (read-only
+   reuse, that file stays untouched, it is not in my surface list).
+3. **Coordinates cached in-process**, keyed on (note count, hash of the
+   sorted content-note relpaths) so identical graphs across repeated
+   `build_graph_index` calls (e.g. the test suite) don't recompute, small
+   dict capped at 8 entries. Matches spec's "recompute only when note
+   count changes," made collision-safe across different vaults of equal
+   size by also hashing the relpath set.
+4. **Hub coordinates** = centroid of member notes' coordinates (no
+   separate embedding for entities -- they are not text documents).
+   **Isolated notes** (empty TF-IDF vector, no content words) get a
+   deterministic small-jitter position seeded by their relpath hash
+   rather than stacking at the origin.
+5. **Mini constellation keeps client-side force layout**, not the server
+   SVD embedding -- at that scale (a note + its immediate neighbors,
+   typically under ~20 nodes) force-directed layout is not a hairball
+   problem; Obsidian's own local graph view uses local physics too. Rule
+   3 ("same treatment") is read as the same visual/interaction language
+   (dark glow, curved edges, hover-focus, idle drift), not literally the
+   same layout algorithm at a scale where it would add complexity for no
+   visible benefit (Karpathy rule 2: simplicity first).
+6. **Full graph page force sim becomes a gentle local relax seeded by
+   server coordinates**: much lower repulsion constant, no "spread into
+   the whole canvas" burst -- the physics only nudges nodes apart enough
+   to avoid exact overlap, global structure comes from the SVD layout,
+   not from repulsion.
+
+### Build order
+
+1. `memsub/vault_graph.py`: `GraphNode.x`/`.y` fields, `_compute_layout`
+   (power-iteration SVD-2D + hub centroids + isolated-note jitter +
+   cache), wired into `build_graph_index`; `filter_and_cap` and
+   `note_constellation` payload dicts carry `x`/`y`.
+2. `memsub/vault_serve.py`: dark radial-gradient canvas background,
+   soft-glow node rendering (radial gradient + shadowBlur), curved
+   quadratic edges with weight-proportional alpha (near-invisible at
+   rest), cluster color from a curated 8-color palette (desaturated jewel
+   tones, colorblind-aware) keyed by nearest hub, hub-only labels at rest
+   with dark halo + more labels fading in on zoom, hover = focus mode
+   (neighbors bright, rest dims to 15%), smooth zoom-to-cursor (existing
+   wheel handler already zooms-to-cursor, kept), gentle idle drift
+   (skipped under `prefers-reduced-motion`), dpr cap + rAF throttle when
+   idle. Same CSS/JS treatment applied to the mini constellation markup.
+3. Tests: `tests/test_vault_graph.py` (x/y present and finite, same-hub
+   notes closer in layout space than to an unrelated note -- coarse
+   cluster-quality check), `tests/test_vault_serve.py` graph tests
+   updated only if payload shape assertions need it.
+4. Verify: `vault serve --vault demo/vault --db demo/memory.db --port
+   8770` and `vault serve --vault /home/user/memsub-vault --port 8768`
+   (real vault, briefly), headless `google-chrome --screenshot` at
+   1440x900 and 390x844 for `/graph` (both vaults) and one note page's
+   constellation, at least 3 iteration passes, saved to
+   `docs/screenshots/2026-07-21-graph/`.
+5. Commit per checkpoint, own-paths-only, `git log -1` + `git status`
+   verified after each. No `git bundle`. Never `git push`.
+
+### Success criteria (Karpathy rule 4)
+
+- `/api/graph.json` nodes carry finite `x`/`y`; a coarse layout-quality
+  test passes (notes sharing a hub entity are closer to each other in
+  layout space than to an unrelated note, on the fixture vault).
+- Full `pytest -q` suite green.
+- Screenshots exist at both breakpoints for the real vault and demo/vault
+  graph pages plus one constellation, under
+  `docs/screenshots/2026-07-21-graph/`, after >=3 visual iteration passes.
+- No em dash anywhere in touched files or this entry.
+- `git log -1` after each commit shows only my surface paths (never
+  `site/`, `ask.py`, `store.py`, `distill.py`, `cli.py`, `hybrid.py`,
+  `rerank.py`, `answer_policy.py`).
+- Nothing pushed.

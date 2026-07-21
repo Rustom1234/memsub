@@ -20,6 +20,9 @@ WORKLOG.md assumption 1.
 
 from __future__ import annotations
 
+import hashlib
+import math
+import random
 import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
@@ -32,6 +35,15 @@ DEFAULT_TOP_ENTITIES = 40
 DEFAULT_NODE_LIMIT = 150
 MAX_NODE_LIMIT = 1000
 
+# Layout: 2 components (x, y), power-iteration count. 24 passes over
+# ~7,300 sparse TF-IDF vectors (the real vault, measured directly) runs in
+# single-digit seconds -- see WORKLOG.md 2026-07-21 for the benchmark this
+# was chosen against (build_similarity_index's comparable one-pass scan
+# takes 1.6s over the same corpus).
+LAYOUT_COMPONENTS = 2
+LAYOUT_ITER = 24
+LAYOUT_SEED = 42
+
 
 @dataclass
 class GraphNode:
@@ -41,6 +53,8 @@ class GraphNode:
     namespace: str = ""
     ts: float = 0.0
     degree: int = 0
+    x: float = 0.0  # layout position (semantic 2D projection, see compute_layout)
+    y: float = 0.0
 
 
 @dataclass
@@ -134,7 +148,184 @@ def build_graph_index(idx, top_entities: int = DEFAULT_TOP_ENTITIES) -> GraphInd
             graph.edges.append(GraphEdge(source=hub_id, target=f"note:{rel}", weight=1))
             graph.notes[rel].degree += 1
 
+    compute_layout(idx, graph, content_notes)
     return graph
+
+
+# ---------------------------------------------------------------------------
+# Layout: replaces pure force-physics with a precomputed semantic position so
+# clusters form visible islands instead of an evenly-spread blob. Method:
+# truncated SVD to exactly 2 components (LSA-style text-clustering
+# projection) over the same TF-IDF signal vault_similarity.py already
+# computes for Layer 3 -- reuses its tokenizer/content-extraction functions
+# by import (that module is out of this task's edit surface, stays
+# untouched). Client-side force sim then only does a gentle local relax on
+# top of these coordinates -- see vault_serve.py's graph JS.
+
+_LAYOUT_CACHE: dict[tuple, dict[str, tuple[float, float]]] = {}
+_LAYOUT_CACHE_MAX = 8
+
+
+def _layout_cache_key(content_notes) -> tuple:
+    # "recompute only when note count changes" (the spec's literal wording)
+    # plus a content hash so two same-size vaults (e.g. two tests' tmp_path
+    # fixtures) never collide in this process-wide cache.
+    digest = hashlib.sha1("\n".join(sorted(content_notes)).encode("utf-8")).hexdigest()
+    return (len(content_notes), digest)
+
+
+def _tfidf_vectors_for_layout(idx, content_notes: set[str]) -> dict[str, dict[str, float]]:
+    from .vault_similarity import _content_text, _tokenize
+
+    relpaths = sorted(content_notes)
+    n_docs = len(relpaths)
+    term_counts: dict[str, Counter] = {}
+    df: Counter = Counter()
+    for rel in relpaths:
+        counts = Counter(_tokenize(_content_text(rel, idx)))
+        term_counts[rel] = counts
+        for term in counts:
+            df[term] += 1
+
+    # Deliberately NOT vault_similarity's max_df=0.15 band: that pruning
+    # exists to suppress a whole cluster's defining vocabulary, because
+    # Layer 3 wants *surprising* unlinked pairs, not the obvious ones. This
+    # is the opposite goal -- layout wants exactly that cluster-defining
+    # vocabulary preserved, since it's what makes clusters separate into
+    # visible islands in the first place. Only a much higher ceiling (terms
+    # in most of the whole corpus -- generic language, not topic signal)
+    # and the same df>=2 floor (a term unique to one doc can't relate it to
+    # any other) are pruned here.
+    max_df = max(2, int(0.6 * n_docs)) if n_docs else 2
+    kept_terms = {t for t, d in df.items() if 2 <= d <= max_df}
+
+    vectors: dict[str, dict[str, float]] = {}
+    for rel, counts in term_counts.items():
+        vec = {}
+        for term in kept_terms & counts.keys():
+            tf = counts[term]
+            idf = math.log(n_docs / df[term]) if df[term] else 0.0
+            w = (1 + math.log(tf)) * idf
+            if w > 0:
+                vec[term] = w
+        norm = math.sqrt(sum(w * w for w in vec.values()))
+        vectors[rel] = {t: w / norm for t, w in vec.items()} if norm > 0 else {}
+    return vectors
+
+
+def _svd2(vectors: dict[str, dict[str, float]], relpaths: list[str]) -> list[list[float]]:
+    """Top-`LAYOUT_COMPONENTS` left singular vectors of the sparse doc-term
+    matrix, via sequential power iteration with Gram-Schmidt deflation
+    (find component 1, then component 2 orthogonal to it, etc.) -- the
+    standard cheap way to get an ordered, non-degenerate low-rank text
+    embedding without ever materializing a dense N x D matrix. Returns a
+    list of LAYOUT_COMPONENTS arrays, each aligned with `relpaths`."""
+    rng = random.Random(LAYOUT_SEED)
+    n = len(relpaths)
+    docs = [vectors.get(r, {}) for r in relpaths]
+    all_terms: set[str] = set()
+    for v in docs:
+        all_terms.update(v)
+
+    us: list[list[float]] = []
+    vs: list[dict[str, float]] = []
+    if not all_terms or n == 0:
+        return [[0.0] * n for _ in range(LAYOUT_COMPONENTS)]
+
+    for _component in range(LAYOUT_COMPONENTS):
+        v = {t: rng.gauss(0.0, 1.0) for t in all_terms}
+        _deflate_dict(v, vs)
+        _normalize_dict(v)
+        u = [0.0] * n
+        for _ in range(LAYOUT_ITER):
+            u = [sum(w * v.get(t, 0.0) for t, w in doc.items()) for doc in docs]
+            _deflate_list(u, us)
+            _normalize_list(u)
+            nv: dict[str, float] = defaultdict(float)
+            for i, doc in enumerate(docs):
+                ui = u[i]
+                if ui == 0.0:
+                    continue
+                for t, w in doc.items():
+                    nv[t] += w * ui
+            v = dict(nv)
+            _deflate_dict(v, vs)
+            _normalize_dict(v)
+        us.append(u)
+        vs.append(v)
+    return us
+
+
+def _normalize_list(vec: list[float]) -> None:
+    norm = math.sqrt(sum(x * x for x in vec)) or 1.0
+    for i in range(len(vec)):
+        vec[i] /= norm
+
+
+def _normalize_dict(vec: dict[str, float]) -> None:
+    norm = math.sqrt(sum(x * x for x in vec.values())) or 1.0
+    for t in vec:
+        vec[t] /= norm
+
+
+def _deflate_list(vec: list[float], prior: list[list[float]]) -> None:
+    for p in prior:
+        proj = sum(a * b for a, b in zip(vec, p))
+        for i in range(len(vec)):
+            vec[i] -= proj * p[i]
+
+
+def _deflate_dict(vec: dict[str, float], prior: list[dict[str, float]]) -> None:
+    for p in prior:
+        proj = sum(vec.get(t, 0.0) * w for t, w in p.items())
+        for t, w in p.items():
+            vec[t] = vec.get(t, 0.0) - proj * w
+
+
+def _jittered(seed_text: str, spread: float) -> tuple[float, float]:
+    """Deterministic small offset for notes with no TF-IDF signal (empty
+    body), so they don't all stack exactly on the origin."""
+    h = hashlib.sha1(seed_text.encode("utf-8")).hexdigest()
+    rng = random.Random(int(h[:16], 16))
+    angle = rng.uniform(0, 2 * math.pi)
+    r = spread * rng.uniform(0.15, 1.0)
+    return (r * math.cos(angle), r * math.sin(angle))
+
+
+def compute_layout(idx, graph: GraphIndex, content_notes: set[str]) -> None:
+    """Populate `x`/`y` on every note and hub node in place. Cached
+    per-process on (note count, content hash) so repeated calls against an
+    unchanged vault (e.g. the test suite) skip recomputation."""
+    key = _layout_cache_key(content_notes)
+    cached = _LAYOUT_CACHE.get(key)
+    if cached is None:
+        vectors = _tfidf_vectors_for_layout(idx, content_notes)
+        relpaths = sorted(content_notes)
+        components = _svd2(vectors, relpaths)
+        coords: dict[str, tuple[float, float]] = {}
+        empty = [r for r in relpaths if not vectors.get(r)]
+        nonempty_xs = [components[0][i] for i, r in enumerate(relpaths) if vectors.get(r)]
+        spread = (max(nonempty_xs) - min(nonempty_xs)) / 2 if len(nonempty_xs) > 1 else 1.0
+        for i, rel in enumerate(relpaths):
+            if vectors.get(rel):
+                coords[rel] = (components[0][i], components[1][i])
+        for rel in empty:
+            coords[rel] = _jittered(rel, spread or 1.0)
+        if len(_LAYOUT_CACHE) >= _LAYOUT_CACHE_MAX:
+            _LAYOUT_CACHE.pop(next(iter(_LAYOUT_CACHE)))
+        _LAYOUT_CACHE[key] = coords
+        cached = coords
+
+    for rel, node in graph.notes.items():
+        x, y = cached.get(rel, (0.0, 0.0))
+        node.x, node.y = x, y
+
+    for entity, hub in graph.hubs.items():
+        members = graph.entity_notes.get(entity, set())
+        pts = [cached[m] for m in members if m in cached]
+        if pts:
+            hub.x = sum(p[0] for p in pts) / len(pts)
+            hub.y = sum(p[1] for p in pts) / len(pts)
 
 
 def _parse_iso(created: str) -> float:
@@ -191,10 +382,26 @@ def filter_and_cap(
             edges_out.append(e)
 
     nodes_out = [
-        {"id": n.id, "kind": n.kind, "label": n.label, "namespace": n.namespace, "degree": n.degree}
+        {
+            "id": n.id,
+            "kind": n.kind,
+            "label": n.label,
+            "namespace": n.namespace,
+            "degree": n.degree,
+            "x": round(n.x, 4),
+            "y": round(n.y, 4),
+        }
         for n in shown_notes
     ] + [
-        {"id": h.id, "kind": h.kind, "label": h.label, "namespace": "", "degree": h.degree}
+        {
+            "id": h.id,
+            "kind": h.kind,
+            "label": h.label,
+            "namespace": "",
+            "degree": h.degree,
+            "x": round(h.x, 4),
+            "y": round(h.y, 4),
+        }
         for entity, h in graph.hubs.items()
         if h.id in hub_ids
     ]
@@ -256,7 +463,7 @@ def note_constellation(graph: GraphIndex, relpath: str, hops: int = 1) -> dict:
             n = graph.hubs.get(node_id[len("hub:"):])
         if n is None:
             return None
-        return {"id": n.id, "kind": n.kind, "label": n.label, "degree": n.degree}
+        return {"id": n.id, "kind": n.kind, "label": n.label, "degree": n.degree, "x": round(n.x, 4), "y": round(n.y, 4)}
 
     nodes_out = [x for x in (_node_for(nid) for nid in visited) if x is not None]
     seen_edges = set()
