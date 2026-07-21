@@ -163,8 +163,7 @@ to confirm only this session's own surface paths were included, never
 `answer_policy.py`. All servers started for manual verification
 (`vault serve` on 8768, a plain `http.server` on 8899 for the site) were
 stopped and confirmed gone (`ps aux`) before finishing. Nothing pushed.
-Bundle: `~/repo-bundles/memory-sublayer-20260721-0330.bundle` (or
-whatever timestamp the final bundle command below actually produces).
+Bundle: `~/repo-bundles/memory-sublayer-20260721-0319.bundle`.
 
 ## 2026-07-17 18:55 (Fable orchestrator, remote session)
 - Durable capture layer 1 built and tested: ~/scripts/memsub-inbox.sh (SessionEnd/PreCompact hook target), ~/scripts/memsub-inbox-sweep.sh (5-min cron sweep, tested live, captured 2 transcripts into ~/.memsub/inbox/).
