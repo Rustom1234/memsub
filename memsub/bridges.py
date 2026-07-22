@@ -26,6 +26,7 @@ to the top of future runs; a "dismiss" verdict removes it permanently.
 
 from __future__ import annotations
 
+import heapq
 import hashlib
 import html
 import json
@@ -192,6 +193,7 @@ def find_bridges(
     embedder: Embedder,
     k: int = 50,
     dedup_threshold: float | None = None,
+    max_episodes: int = 1200,
 ) -> list[Bridge]:
     """Find up to `k` candidate bridges among the store's active episodes.
 
@@ -203,8 +205,16 @@ def find_bridges(
 
     Surviving pairs are scored similarity * cross_bucket_bonus and returned
     highest score first.
+
+    The pairwise step is O(n^2) in both time and memory, so the candidate set
+    is capped at `max_episodes` (the most important, then most recent, active
+    memories). On a real store of several thousand memories the uncapped scan
+    peaked near 10 GB; the cap keeps it bounded and fast while still drawing
+    from the memories most worth connecting. Pass max_episodes=0 to disable.
     """
     episodes = store.active()
+    if 0 < max_episodes < len(episodes):
+        episodes = sorted(episodes, key=lambda ep: (ep.importance, ep.ts), reverse=True)[:max_episodes]
     if len(episodes) < 2:
         return []
 
@@ -243,8 +253,18 @@ def find_bridges(
     for i, j, _ in raw:
         pair_counts[tuple(sorted((buckets[episodes[i].id], buckets[episodes[j].id])))] += 1
 
+    # Score the cheap (i, j, sim) tuples, then materialize Bridge objects (with
+    # their excerpt string copies) for the top-k only. Building a Bridge per
+    # surviving pair was the other half of the memory blowup: millions of
+    # dataclass instances created just to sort and drop all but k.
+    def _score(triple: tuple[int, int, float]) -> float:
+        i, j, sim = triple
+        bp = tuple(sorted((buckets[episodes[i].id], buckets[episodes[j].id])))
+        return sim / (pair_counts[bp] ** 0.5)
+
+    top = heapq.nlargest(k, raw, key=_score)
     bridges: list[Bridge] = []
-    for i, j, sim in raw:
+    for i, j, sim in top:
         a, b = episodes[i], episodes[j]
         bp = tuple(sorted((buckets[a.id], buckets[b.id])))
         bonus = 1.0 / (pair_counts[bp] ** 0.5)

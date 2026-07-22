@@ -262,3 +262,33 @@ def test_render_constellation_page_empty_state():
     body = render_constellation_page([]).decode("utf-8")
     assert "0 unmade connections across your projects" in body
     assert "memsub bridges scan" in body
+
+
+def test_find_bridges_caps_candidate_episodes(monkeypatch):
+    # The pairwise scan is O(n^2) in memory; max_episodes must bound the
+    # candidate set to the most important, then most recent, active memories.
+    from memsub.bridges import find_bridges
+    from memsub.embed import build_embedder
+    from memsub.store import Episode, EpisodicStore
+
+    store = EpisodicStore(":memory:")
+    for i in range(40):
+        store.append(Episode(
+            content=f"idea number {i} about a distinct topic {i}",
+            run_id="r", session_id=f"proj{i % 4}-sess", ts=float(i),
+            importance=float(i), id=f"ep{i:03d}",
+        ).with_defaults())
+    seen = {}
+    real_active = store.active
+    def _spy():
+        eps = real_active()
+        seen["n"] = len(eps)
+        return eps
+    monkeypatch.setattr(store, "active", _spy)
+    bridges = find_bridges(store, build_embedder(prefer="hashing"), k=5, max_episodes=10)
+    assert seen["n"] == 40  # all active fetched
+    # but only the 10 highest importance survive into the pairwise step, so no
+    # bridge references an episode below the cutoff importance (ep030..ep039)
+    kept_ids = {b.a_id for b in bridges} | {b.b_id for b in bridges}
+    assert all(int(i.replace("ep", "")) >= 30 for i in kept_ids)
+    store.close()
