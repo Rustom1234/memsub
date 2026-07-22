@@ -24,8 +24,20 @@ from .parsers import codex as codex_parser
 from .parsers import cursor as cursor_parser
 from .store import EpisodicStore
 
-DEFAULT_ROOTS = [Path.home() / "projects"]
-DEFAULT_TRANSCRIPTS = [Path.home() / ".claude" / "projects"]
+# Where a stranger's code and agent transcripts most commonly live. Both
+# lists are filtered to what actually exists at scan time (discover_repos
+# skips missing roots, _default_transcript_dirs filters), so naming a dir
+# that isn't there costs nothing.
+# The current directory is always added to roots so `blackbox scan` run from
+# inside any repo just works, wherever that repo lives.
+_COMMON_CODE_DIRS = ["projects", "code", "src", "dev", "repos", "work",
+                     "Documents/GitHub", "git", "go/src"]
+DEFAULT_ROOTS = [Path.home() / d for d in _COMMON_CODE_DIRS]
+DEFAULT_TRANSCRIPTS = [
+    Path.home() / ".claude" / "projects",
+    Path.home() / ".claude-remote" / "projects",
+    Path.home() / ".config" / "claude" / "projects",
+]
 
 _SWEEP_SCHEMA = """
 CREATE TABLE IF NOT EXISTS blackbox_sweeps (
@@ -43,9 +55,21 @@ def format_ts(ts: float) -> str:
     return datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
 
 
+def _effective_roots(roots: list[str | Path] | None) -> list[str | Path]:
+    """Explicit roots when given, else the common code dirs plus the current
+    directory (so a scan from inside a repo works wherever that repo lives)."""
+    if roots is not None:
+        return roots
+    return [*DEFAULT_ROOTS, Path.cwd()]
+
+
 def discover_repos(roots: list[str | Path], max_depth: int = 3) -> list[Path]:
-    """Git repos under roots (top-level .git dirs only, no nesting descent)."""
+    """Git repos under roots (top-level .git dirs only, no nesting descent).
+
+    Deduplicated by resolved path: the broadened default roots can overlap
+    (e.g. cwd sitting inside ~/projects), and a repo must be checked once."""
     repos: list[Path] = []
+    seen: set[Path] = set()
     for root in roots:
         root = Path(root).expanduser()
         if not root.is_dir():
@@ -54,7 +78,10 @@ def discover_repos(roots: list[str | Path], max_depth: int = 3) -> list[Path]:
         while stack:
             d, depth = stack.pop()
             if (d / ".git").exists():
-                repos.append(d)
+                resolved = d.resolve()
+                if resolved not in seen:
+                    seen.add(resolved)
+                    repos.append(d)
                 continue
             if depth >= max_depth:
                 continue
@@ -126,7 +153,7 @@ def scan(
             report.states_indexed += filehist.index_transcripts(store, tdir)
     report.states_indexed += codex_parser.index_sessions(store, codex_home)
     report.states_indexed += cursor_parser.index_storage(store, cursor_home)
-    repos = discover_repos(roots or DEFAULT_ROOTS)
+    repos = discover_repos(_effective_roots(roots))
     for repo in repos:
         report.states_indexed += aider_parser.index_commits(store, repo)
         paths = _tracked_files(repo)
@@ -225,7 +252,7 @@ def status(store: EpisodicStore, roots: list[str | Path] | None = None) -> Statu
     if row:
         rep.last_sweep_ts, rep.last_sweep_incidents = row
     incidents = []
-    for repo in discover_repos(roots or DEFAULT_ROOTS):
+    for repo in discover_repos(_effective_roots(roots)):
         incidents.extend(filehist.check_rollbacks(store, _tracked_files(repo)))
     rep.current_incidents = len(incidents)
     return rep
