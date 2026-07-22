@@ -2711,8 +2711,8 @@ def render_blackbox_page(idx: VaultIndex, db_path: Path | None, path_query: str 
                     items.append(
                         f'<li><span class="brief-time">{day}</span> <b>{html.escape(kind)}</b> '
                         f'<span class="bb-tx">{html.escape(Path(tx).name)}</span>'
-                        f'<code class="bb-cmd">memsub filehist restore \'{html.escape(path_query)}\' '
-                        f"--as-of '{datetime.fromtimestamp(ts + 60).strftime('%Y-%m-%dT%H:%M')}'</code></li>"
+                        f'<code class="bb-cmd">memsub blackbox restore \'{html.escape(path_query)}\' '
+                        f"--at '{datetime.fromtimestamp(ts + 60).strftime('%Y-%m-%dT%H:%M')}'</code></li>"
                     )
                 history_html = (f'<h2 class="brief-h">{len(rows)} recorded state(s), newest first</h2>'
                                 f'<ul class="brief-list bb-list">{"".join(items)}</ul>')
