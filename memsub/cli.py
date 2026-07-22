@@ -16,6 +16,7 @@ import os
 import sys
 from pathlib import Path
 
+from . import provenance
 from .backends import build_backend
 from .consolidate import ConsolidationConfig, consolidate
 from .extraction import extract_file, file_content_hash, load_transcript
@@ -111,8 +112,13 @@ def _cmd_extract(args: argparse.Namespace) -> int:
             print(f"{f}: {len(candidates)} candidate(s), dry run: nothing written")
             continue
         session_id = args.session_id or Path(f).stem
+        # Extraction only ever produces observed claims (never kind="inference"),
+        # so every episode from this path is channel user_stated (memsub.provenance).
         episodes = [
-            c.to_episode(run_id=args.run_id, session_id=session_id, namespace=args.namespace)
+            provenance.tag_episode(
+                c.to_episode(run_id=args.run_id, session_id=session_id, namespace=args.namespace),
+                provenance.CHANNEL_USER_STATED,
+            )
             for c in candidates
         ]
         written = store.append_batch_with_checkpoint(episodes, f, content_hash)
@@ -154,7 +160,7 @@ def _cmd_consolidate(args: argparse.Namespace) -> int:
             return 1
         actions = consolidate(
             store, backend=backend, config=cfg, run_id=args.run_id,
-            namespace=args.namespace, dry_run=True,
+            namespace=args.namespace, dry_run=True, enable_graph=args.graph,
         )
         for a in actions:
             extra = f" by={a.detail['by']}" if "by" in a.detail else ""
@@ -171,7 +177,7 @@ def _cmd_consolidate(args: argparse.Namespace) -> int:
         return 0
     actions = consolidate(
         store, backend=backend, config=cfg, run_id=args.run_id,
-        namespace=args.namespace, dry_run=args.dry_run,
+        namespace=args.namespace, dry_run=args.dry_run, enable_graph=args.graph,
     )
     for a in actions:
         extra = f" by={a.detail['by']}" if "by" in a.detail else ""
@@ -203,6 +209,87 @@ def _cmd_sleep(args: argparse.Namespace) -> int:
     label = "proposed (dry run)" if args.dry_run else "written"
     print(f"{len(result.all_memories)} memor{'y' if len(result.all_memories) == 1 else 'ies'} {label}")
     store.close()
+    return 0
+
+
+def _cmd_graph_backfill(args: argparse.Namespace) -> int:
+    import time as _time
+
+    from .graph import graph_store
+
+    db = Path(args.db)
+    if not db.exists():
+        print(f"no store at {db}")
+        return 1
+    backend = None if args.backend == "none" else build_backend(prefer=args.backend, model=args.model)
+    store = EpisodicStore(db)
+    t0 = _time.time()
+    result = graph_store(
+        store, backend=backend, run_id=args.run_id, namespace=args.namespace, dry_run=args.dry_run,
+    )
+    elapsed = _time.time() - t0
+    label = "proposed (dry run)" if args.dry_run else "written"
+    print(
+        f"{result.episodes_processed} episode(s) processed, "
+        f"{result.entities_upserted} entit{'y' if result.entities_upserted == 1 else 'ies'} "
+        f"{label}, {result.links_created} link(s) {label}, "
+        f"{result.llm_calls} LLM call(s) ({elapsed:.2f}s)"
+    )
+    print(f"index totals: {store.entity_count()} entities, {store.entity_link_count()} links")
+    store.close()
+    return 0
+
+
+def _cmd_distill(args: argparse.Namespace) -> int:
+    """Layer 1: cluster active memories into topics and write/update
+    vault/topics/<slug>.md for each (idempotent: unchanged topics cost zero
+    LLM calls). See memsub/distill.py's module docstring and WORKLOG.md's
+    2026-07-20 "Second brain Layers 1 + 4" entry for the full design."""
+    from .distill import distill
+
+    db = Path(args.db)
+    if not db.exists():
+        print(f"no store at {db}")
+        return 1
+    backend = None if args.backend == "none" else build_backend(prefer=args.backend, model=args.model)
+    store = EpisodicStore(db)
+    try:
+        result = distill(
+            store, args.vault, backend=backend, namespace=args.namespace,
+            min_size=args.min_size, dry_run=args.dry_run,
+        )
+    finally:
+        store.close()
+    label = "would write" if args.dry_run else "written"
+    print(
+        f"{result.topics_found} topic(s) found, {result.topics_written} {label}, "
+        f"{result.topics_skipped_unchanged} unchanged (skipped), "
+        f"{result.topics_killed} killed (verdict: reject), "
+        f"{result.llm_calls} LLM call(s) -> {args.vault}/topics/"
+    )
+    return 0
+
+
+def _cmd_idea(args: argparse.Namespace) -> int:
+    """Layer 4: instant deliberate capture, bypassing the 30-min extraction
+    wait. Writes a user_stated, provenance-signed episode immediately and
+    echoes which already-known entities/topics it attached to (cheap,
+    LLM-free match)."""
+    from .distill import match_entities_and_topics, write_idea
+
+    db = Path(args.db)
+    db.parent.mkdir(parents=True, exist_ok=True)
+    store = EpisodicStore(db)
+    try:
+        ep = write_idea(store, args.text, namespace=args.namespace)
+        entities, topics = match_entities_and_topics(
+            store, args.text, args.namespace, vault_path=args.vault
+        )
+    finally:
+        store.close()
+    print(f"captured idea {ep.id[:8]}")
+    print(f"  entities: {', '.join(entities) if entities else '(none matched)'}")
+    print(f"  topics: {', '.join(topics) if topics else '(none matched)'}")
     return 0
 
 
@@ -405,6 +492,15 @@ def _cmd_vault_check(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_vault_serve(args: argparse.Namespace) -> int:
+    from .vault_serve import serve_vault
+
+    # --root and --vault point at the same viewer (see memsub/vault_serve.py
+    # module docstring); --root just overrides which folder is served.
+    root = Path(args.root) if args.root else Path(args.vault)
+    return serve_vault(root, port=args.port, db_path=args.db)
+
+
 def _cmd_wiki_ingest(args: argparse.Namespace) -> int:
     """Ingest a folder of markdown wiki pages into the store as claim episodes.
 
@@ -440,6 +536,117 @@ def _cmd_wiki_ingest(args: argparse.Namespace) -> int:
         f"across {result.pages_scanned} page(s) -> {args.db}"
     )
     return 0
+
+
+def _cmd_graph_backfill(args: argparse.Namespace) -> int:
+    """Populate the graph layer's entity-episode index over an existing
+    store (memsub/graph.py's graph_store, the same write path consolidate()'s
+    opt-in enable_graph flag uses). Idempotent: already-graphed episodes are
+    skipped on rerun. Rule-based extraction by default (--backend none,
+    zero LLM cost); an LLM is only spent on the rare ambiguous entity-dedup
+    pair when a real backend is given.
+    """
+    from .graph import graph_store
+
+    db = Path(args.db)
+    if not db.exists():
+        print(f"no store at {db}")
+        return 1
+    backend = None if args.backend == "none" else build_backend(prefer=args.backend, model=args.model)
+    store = EpisodicStore(db)
+    result = graph_store(
+        store, backend=backend, run_id=args.run_id, namespace=args.namespace, dry_run=args.dry_run,
+    )
+    label = "proposed (dry run)" if args.dry_run else "written"
+    print(
+        f"{result.episodes_processed} episode(s) processed, "
+        f"{result.entities_upserted} entit{'y' if result.entities_upserted == 1 else 'ies'} / "
+        f"{result.links_created} link(s) {label}, {result.llm_calls} LLM call(s)"
+    )
+    store.close()
+    return 0
+
+
+def _fmt_age(seconds: float) -> str:
+    """Compact relative age for a recall line, e.g. '3h ago', '12d ago'."""
+    seconds = max(seconds, 0.0)
+    if seconds < 90:
+        return f"{int(seconds)}s ago"
+    minutes = seconds / 60.0
+    if minutes < 90:
+        return f"{int(minutes)}m ago"
+    hours = minutes / 60.0
+    if hours < 36:
+        return f"{int(hours)}h ago"
+    days = hours / 24.0
+    return f"{int(days)}d ago"
+
+
+def _cmd_recall(args: argparse.Namespace) -> int:
+    """Read-only auto-recall for scripts/memsub-recall-hook.sh: hybrid
+    retrieval (memsub.sdk.MemoryClient, no LLM call anywhere in this path),
+    printing a compact plain-text block or nothing at all.
+
+    HybridRetriever.search's returned score is a rank-derived RRF position
+    score (1/(rrf_k+pos+1)) -- comparable within one query's own ranking,
+    not across queries, and not a relevance measure at all (an entirely
+    irrelevant query still gets a "top" hit at very nearly the same score
+    as a perfectly on-topic one). So the injection gate here is a *separate*
+    signal: raw cosine similarity between the query and each candidate's
+    content, computed with the same embedder. Empirically tuned against the
+    real ~/.memsub/memory.db claude-code namespace (4200+ episodes spanning
+    many unrelated projects): 0.35 let one clearly-irrelevant query
+    ("is it going to rain tomorrow in paris") through on pure hash-trigram
+    coincidence; 0.38 was the lowest floor that stayed silent on every
+    tested irrelevant query while still firing on clearly on-topic ones.
+    Silence is the default outcome, by design: a missed weak match costs
+    nothing, a false injection spams every prompt.
+
+    Quarantined episodes (memsub.provenance: signature verification failed)
+    are never injected, independent of store.active()'s own filtering --
+    this is the one read path that puts memory content directly back into a
+    live agent's context, so it re-checks the signature itself rather than
+    trusting that a consolidate() pass already ran for this namespace.
+    """
+    import time as _time
+
+    from . import provenance as _prov
+    from .sdk import MemoryClient
+
+    db = Path(args.db)
+    if not db.exists():
+        return 0  # nothing to recall from: silent, not an error
+    client = MemoryClient(db_path=db, namespace=args.namespace, retrieval="hybrid")
+    try:
+        hits = client.search(args.query, k=args.k, log=False)
+        if not hits:
+            return 0
+        qvec = client.embedder.embed(args.query)
+        key = _prov.load_key()
+        now = _time.time()
+        lines: list[str] = []
+        used = 0
+        for h in hits:
+            ep = h.episode
+            status, channel = _prov.channel_status(ep, key)
+            if status == _prov.STATUS_QUARANTINED:
+                continue
+            cvec = client.embedder.embed(ep.content)
+            cos = float(qvec @ cvec)
+            if cos < args.min_relevance:
+                continue
+            tag = channel if status == _prov.STATUS_VERIFIED else "legacy"
+            line = f"- {ep.content} [{tag}, {_fmt_age(now - ep.ts)}]"
+            cost = len(line) + 1  # +1 for the newline joining lines
+            if used + cost > args.max_chars:
+                break
+            lines.append(line)
+            used += cost
+        if lines:
+            print("\n".join(lines))
+        return 0
+    finally:
+        client.close()
 
 
 def _cmd_mcp(args: argparse.Namespace) -> int:
@@ -516,6 +723,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_con.add_argument(
         "--vault", default=None, help="vault folder for --stage proposals"
     )
+    p_con.add_argument(
+        "--graph", action="store_true",
+        help="also populate the entity graph index (memsub graph backfill's "
+        "incremental write-path hook); off by default",
+    )
     p_con.set_defaults(func=_cmd_consolidate)
 
     p_sleep = sub.add_parser(
@@ -528,6 +740,65 @@ def build_parser() -> argparse.ArgumentParser:
     p_sleep.add_argument("--run-id", default=None, help="restrict to one run id")
     p_sleep.add_argument("--dry-run", action="store_true", help="print what would be written, write nothing")
     p_sleep.set_defaults(func=_cmd_sleep)
+
+    p_graph = sub.add_parser("graph", help="bipartite entity-episode graph index")
+    graph_sub = p_graph.add_subparsers(dest="graph_command", required=True)
+    g_backfill = graph_sub.add_parser(
+        "backfill",
+        help="rule-based entity extraction over all active episodes, populating "
+        "the entities/entity_links index (idempotent: already-indexed episodes "
+        "are skipped on rerun)",
+    )
+    g_backfill.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    g_backfill.add_argument(
+        "--backend", default="none", choices=["none", "auto", "api", "ollama", "cli", "mock"],
+        help="LLM backend for ambiguous entity-dedup pairs only (default: none, "
+        "rule-based extraction with zero LLM calls; near-misses become new "
+        "entities rather than being guessed at)",
+    )
+    g_backfill.add_argument("--model", default=None, help="model override for the backend")
+    g_backfill.add_argument("--namespace", default=None, help="restrict to one namespace (default: all)")
+    g_backfill.add_argument("--run-id", default=None, help="restrict to one run id")
+    g_backfill.add_argument("--dry-run", action="store_true", help="report what would be indexed, write nothing")
+    g_backfill.set_defaults(func=_cmd_graph_backfill)
+
+    p_distill = sub.add_parser(
+        "distill",
+        help="Layer 1: cluster active memories into topics, write/update "
+        "vault/topics/<slug>.md for each (idempotent, local qwen3:8b only). "
+        "Run `memsub graph backfill` first so entity_links exist to cluster from.",
+    )
+    p_distill.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    p_distill.add_argument(
+        "--vault", default=str(Path.home() / "memsub-vault"), help="vault folder (topics/ written under it)"
+    )
+    p_distill.add_argument(
+        "--backend", default="auto", choices=["none", "auto", "api", "ollama", "cli", "mock"],
+        help="LLM backend for topic title/overview/facts/open-questions (default: auto, "
+        "prefers a local ollama qwen3:8b daemon; --backend none skips the LLM call "
+        "entirely and falls back to deterministic content for every topic)",
+    )
+    p_distill.add_argument("--model", default=None, help="model override for the backend")
+    p_distill.add_argument("--namespace", default=None, help="restrict to one namespace (default: all)")
+    p_distill.add_argument(
+        "--min-size", type=int, default=3, help="minimum members for a cluster to become a topic (default 3)"
+    )
+    p_distill.add_argument("--dry-run", action="store_true", help="report what would be written, write nothing")
+    p_distill.set_defaults(func=_cmd_distill)
+
+    p_idea = sub.add_parser(
+        "idea",
+        help="Layer 4: instant deliberate capture -- writes a user_stated, "
+        "provenance-signed episode immediately, no LLM call, echoes matched entities/topics",
+    )
+    p_idea.add_argument("text", help="the idea, in your own words")
+    p_idea.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    p_idea.add_argument(
+        "--vault", default=str(Path.home() / "memsub-vault"),
+        help="vault folder to check for matching topic notes (read-only; skipped if missing)",
+    )
+    p_idea.add_argument("--namespace", default=os.environ.get("MEMSUB_NAMESPACE", "default"))
+    p_idea.set_defaults(func=_cmd_idea)
 
     p_ns = sub.add_parser("ns", help="manage namespaces and per-agent permissions")
     p_ns.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
@@ -603,6 +874,27 @@ def build_parser() -> argparse.ArgumentParser:
     v_check.add_argument("--vault", required=True, help="vault folder to scan")
     v_check.set_defaults(func=_cmd_vault_check)
 
+    v_serve = vault_sub.add_parser(
+        "serve",
+        help="read-only browser viewer for the vault (or any markdown folder "
+        "via --root), with [[wikilinks]] and mermaid diagrams rendered",
+    )
+    v_serve.add_argument(
+        "--vault", default=str(Path.home() / "memsub-vault"), help="vault folder to serve"
+    )
+    v_serve.add_argument(
+        "--root", default=None,
+        help="serve this markdown folder instead of --vault (same viewer, "
+        "e.g. a project's docs/ folder)",
+    )
+    v_serve.add_argument("--port", type=int, default=8766, help="port to bind (127.0.0.1 only)")
+    v_serve.add_argument(
+        "--db", default=str(default_db_path()),
+        help="SQLite store for the dashboard's real counts (best-effort: falls back to "
+        "vault-only mode, derived from note frontmatter, if this path does not exist)",
+    )
+    v_serve.set_defaults(func=_cmd_vault_serve)
+
     p_stats = sub.add_parser(
         "stats", help="store summary: episode/namespace counts, checkpoints, db size"
     )
@@ -624,6 +916,26 @@ def build_parser() -> argparse.ArgumentParser:
     w_ingest.add_argument("--run-id", default="wiki", help="run id to file claims under")
     w_ingest.add_argument("--max-chars", type=int, default=12000, help="chunk size in characters")
     w_ingest.set_defaults(func=_cmd_wiki_ingest)
+
+    p_recall = sub.add_parser(
+        "recall",
+        help="read-only auto-recall block for scripts/memsub-recall-hook.sh: "
+        "hybrid retrieval, zero LLM calls, prints nothing when no hit clears "
+        "--min-relevance",
+    )
+    p_recall.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    p_recall.add_argument("--namespace", default=os.environ.get("MEMSUB_NAMESPACE", "default"))
+    p_recall.add_argument("--query", required=True, help="the prompt/query text to recall against")
+    p_recall.add_argument("--k", type=int, default=3, help="max memories to consider (default 3)")
+    p_recall.add_argument(
+        "--max-chars", type=int, default=700, help="hard cap on the printed block's size"
+    )
+    p_recall.add_argument(
+        "--min-relevance", type=float, default=0.38,
+        help="cosine-similarity floor (query vs. content, same embedder) a hit must "
+        "clear to be printed; see _cmd_recall's docstring for how this was tuned",
+    )
+    p_recall.set_defaults(func=_cmd_recall)
 
     p_mcp = sub.add_parser("mcp", help="run the MCP stdio server (for claude mcp add)")
     p_mcp.add_argument("--db", default=None, help="SQLite store path (default: $MEMSUB_DB or ~/.memsub/memory.db)")

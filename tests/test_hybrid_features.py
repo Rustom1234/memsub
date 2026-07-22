@@ -1,5 +1,8 @@
 """Tests for the retrieval-v2 features: stemming, dates, speaker and session signals."""
 
+import json
+
+from memsub.backends import MockBackend
 from memsub.bench import HybridSystem, parse_session_date
 from memsub.lexical import stem, tokenize
 from memsub.store import Episode
@@ -73,3 +76,71 @@ def test_prf_disabled_by_default_and_flat_ranking_ok():
     hy.ingest(eps)
     assert hy.prf_weight == 0.0
     assert len(hy.rank("filler")) == 5
+
+
+# --------------------------------------------------------------------------- #
+# Bounded query-time decomposition (opt-in, off by default)
+# --------------------------------------------------------------------------- #
+def _eps_two_topics():
+    return [
+        _ep("Melanie: I love pottery on weekends.", 1, "pottery", session="s1"),
+        _ep("Caroline: The Lisbon trip trams were amazing.", 2, "lisbon", session="s2"),
+        _ep("A: unrelated filler about lunch.", 3, "filler", session="s3"),
+    ]
+
+
+def test_rank_decomposed_makes_exactly_one_llm_call():
+    hy = HybridSystem()
+    hy.ingest(_eps_two_topics())
+    backend = MockBackend(
+        responder=lambda s, m: json.dumps(
+            ["What hobbies does Melanie enjoy?", "How was the Lisbon trip?"]
+        )
+    )
+    hy.rank_decomposed("What does Melanie enjoy and how was the Lisbon trip?", backend)
+    assert len(backend.calls) == 1
+
+
+def test_rank_decomposed_merges_subquery_rankings():
+    hy = HybridSystem()
+    hy.ingest(_eps_two_topics())
+    backend = MockBackend(
+        responder=lambda s, m: json.dumps(
+            ["What hobbies does Melanie enjoy?", "How was the Lisbon trip?"]
+        )
+    )
+    order = hy.rank_decomposed("What does Melanie enjoy and how was the Lisbon trip?", backend)
+    eps = hy.episodes
+    ids = [eps[i].id for i in order]
+    # both topic-relevant turns should outrank the unrelated filler
+    assert ids.index("filler") > ids.index("pottery")
+    assert ids.index("filler") > ids.index("lisbon")
+
+
+def test_rank_decomposed_falls_back_to_plain_rank_when_no_split_needed():
+    hy = HybridSystem()
+    hy.ingest(_eps_two_topics())
+    backend = MockBackend(responder=lambda s, m: "[]")
+    decomposed = hy.rank_decomposed("What hobbies does Melanie enjoy?", backend)
+    plain = hy.rank("What hobbies does Melanie enjoy?")
+    assert decomposed == plain
+    assert len(backend.calls) == 1  # the one decomposition call is still made
+
+
+def test_search_decomposed_returns_scored_episodes():
+    hy = HybridSystem()
+    hy.ingest(_eps_two_topics())
+    backend = MockBackend(responder=lambda s, m: "[]")
+    hits = hy.search_decomposed("What hobbies does Melanie enjoy?", backend, k=2)
+    assert len(hits) == 2
+    assert all(isinstance(score, float) for _, score in hits)
+
+
+def test_plain_rank_and_search_unaffected_by_decomposition_feature():
+    """The default path stays byte-for-byte unchanged: no backend needed,
+    no new required constructor args."""
+    eps = _eps_two_topics()
+    hy = HybridSystem()
+    hy.ingest(eps)
+    assert hy.rank("pottery") == hy.rank("pottery")
+    assert len(hy.search("pottery", k=2)) == 2

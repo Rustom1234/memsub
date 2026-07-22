@@ -26,7 +26,9 @@ CREATE TABLE IF NOT EXISTS episodes (
     content TEXT NOT NULL,
     importance REAL NOT NULL DEFAULT 1.0,
     provenance TEXT NOT NULL DEFAULT '{}',
-    namespace TEXT NOT NULL DEFAULT 'default'
+    namespace TEXT NOT NULL DEFAULT 'default',
+    valid_from REAL,
+    valid_to REAL
 );
 CREATE INDEX IF NOT EXISTS idx_episodes_namespace ON episodes(namespace, ts);
 CREATE INDEX IF NOT EXISTS idx_episodes_run ON episodes(run_id, ts);
@@ -46,18 +48,34 @@ CREATE TABLE IF NOT EXISTS extraction_checkpoints (
     ts REAL NOT NULL,
     memory_count INTEGER NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS entities (
+    id TEXT PRIMARY KEY,
+    namespace TEXT NOT NULL,
+    entity_type TEXT NOT NULL,
+    ts REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_entities_namespace ON entities(namespace);
+CREATE TABLE IF NOT EXISTS entity_links (
+    entity_id TEXT NOT NULL,
+    episode_id TEXT NOT NULL,
+    ts REAL NOT NULL,
+    PRIMARY KEY (entity_id, episode_id)
+);
+CREATE INDEX IF NOT EXISTS idx_links_episode ON entity_links(episode_id);
 """
 
 # Events that end an episode's active life. The episode row is never deleted;
-# status is derived from the event log, which is the audit trail.
-TERMINAL_EVENTS = ("superseded", "forgotten")
+# status is derived from the event log, which is the audit trail. "quarantined"
+# (memsub.consolidate, memsub.provenance) is a signature-verification failure:
+# the episode stays in the table forever, just no longer active/retrievable.
+TERMINAL_EVENTS = ("superseded", "forgotten", "quarantined")
 
 
 @dataclass(frozen=True)
 class MemoryEvent:
     """One lifecycle or usage event for an episode.
 
-    event: "superseded" | "forgotten" | "retrieved" | "injected" (open set).
+    event: "superseded" | "forgotten" | "quarantined" | "retrieved" | "injected" (open set).
     detail: structured context, e.g. {"reason": ..., "by": <episode_id>} for
     supersede, {"query": ..., "score": ...} for retrieval.
     """
@@ -87,6 +105,13 @@ class Episode:
     namespace: str = "default"
     ts: float = 0.0
     id: str = ""
+    # Bi-temporal fields (memsub/temporal.py, additive, opt-in): "world time"
+    # the fact described in `content` is/was valid, as opposed to `ts` (the
+    # "transaction time" this episode was recorded). None means unknown/
+    # unresolved -- the default for every episode unless something explicitly
+    # calls memsub.temporal.annotate_episode(s) before store.append().
+    valid_from: float | None = None
+    valid_to: float | None = None
 
     def with_defaults(self) -> "Episode":
         ep_id = self.id or uuid.uuid4().hex
@@ -101,7 +126,40 @@ class Episode:
             namespace=self.namespace,
             ts=ts,
             id=ep_id,
+            valid_from=self.valid_from,
+            valid_to=self.valid_to,
         )
+
+
+@dataclass(frozen=True)
+class Entity:
+    """One node in the graph layer's bipartite entity-episode index
+    (memsub/graph.py). id is namespace-scoped (`f"{namespace}::{normalized}"`,
+    see memsub.graph.entity_id) so two namespaces' identically-named entities
+    never collide into one row."""
+
+    id: str
+    namespace: str
+    entity_type: str
+    ts: float = 0.0
+
+
+def format_episode(ep: Episode, with_dates: bool = False) -> str:
+    """Render an episode's content for context injection.
+
+    Opt-in (default False, byte-identical to `ep.content`): when True,
+    prefixes the content with `[session_date]` from `ep.provenance` when
+    present, e.g. "[11 November 2022] Joanna: ...". Falls back to plain
+    content when no session_date is recorded (most non-LOCOMO sources).
+    Shared by memsub.sdk.MemoryClient.inject and any eval/harness code that
+    needs the same date-surfacing format, so there is exactly one
+    implementation of this formatting rule.
+    """
+    if with_dates:
+        session_date = (ep.provenance or {}).get("session_date", "")
+        if session_date:
+            return f"[{session_date}] {ep.content}"
+    return ep.content
 
 
 class EpisodicStore:
@@ -138,11 +196,15 @@ class EpisodicStore:
                 "ALTER TABLE episodes ADD COLUMN namespace TEXT NOT NULL DEFAULT 'default'"
             )
             self._conn.commit()
+        if "valid_from" not in cols:
+            self._conn.execute("ALTER TABLE episodes ADD COLUMN valid_from REAL")
+            self._conn.execute("ALTER TABLE episodes ADD COLUMN valid_to REAL")
+            self._conn.commit()
 
     def _insert_episode(self, ep: Episode) -> None:
         self._conn.execute(
-            "INSERT INTO episodes (id, ts, run_id, session_id, kind, content, importance, provenance, namespace)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO episodes (id, ts, run_id, session_id, kind, content, importance, provenance, namespace, valid_from, valid_to)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 ep.id,
                 ep.ts,
@@ -153,6 +215,8 @@ class EpisodicStore:
                 ep.importance,
                 json.dumps(ep.provenance, sort_keys=True),
                 ep.namespace,
+                ep.valid_from,
+                ep.valid_to,
             ),
         )
 
@@ -164,7 +228,7 @@ class EpisodicStore:
 
     def get(self, episode_id: str) -> Episode | None:
         row = self._conn.execute(
-            "SELECT id, ts, run_id, session_id, kind, content, importance, provenance, namespace"
+            "SELECT id, ts, run_id, session_id, kind, content, importance, provenance, namespace, valid_from, valid_to"
             " FROM episodes WHERE id = ?",
             (episode_id,),
         ).fetchone()
@@ -178,7 +242,7 @@ class EpisodicStore:
     ) -> list[Episode]:
         """Episodes in insertion (timestamp) order, oldest first."""
         query = (
-            "SELECT id, ts, run_id, session_id, kind, content, importance, provenance, namespace"
+            "SELECT id, ts, run_id, session_id, kind, content, importance, provenance, namespace, valid_from, valid_to"
             " FROM episodes WHERE 1=1"
         )
         params: list[Any] = []
@@ -246,9 +310,10 @@ class EpisodicStore:
         ]
 
     def status(self, episode_id: str) -> str:
-        """"active", or the terminal event name ("superseded"/"forgotten")."""
+        """"active", or the terminal event name ("superseded"/"forgotten"/"quarantined")."""
+        placeholders = ", ".join("?" * len(TERMINAL_EVENTS))
         row = self._conn.execute(
-            "SELECT event FROM memory_events WHERE episode_id = ? AND event IN (?, ?)"
+            f"SELECT event FROM memory_events WHERE episode_id = ? AND event IN ({placeholders})"
             " ORDER BY ts DESC LIMIT 1",
             (episode_id, *TERMINAL_EVENTS),
         ).fetchone()
@@ -261,10 +326,11 @@ class EpisodicStore:
         namespace: str | None = None,
     ) -> list[Episode]:
         """Episodes with no terminal event, oldest first."""
+        placeholders = ", ".join("?" * len(TERMINAL_EVENTS))
         query = (
-            "SELECT id, ts, run_id, session_id, kind, content, importance, provenance, namespace"
+            "SELECT id, ts, run_id, session_id, kind, content, importance, provenance, namespace, valid_from, valid_to"
             " FROM episodes WHERE id NOT IN"
-            " (SELECT episode_id FROM memory_events WHERE event IN (?, ?))"
+            f" (SELECT episode_id FROM memory_events WHERE event IN ({placeholders}))"
         )
         params: list[Any] = list(TERMINAL_EVENTS)
         if run_id is not None:
@@ -350,11 +416,80 @@ class EpisodicStore:
             raise
         return written
 
+    # ------------------------------------------------------------------ #
+    # Graph layer: entities + entity_links (memsub/graph.py's write path)
+    # ------------------------------------------------------------------ #
+    def upsert_entity(self, entity_id: str, namespace: str, entity_type: str, ts: float) -> bool:
+        """Insert entity_id if new. Returns True if newly created, False if
+        it already existed (idempotent, never overwrites entity_type)."""
+        if self.get_entity(entity_id) is not None:
+            return False
+        self._conn.execute(
+            "INSERT INTO entities (id, namespace, entity_type, ts) VALUES (?, ?, ?, ?)",
+            (entity_id, namespace, entity_type, ts),
+        )
+        self._conn.commit()
+        return True
+
+    def get_entity(self, entity_id: str) -> Entity | None:
+        row = self._conn.execute(
+            "SELECT id, namespace, entity_type, ts FROM entities WHERE id = ?", (entity_id,)
+        ).fetchone()
+        return Entity(id=row[0], namespace=row[1], entity_type=row[2], ts=row[3]) if row else None
+
+    def entities_in_namespace(self, namespace: str) -> list[Entity]:
+        rows = self._conn.execute(
+            "SELECT id, namespace, entity_type, ts FROM entities WHERE namespace = ?", (namespace,)
+        ).fetchall()
+        return [Entity(id=r[0], namespace=r[1], entity_type=r[2], ts=r[3]) for r in rows]
+
+    def entity_count(self) -> int:
+        return self._conn.execute("SELECT COUNT(*) FROM entities").fetchone()[0]
+
+    def link_entity(self, entity_id: str, episode_id: str, ts: float) -> bool:
+        """Insert an (entity, episode) link if new. Returns True if newly
+        created, False if it already existed (idempotent)."""
+        cur = self._conn.execute(
+            "INSERT OR IGNORE INTO entity_links (entity_id, episode_id, ts) VALUES (?, ?, ?)",
+            (entity_id, episode_id, ts),
+        )
+        self._conn.commit()
+        return cur.rowcount > 0
+
+    def entity_link_count(self) -> int:
+        return self._conn.execute("SELECT COUNT(*) FROM entity_links").fetchone()[0]
+
+    def episode_ids_for_entities(self, entity_ids: set[str] | list[str]) -> list[str]:
+        if not entity_ids:
+            return []
+        placeholders = ", ".join("?" for _ in entity_ids)
+        rows = self._conn.execute(
+            f"SELECT DISTINCT episode_id FROM entity_links WHERE entity_id IN ({placeholders})",
+            list(entity_ids),
+        ).fetchall()
+        return [r[0] for r in rows]
+
+    def entities_for_episode(self, episode_id: str) -> list[Entity]:
+        rows = self._conn.execute(
+            "SELECT e.id, e.namespace, e.entity_type, e.ts FROM entities e"
+            " JOIN entity_links l ON l.entity_id = e.id WHERE l.episode_id = ?",
+            (episode_id,),
+        ).fetchall()
+        return [Entity(id=r[0], namespace=r[1], entity_type=r[2], ts=r[3]) for r in rows]
+
     def __iter__(self) -> Iterator[Episode]:
         return iter(self.all())
 
     def close(self) -> None:
         self._conn.close()
+
+    def set_valid_to(self, episode_id: str, valid_to: float) -> None:
+        """Additive bi-temporal update (memsub.temporal /
+        memsub.consolidate's contradiction-supersede): closes an existing
+        row's validity window without touching any other column. Only ever
+        closes an already-open window, never invents or deletes content."""
+        self._conn.execute("UPDATE episodes SET valid_to = ? WHERE id = ?", (valid_to, episode_id))
+        self._conn.commit()
 
     @staticmethod
     def _row_to_episode(row: tuple) -> Episode:
@@ -368,4 +503,6 @@ class EpisodicStore:
             importance=row[6],
             provenance=json.loads(row[7]),
             namespace=row[8] if len(row) > 8 else "default",
+            valid_from=row[9] if len(row) > 9 else None,
+            valid_to=row[10] if len(row) > 10 else None,
         )

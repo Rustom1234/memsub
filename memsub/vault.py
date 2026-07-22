@@ -27,6 +27,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from . import provenance
 from .sleep import _extract_entities
 from .store import Episode, EpisodicStore
 
@@ -549,20 +550,25 @@ def apply_vault(
                 result.rejected += 1
                 result.detail.append(f"reject {ep_id[:8]}")
             elif edited:
+                # A human directly edited the note's body: channel user_stated
+                # (memsub.provenance), same as any other direct human statement.
                 new_ep = store.append(
-                    Episode(
-                        content=body,
-                        run_id=run_id,
-                        session_id=ep.session_id,
-                        kind=ep.kind,
-                        importance=1.0,
-                        namespace=ep.namespace,
-                        provenance={
-                            "origin": "human_correction",
-                            "corrected_from": ep_id,
-                            "human_verified": True,
-                            "confidence": 1.0,
-                        },
+                    provenance.tag_episode(
+                        Episode(
+                            content=body,
+                            run_id=run_id,
+                            session_id=ep.session_id,
+                            kind=ep.kind,
+                            importance=1.0,
+                            namespace=ep.namespace,
+                            provenance={
+                                "origin": "human_correction",
+                                "corrected_from": ep_id,
+                                "human_verified": True,
+                                "confidence": 1.0,
+                            },
+                        ),
+                        provenance.CHANNEL_USER_STATED,
                     )
                 )
                 store.log_event(
@@ -873,20 +879,24 @@ def promote_notes(
             result.unchanged += 1
             continue
 
+        # A promoted note is human-authored: channel user_stated.
         new_ep = store.append(
-            Episode(
-                content=text,
-                run_id=run_id,
-                session_id=rel,
-                kind="fact",
-                importance=1.0,
-                namespace=namespace,
-                provenance={
-                    "origin": "human_authored",
-                    "source_note": rel,
-                    "source_content_hash": note_hash,
-                    "human_verified": True,
-                },
+            provenance.tag_episode(
+                Episode(
+                    content=text,
+                    run_id=run_id,
+                    session_id=rel,
+                    kind="fact",
+                    importance=1.0,
+                    namespace=namespace,
+                    provenance={
+                        "origin": "human_authored",
+                        "source_note": rel,
+                        "source_content_hash": note_hash,
+                        "human_verified": True,
+                    },
+                ),
+                provenance.CHANNEL_USER_STATED,
             )
         )
         if prior is not None:

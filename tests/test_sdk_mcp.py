@@ -9,6 +9,7 @@ import pytest
 from memsub.mcp_server import TOOLS, call_tool, handle_message
 from memsub.namespaces import PermissionDenied
 from memsub.sdk import MemoryClient
+from memsub.store import Episode, format_episode
 
 
 @pytest.fixture
@@ -55,6 +56,46 @@ def test_sdk_prefix_resolution_and_audit(client):
     record = client.audit(ep.id[:10])
     assert record is not None
     assert record["counts"]["retrieved"] >= 1
+
+
+# --------------------------------------------------------------------------- #
+# format_episode / with_dates (item 3, 2026-07-18 Wave 1)
+# --------------------------------------------------------------------------- #
+def _ep(content: str, session_date: str = "") -> Episode:
+    prov = {"session_date": session_date} if session_date else {}
+    return Episode(content=content, run_id="r", session_id="s", provenance=prov)
+
+
+def test_format_episode_default_off_is_byte_identical():
+    ep = _ep("Joanna: I visited Bali last year.", session_date="11 November 2022")
+    assert format_episode(ep) == ep.content
+    assert format_episode(ep, with_dates=False) == ep.content
+
+
+def test_format_episode_with_dates_prefixes_session_date():
+    ep = _ep("Joanna: I visited Bali last year.", session_date="11 November 2022")
+    assert format_episode(ep, with_dates=True) == "[11 November 2022] Joanna: I visited Bali last year."
+
+
+def test_format_episode_with_dates_no_session_date_falls_back():
+    ep = _ep("no date on this one")
+    assert format_episode(ep, with_dates=True) == ep.content
+
+
+def test_sdk_inject_with_dates_false_is_byte_identical_to_before_flag(client):
+    client.add("Joanna: I visited Bali last year.", provenance={"session_date": "11 November 2022"})
+    client.add("plain memory, no session date")
+    default_text = client.inject("Bali")
+    off_text = client.inject("Bali", with_dates=False)
+    assert default_text == off_text
+    assert "[11 November 2022]" not in default_text
+
+
+def test_sdk_inject_with_dates_true_prefixes_dated_episodes(client):
+    client.add("Joanna: I visited Bali last year.", provenance={"session_date": "11 November 2022"})
+    client.add("plain memory, no session date")
+    text = client.inject("Bali", with_dates=True)
+    assert "[11 November 2022] Joanna: I visited Bali last year." in text
 
 
 def test_sdk_namespace_acl_enforced(tmp_path):

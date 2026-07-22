@@ -17,13 +17,14 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from . import provenance as provenance_mod
 from .audit import audit_episode, log_recall
 from .embed import Embedder, build_embedder
 from .hybrid import HybridRetriever
 from .namespaces import NamespaceManager
 from .policy import approx_tokens
 from .retrieval import SemanticIndex
-from .store import Episode, EpisodicStore
+from .store import Episode, EpisodicStore, format_episode
 
 
 def default_db_path() -> Path:
@@ -90,7 +91,13 @@ class MemoryClient:
         namespace: str | None = None,
         provenance: dict | None = None,
         session_id: str = "sdk",
+        channel: str | None = None,
     ) -> Episode:
+        """channel: memsub.provenance channel for this write. Defaults to
+        "imported" -- a generic SDK call has no pipeline signal telling it
+        whether content was actually observed, so it cannot claim
+        "user_stated" for itself; pass channel="user_stated" explicitly when
+        the caller genuinely knows this is a direct human statement."""
         ns = namespace or self.namespace
         self.namespaces.check(self.agent, "write", ns)
         prov = dict(provenance or {})
@@ -105,6 +112,7 @@ class MemoryClient:
             provenance=prov,
             namespace=ns,
         )
+        ep = provenance_mod.tag_episode(ep, channel or provenance_mod.CHANNEL_IMPORTED)
         stored = self.store.append(ep)
         self._invalidate()
         return stored
@@ -154,10 +162,22 @@ class MemoryClient:
             )
         return packed
 
-    def inject(self, query: str, budget_tokens: int = 700, k: int = 24, namespace: str | None = None) -> str:
-        """The injection block: best memories that fit the hard budget."""
+    def inject(
+        self,
+        query: str,
+        budget_tokens: int = 700,
+        k: int = 24,
+        namespace: str | None = None,
+        with_dates: bool = False,
+    ) -> str:
+        """The injection block: best memories that fit the hard budget.
+
+        with_dates: opt-in (default False, output unchanged from before this
+        flag existed). When True, prefixes each memory with its session date
+        from provenance when present -- see memsub.store.format_episode.
+        """
         hits = self.search(query, k=k, namespace=namespace, budget_tokens=budget_tokens)
-        return "\n".join(h.episode.content for h in hits)
+        return "\n".join(format_episode(h.episode, with_dates=with_dates) for h in hits)
 
     def list(self, namespace: str | None = None, limit: int = 50) -> list[Episode]:
         ns = namespace or self.namespace
