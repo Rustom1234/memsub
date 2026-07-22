@@ -837,6 +837,53 @@ def _cmd_mcp(args: argparse.Namespace) -> int:
     return serve(client)
 
 
+def _cmd_bridges_scan(args: argparse.Namespace) -> int:
+    """Gift feature: mine the store for non-obvious cross-project bridges
+    (memsub.bridges.find_bridges), merge with cached keep/dismiss verdicts,
+    add ollama why-lines when reachable, and print the result."""
+    import json as jsonmod
+
+    from .bridges import DEFAULT_CACHE_PATH, compute_bridges
+    from .embed import build_embedder
+
+    db = Path(args.db)
+    if not db.exists():
+        print(f"no store at {db}")
+        return 1
+    embedder = build_embedder(prefer=args.embedder)
+    cache_path = Path(args.cache) if args.cache else DEFAULT_CACHE_PATH
+    store = EpisodicStore(db)
+    try:
+        bridges = compute_bridges(
+            store, embedder, k=args.k, cache_path=cache_path, use_llm=not args.no_llm,
+        )
+    finally:
+        store.close()
+    if args.json:
+        print(jsonmod.dumps([b.to_dict() for b in bridges], indent=2))
+        return 0
+    print(f"{len(bridges)} unmade connection(s) across your projects")
+    for b in bridges:
+        print(f"\n[{b.a_bucket} <-> {b.b_bucket}]  score={b.score:.3f}")
+        print(f"  A: {b.a_excerpt}")
+        print(f"  B: {b.b_excerpt}")
+        if b.why:
+            print(f"  why: {b.why}")
+    return 0
+
+
+def _cmd_bridges_serve(args: argparse.Namespace) -> int:
+    from .bridges import DEFAULT_CACHE_PATH, serve_bridges
+    from .embed import build_embedder
+
+    cache_path = Path(args.cache) if args.cache else DEFAULT_CACHE_PATH
+    embedder = build_embedder(prefer=args.embedder)
+    return serve_bridges(
+        Path(args.db), port=args.port, cache_path=cache_path, embedder=embedder,
+        use_llm=not args.no_llm, k=args.k,
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="memsub", description="local-first memory for agents")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1234,6 +1281,49 @@ def build_parser() -> argparse.ArgumentParser:
     p_mcp.add_argument("--embedder", default="hashing", choices=["hashing", "ollama", "auto"],
                        help="hashing (default, zero-dependency) or ollama (real local embeddings)")
     p_mcp.set_defaults(func=_cmd_mcp)
+
+    p_bridges = sub.add_parser(
+        "bridges",
+        help="mine the store for non-obvious connections between ideas across "
+        "your projects (see docs/bridges-2026-07-22.md)",
+    )
+    bridges_sub = p_bridges.add_subparsers(dest="bridges_command", required=True)
+
+    b_scan = bridges_sub.add_parser(
+        "scan", help="print candidate bridges (plain text, or --json for machine output)"
+    )
+    b_scan.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    b_scan.add_argument(
+        "--cache", default=None,
+        help="bridges+verdicts cache path (default: ~/.memsub/bridges.json)",
+    )
+    b_scan.add_argument("--k", type=int, default=50, help="max bridges to return (default 50)")
+    b_scan.add_argument("--embedder", default="hashing", choices=["hashing", "ollama", "auto"],
+                        help="hashing (default, zero-dependency) or ollama (real local embeddings)")
+    b_scan.add_argument(
+        "--no-llm", action="store_true",
+        help="skip the ollama why-line garnish even if a daemon is reachable",
+    )
+    b_scan.add_argument("--json", action="store_true", help="print bridges as a JSON array")
+    b_scan.set_defaults(func=_cmd_bridges_scan)
+
+    b_serve = bridges_sub.add_parser(
+        "serve", help="constellation page: browse, filter, and keep/dismiss bridges"
+    )
+    b_serve.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    b_serve.add_argument(
+        "--cache", default=None,
+        help="bridges+verdicts cache path (default: ~/.memsub/bridges.json)",
+    )
+    b_serve.add_argument("--port", type=int, default=8768, help="port to bind (127.0.0.1 only)")
+    b_serve.add_argument("--k", type=int, default=50, help="max bridges to compute (default 50)")
+    b_serve.add_argument("--embedder", default="hashing", choices=["hashing", "ollama", "auto"],
+                         help="hashing (default, zero-dependency) or ollama (real local embeddings)")
+    b_serve.add_argument(
+        "--no-llm", action="store_true",
+        help="skip the ollama why-line garnish even if a daemon is reachable",
+    )
+    b_serve.set_defaults(func=_cmd_bridges_serve)
 
     return parser
 
