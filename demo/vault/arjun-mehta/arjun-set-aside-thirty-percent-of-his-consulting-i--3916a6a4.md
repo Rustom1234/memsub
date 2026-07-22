@@ -1,0 +1,41 @@
+---
+id: "3916a6a437b4d2f04d2a8ea6f645e9a53ba05f49"
+namespace: "arjun-mehta"
+kind: "fact"
+type: "observed"
+status: "active"
+created: "2026-03-20T14:58:00"
+last_updated: "2026-03-20T14:58:00"
+content_hash: "9d65c59392d9ab92"
+---
+
+# Arjun set aside thirty percent of his consulting income into a separate savings 
+
+## Content
+
+Arjun set aside thirty percent of his consulting income into a separate savings account to cover quarterly taxes.
+
+## Provenance
+
+- Run: `demo-build-2026-07-21`
+- Session: `arjun-2026-03-20`
+- channel: user_stated
+- channel_sig: d4fb1932674dc30388c72c6dfc4d6087b6e55a13ec08481b7beb1c4311fdfd3a
+- origin: demo_build
+- persona: arjun-mehta
+- tag: consulting.taxes
+
+### Audit events
+
+- 2026-07-21T16:56:36  **graphed**
+
+## Links
+
+- shares entity **Arjun** with [[arjun-s-core-idea-for-coldstart-is-an-agent-that-r--3c23f99c]]
+- shares entity **Arjun** with [[arjun-set-his-consulting-rate-for-brightpath-legal--74a16fa0]]
+- shares entity **Arjun** with [[grace-lin-brightpath-legal-s-product-lead-became-a--6bd5e049]]
+- shares entity **Arjun** with [[arjun-took-on-a-consulting-contract-with-brightpat--d3b35602]]
+- shares entity **Arjun** with [[arjun-weighed-the-pros-and-cons-of-self-hosting-op--8d01c9ba]]
+- shares entity **Arjun** with [[arjun-committed-to-waking-up-at-five-a-m-to-focus--67a7c07c]]
+- shares entity **Arjun** with [[arjun-read-through-hosted-api-pricing-tiers-and-ra--45dc2eb9]]
+- shares entity **Arjun** with [[arjun-switched-to-a-standing-desk-after-long-devel--ab29dadf]]

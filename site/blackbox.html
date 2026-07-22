@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blackbox: nothing your AI agents write can be lost</title>
+<meta name="description" content="Blackbox records every file state from every AI coding agent session, forever. Restore any file as of any moment. Get alarms when disk content silently regresses.">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <span class="brand">blackbox<span class="accent">::</span>by memsub</span>
+  <div class="links">
+    <a href="#how">How it works</a>
+    <a href="#proof">Proof</a>
+    <a href="#start">Get started</a>
+    <a href="index.html">memsub</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="glow glow-1"></div>
+  <div class="container hero-inner">
+    <span class="eyebrow">the flight recorder for AI coding agents</span>
+    <h1>Your agents write more code<br>than you can protect.</h1>
+    <p class="lede">Coding agents produce, overwrite, and lose work at machine speed. Editor checkpoints expire in 30 days and die with the session. <strong>Blackbox</strong> records every file state from every agent session, forever: restore any file as of any moment, and get an alarm the instant anything on disk silently regresses to an older state. Local, background, zero behavior change.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#start">Run the 60-second scan</a>
+      <a class="btn btn-ghost" href="#proof">Read what it found on night one</a>
+    </div>
+  </div>
+</header>
+
+<section id="how">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">how it works</span>
+      <h2>Three verbs</h2>
+    </div>
+    <div class="stage-grid reveal">
+      <details class="stage" open>
+        <summary><span class="stage-n">01</span>Record</summary>
+        <div class="stage-body">Agent transcripts already contain every Write, Edit, and full-file Read your agents ever performed. Blackbox indexes them incrementally (byte-offset checkpoints, thousands of states in seconds) into a local SQLite time machine. No daemon, no capture agent, no cloud.</div>
+      </details>
+      <details class="stage" open>
+        <summary><span class="stage-n">02</span>Restore</summary>
+        <div class="stage-body">Any file, as of any moment: latest full snapshot at that time plus every edit replayed on top. <code>blackbox log &lt;file&gt;</code> lists the versions; <code>restore --as-of</code> brings one back. Works even when the session, the machine, or the harness state is long gone.</div>
+      </details>
+      <details class="stage" open>
+        <summary><span class="stage-n">03</span>Alarm</summary>
+        <div class="stage-body">The watchdog compares what is on disk against what the transcripts prove existed later. Disk content matching an older state while newer states are known is the signature of silent loss: NFS rollbacks, bad restores, clobbered checkouts. You get named files, timestamps, and the exact recovery command.</div>
+      </details>
+    </div>
+    <div class="tour-frame mt-4 reveal">
+      <img src="assets/img/blackbox-cockpit.png" alt="The Blackbox cockpit: 6,797 file states recorded, per-file time machine with copy-paste restore commands.">
+    </div>
+  </div>
+</section>
+
+<section id="proof">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">measured, not claimed</span>
+      <h2>Night one, real machine</h2>
+      <p>Built after an NFS incident silently reverted dozens of files across one developer's repos while git HEAD never moved. Every number below is from executed runs on 2026-07-21/22, ledgers committed.</p>
+    </div>
+    <div class="stat-grid mt-3 reveal">
+      <div class="stat-tile"><div class="stat-value accent">69</div><div class="stat-caption">files recovered, first day</div><div class="stat-sub">across 3 repos the owner believed were fine</div></div>
+      <div class="stat-tile"><div class="stat-value">9.9s</div><div class="stat-caption">full scan</div><div class="stat-sub">13 repos, 6,357 transcripts</div></div>
+      <div class="stat-tile"><div class="stat-value">6,797</div><div class="stat-caption">file states recorded</div><div class="stat-sub">and counting, every 30 minutes</div></div>
+      <div class="stat-tile"><div class="stat-value">0</div><div class="stat-caption">cloud bytes</div><div class="stat-sub">local SQLite, your disk, your key</div></div>
+    </div>
+    <p class="footnote reveal">The recovered set included test files whose coverage had silently halved, a core corpus module eleven days stale, and a packaged app about to ship from rolled-back sources. None were detectable by git status: the working tree looked clean because the rollback WAS the working tree.</p>
+  </div>
+</section>
+
+<section id="start">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">get started</span>
+      <h2>Sixty seconds to your first answer</h2>
+      <p>Ships inside memsub today (standalone package on the roadmap). Supports Claude Code transcripts natively; Codex session logs where formats match; Cursor next.</p>
+    </div>
+    <div class="runbook reveal">
+      <pre>cd memory-sublayer
+python3 -m memsub.cli blackbox scan   <span style="color:var(--text-faint)"># discovers your repos, indexes, reports</span></pre>
+      <pre><span style="color:var(--text-faint)"># it either says CLEAN, or names your lost work and how to get it back:</span>
+memsub filehist restore '&lt;file&gt;' --as-of '&lt;time it last existed&gt;'</pre>
+    </div>
+    <p class="manifesto mt-4 reveal">Blackbox is built on the belief that work your agents did for you is yours to keep: not for 30 days, not per-session, but permanently, on your own machine.</p>
+  </div>
+</section>
+
+<footer id="footer">
+  <div class="container">
+    <div class="footer-meta">
+      <span>built by Rustom Dubash</span>
+      <span><a href="index.html">memsub</a> &middot; <a href="../docs/demo-runbook-2026-07-22.md">demo runbook</a></span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/script.js"></script>
+</body>
+</html>
