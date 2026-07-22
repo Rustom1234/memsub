@@ -81,6 +81,7 @@ STATUS_BLOCKED_PII = "blocked_pii"
 STATUS_INFERRED_AWAITING_FLAG = "inferred_awaiting_flag"
 
 _WIKILINK_RE = re.compile(r"\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]+))?\]\]")
+_COMMENT_RE = re.compile(r"^<!--.*-->$")
 
 # --------------------------------------------------------------------------- #
 # PII heuristics: findings BLOCK a note from the publish set, they never
@@ -157,7 +158,7 @@ def _id_prefix(relpath: str, fields: dict) -> str:
 class GardenNote:
     relpath: str
     fields: dict
-    body: str  # note text after the frontmatter fence
+    body: str  # published prose only: `## Content` section, or full body when there is no such section
     title: str
     id_prefix: str
     channel: str | None
@@ -217,6 +218,16 @@ def resolve_publish_set(vault_root: Path, store=None) -> dict[str, GardenNote]:
         channel = fields.get("channel") or None
         publish_inferred_flag = _parse_bool(fields.get("publish_inferred"))
         sections = split_note_sections(body)
+        # What actually gets published: the `## Content` prose only, never
+        # the machine Provenance/Audit-events/Links sections memsub/vault.py
+        # also writes underneath it (run/session ids, HMAC channel_sig,
+        # audit timestamps, algorithmic "shares entity" bullets -- none of
+        # that is meant for a public reader; vault_serve.py collapses the
+        # same fields into a closed <details> block for the same reason).
+        # A note with no `## Content` header at all (hand-authored pages,
+        # demo/vault/topics/*.md) falls back to its full body, since there
+        # is no machine section to strip in the first place.
+        content_md = sections.content or body
         title = note_title(relpath, _TitleShim(relpath, text))
         stage = "seedling" if channel == CHANNEL_LLM_INFERRED else "evergreen"
         verified = channel == CHANNEL_USER_STATED or _parse_bool(fields.get("human_confirmed"))
@@ -233,14 +244,14 @@ def resolve_publish_set(vault_root: Path, store=None) -> dict[str, GardenNote]:
             # `[[...--a1b2c3d4]]` target never trips the API-key-shaped
             # heuristic below (measured false-positive on demo/vault's
             # topics/*.md pages, which embed wikilinks inline in prose).
-            scan_text = _WIKILINK_RE.sub(" ", sections.content or body)
+            scan_text = _WIKILINK_RE.sub(" ", content_md)
             pii_findings = scan_for_pii(scan_text)
             status = STATUS_BLOCKED_PII if pii_findings else STATUS_PUBLISHED
 
         notes[relpath] = GardenNote(
             relpath=relpath,
             fields=fields,
-            body=body,
+            body=content_md,
             title=title,
             id_prefix=id_prefix,
             channel=channel,
@@ -431,7 +442,11 @@ def render_markdown(text: str, resolve) -> str:
             out.append(f"<pre><code>{html.escape(chr(10).join(body_lines))}</code></pre>")
             continue
 
-        if not line.strip():
+        if not line.strip() or _COMMENT_RE.match(line.strip()):
+            # `<!-- memsub:distill:begin/end -->` markers memsub/distill.py
+            # writes around a topic page's body: a machine bookkeeping
+            # marker, never meant to display, so it is skipped like a blank
+            # line rather than shown as literal escaped text.
             flush_para()
             close_lists()
             i += 1
