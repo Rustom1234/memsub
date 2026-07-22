@@ -48,6 +48,7 @@ from pathlib import Path
 from . import ask as ask_mod
 from . import resonance as resonance_mod
 from .backends import build_backend
+from .loops import SEVERITY_INTERRUPT
 from .sdk import MemoryClient
 from .brief import build_brief
 from .store import EpisodicStore, TERMINAL_EVENTS
@@ -465,6 +466,26 @@ def _open_store_readonly(db_path: Path | None) -> EpisodicStore | None:
         return None
 
 
+def _blackbox_dashboard_stats(db_path: Path | None) -> tuple[float, int] | None:
+    """(last_sweep_ts, incident_count) from the most recent blackbox_sweeps
+    row, or None if there is no --db, no store, or no such table yet (a repo
+    that has never run `memsub blackbox scan`). Never raises."""
+    store = _open_store_readonly(db_path)
+    if store is None:
+        return None
+    try:
+        row = store._conn.execute(
+            "SELECT ts, incidents FROM blackbox_sweeps ORDER BY ts DESC LIMIT 1"
+        ).fetchone()
+    except Exception:
+        return None
+    finally:
+        store.close()
+    if row is None:
+        return None
+    return (row[0], row[1])
+
+
 def _iso_date(ts: float) -> str:
     return datetime.fromtimestamp(ts).strftime("%Y-%m-%d")
 
@@ -695,6 +716,17 @@ def _tile_text(label: str, text: str) -> str:
     )
 
 
+def _tile_link(label: str, text: str, href: str, accent: bool = False) -> str:
+    """A dashboard tile that is also a link (e.g. to /loops or /blackbox).
+    Same visual shape as `_tile`/`_tile_text`, just wrapped in `<a>`."""
+    cls = "tile-value tile-text accent" if accent else "tile-value tile-text"
+    return (
+        f'<a class="tile tile-link" href="{html.escape(href)}">'
+        f'<div class="{cls}">{html.escape(text)}</div>'
+        f'<div class="tile-label">{html.escape(label)}</div></a>'
+    )
+
+
 def _namespace_breakdown(idx: VaultIndex) -> list[tuple[str, int]]:
     """Namespace/source-project counts, vault-text-derived (works in both
     store and vault-only mode). Sorted by count desc."""
@@ -765,7 +797,14 @@ def _render_brain_section(idx: VaultIndex, graph, sim_index) -> str:
     return "".join(parts)
 
 
-def _render_dashboard(idx: VaultIndex, db_path: Path | None, graph=None, sim_index=None) -> str:
+def _render_dashboard(
+    idx: VaultIndex,
+    db_path: Path | None,
+    graph=None,
+    sim_index=None,
+    loops_findings: list | None = None,
+    loops_enabled: bool = False,
+) -> str:
     stats = compute_dashboard_stats(idx, db_path)
     mode_note = ""
     if stats["source"] != "store":
@@ -774,7 +813,7 @@ def _render_dashboard(idx: VaultIndex, db_path: Path | None, graph=None, sim_ind
             "<code>--db</code> path, so these counts are derived from note frontmatter, not "
             "the live store.</p>"
         )
-    tiles = "".join([
+    tiles_list = [
         _tile("total memories", stats["total"], accent=True),
         _tile("active", stats["active"]),
         _tile("superseded", stats["superseded"]),
@@ -782,7 +821,24 @@ def _render_dashboard(idx: VaultIndex, db_path: Path | None, graph=None, sim_ind
         _tile("human-verified", stats["human_verified"]),
         _tile("quarantined", stats["quarantined"]),
         _tile_text("last extraction", _relative_time(stats["last_extraction_ts"])),
-    ])
+    ]
+    # loops tile: only when the server was started with --projects-dir (a
+    # real scan of ~/.claude*/projects costs a few seconds -- see
+    # memsub/loops.py and docs/loops-2026-07-22.md); absent otherwise, zero
+    # cost to default startup.
+    if loops_enabled:
+        findings = loops_findings or []
+        interrupt_n = sum(1 for f in findings if f.severity == SEVERITY_INTERRUPT)
+        label = f"loops ({interrupt_n} interrupt)" if interrupt_n else "loops"
+        tiles_list.append(_tile_link(label, str(len(findings)), "/loops", accent=bool(interrupt_n)))
+    # blackbox tile: only when --db is given and the blackbox_sweeps table
+    # already exists (i.e. `memsub blackbox scan` has run at least once).
+    bb_stats = _blackbox_dashboard_stats(db_path)
+    if bb_stats is not None:
+        bb_ts, bb_incidents = bb_stats
+        label = f"blackbox ({bb_incidents} incident(s))"
+        tiles_list.append(_tile_link(label, _relative_time(bb_ts), "/blackbox"))
+    tiles = "".join(tiles_list)
     legend = "".join(
         f'<li><span class="legend-dot" style="background:{color}"></span>{html.escape(label)}'
         f'<span class="legend-count">{count:,}</span></li>'
@@ -1040,6 +1096,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
 .tile-value.accent { color: var(--accent); }
 .tile-value.tile-text { font-size: 1.05rem; color: var(--text-dim); }
 .tile-label { font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 0.25rem; }
+.tile-link { display: block; text-decoration: none; }
 
 .viz-row { display: grid; grid-template-columns: 1fr; gap: 0.75rem; margin-top: 0.75rem; }
 .viz-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 0.9rem 1rem; }
@@ -2744,7 +2801,13 @@ def render_blackbox_page(idx: VaultIndex, db_path: Path | None, path_query: str 
 
 
 def render_index_page(
-    idx: VaultIndex, query: str = "", db_path: Path | None = None, graph=None, sim_index=None
+    idx: VaultIndex,
+    query: str = "",
+    db_path: Path | None = None,
+    graph=None,
+    sim_index=None,
+    loops_findings: list | None = None,
+    loops_enabled: bool = False,
 ) -> bytes:
     by_folder: dict[str, list] = {}
     sections: list[str] = []
@@ -2773,7 +2836,7 @@ def render_index_page(
             )
             sections.append(f'<div class="folder"><h2>{html.escape(folder)}</h2><ul class="notelist">{items}</ul></div>')
 
-    dashboard_html = _render_dashboard(idx, db_path, graph, sim_index)
+    dashboard_html = _render_dashboard(idx, db_path, graph, sim_index, loops_findings, loops_enabled)
     content = (
         f"{dashboard_html}"
         '<section class="search-section">'
@@ -2801,6 +2864,10 @@ def make_handler(
     ask_backend=None,
     loops_findings=None,
 ) -> type[BaseHTTPRequestHandler]:
+    # loops_findings=None means the server was never asked to scan (no
+    # --projects-dir): distinct from "scanned, found nothing" (an empty
+    # list), so the dashboard tile can tell the two apart.
+    loops_enabled = loops_findings is not None
     loops_findings = loops_findings or []
     class Handler(BaseHTTPRequestHandler):
         server_version = "memsub-vault-serve/2.0"
@@ -2825,7 +2892,8 @@ def make_handler(
 
             if parsed.path == "/":
                 query = urllib.parse.parse_qs(parsed.query).get("q", [""])[0]
-                self._send(render_index_page(idx, query, db_path, graph, sim_index))
+                self._send(render_index_page(idx, query, db_path, graph, sim_index,
+                                              loops_findings, loops_enabled))
                 return
 
             if parsed.path == "/random":
@@ -3074,13 +3142,14 @@ def serve_vault(
     # `vault serve`/`vault serve --root` keeps its existing zero-extra-cost
     # startup unless a caller asks for the loops scan explicitly. Built once
     # at startup, same "no live reload" contract as idx/graph/sim_index.
-    loops_findings: list = []
+    loops_findings: list | None = None  # None = not scanned (no --projects-dir)
     if loops_dirs:
         from .loops import scan_loops
 
         try:
             loops_findings = scan_loops(loops_dirs)
         except Exception as exc:
+            loops_findings = []  # opted in, but the scan itself failed
             print(f"loops: scan failed ({exc}); /loops will show 0 findings")
     handler = make_handler(idx, resolved_db, graph, sim_index, ask_backend, loops_findings)
     with socketserver.ThreadingTCPServer((host, port), handler) as httpd:
