@@ -517,6 +517,116 @@ def test_render_loops_page_groups_by_severity_and_collapses_low_tiers():
     assert "click to expand" in page
 
 
+def test_dashboard_has_no_loops_tile_by_default(tmp_path):
+    """No --projects-dir means no scan happened: the tile must be absent,
+    not a zero-count tile (docs/loops-2026-07-22.md: /loops is opt-in)."""
+    idx, graph, sim = _fixture_vault(tmp_path)
+    page = render_index_page(idx, "", None, graph, sim).decode("utf-8")
+    assert 'class="tile tile-link" href="/loops"' not in page
+
+
+def test_dashboard_shows_loops_tile_with_interrupt_count_when_enabled(tmp_path):
+    from memsub.loops import Finding
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    findings = [
+        Finding(session="/tmp/a.jsonl", ts=1_800_000_000.0, reason="unanswered ask",
+                severity="interrupt", confidence="certain", signal="unanswered_ask"),
+        Finding(session="/tmp/b.jsonl", ts=1_800_000_100.0, reason="dangling tool call",
+                severity="ambient", confidence="certain", signal="dangling_tool_use"),
+    ]
+    page = render_index_page(idx, "", None, graph, sim, findings, True).decode("utf-8")
+    assert 'class="tile tile-link" href="/loops"' in page
+    assert "1 interrupt" in page
+    assert ">2<" in page  # total finding count as the tile value
+
+
+def test_dashboard_loops_tile_absent_when_disabled_even_with_findings(tmp_path):
+    from memsub.loops import Finding
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    findings = [Finding(session="/tmp/a.jsonl", ts=1_800_000_000.0, reason="x",
+                        severity="interrupt", confidence="certain", signal="unanswered_ask")]
+    page = render_index_page(idx, "", None, graph, sim, findings, False).decode("utf-8")
+    assert 'class="tile tile-link" href="/loops"' not in page
+
+
+def _seed_blackbox_store(tmp_path, sweep_ts: float, incidents: int) -> Path:
+    """A tmp store populated via memsub.filehist (one real file state) plus a
+    directly-inserted blackbox_sweeps row (memsub.blackbox's own schema)."""
+    import json
+
+    from memsub import filehist
+    from memsub.blackbox import _SWEEP_SCHEMA
+    from memsub.store import EpisodicStore
+
+    db_path = tmp_path / "bb.db"
+    store = EpisodicStore(db_path)
+    tdir = tmp_path / "transcripts"
+    tdir.mkdir()
+    target = tmp_path / "main.py"
+    target.write_text("v1 = 1\n")
+    line = json.dumps({
+        "type": "assistant", "timestamp": "2026-07-22T00:00:00Z", "message": {"content": [
+            {"type": "tool_use", "id": "w0", "name": "Write",
+             "input": {"file_path": str(target), "content": "v1 = 1\n"}}]},
+    })
+    (tdir / "s.jsonl").write_text(line + "\n")
+    filehist.index_transcripts(store, tdir)
+    conn = filehist._conn(store)
+    conn.executescript(_SWEEP_SCHEMA)
+    conn.execute(
+        "INSERT INTO blackbox_sweeps (ts, repos_checked, states_indexed, incidents, elapsed_s)"
+        " VALUES (?, ?, ?, ?, ?)",
+        (sweep_ts, 1, 1, incidents, 0.5),
+    )
+    conn.commit()
+    store.close()
+    return db_path
+
+
+def test_dashboard_shows_blackbox_tile_when_sweep_table_exists(tmp_path):
+    import time
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    db_path = _seed_blackbox_store(tmp_path, time.time() - 60, incidents=2)
+    page = render_index_page(idx, "", db_path, graph, sim).decode("utf-8")
+    assert 'class="tile tile-link" href="/blackbox"' in page
+    assert "2 incident(s)" in page
+
+
+def test_dashboard_has_no_blackbox_tile_when_table_missing(tmp_path):
+    from memsub.store import EpisodicStore
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    db_path = tmp_path / "plain.db"
+    EpisodicStore(db_path).close()  # store exists, but blackbox never scanned
+    page = render_index_page(idx, "", db_path, graph, sim).decode("utf-8")
+    assert 'class="tile tile-link" href="/blackbox"' not in page
+
+
+def test_dashboard_has_no_blackbox_tile_without_db(tmp_path):
+    idx, graph, sim = _fixture_vault(tmp_path)
+    page = render_index_page(idx, "", None, graph, sim).decode("utf-8")
+    assert 'class="tile tile-link" href="/blackbox"' not in page
+
+
+def test_blackbox_page_renders_states_and_correct_restore_command(tmp_path):
+    """Regression test for the CLI command rename: the recovery command shown
+    on /blackbox must read `memsub blackbox restore ... --at ...` (the old
+    name is long gone, but the page's f-string could silently drift back)."""
+    import time
+
+    from memsub.vault_serve import render_blackbox_page
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    db_path = _seed_blackbox_store(tmp_path, time.time() - 120, incidents=1)
+    target = str(tmp_path / "main.py")
+    page = render_blackbox_page(idx, db_path, target).decode("utf-8")
+    assert "recorded state(s)" in page
+    assert f"memsub blackbox restore '{target}' --at '" in page
+
+
 def test_loops_page_and_api_over_http_from_fixture_transcripts(tmp_path):
     """A 'test vault': an isolated tmp_path fixture standing in for a real
     ~/.claude*/projects transcripts dir (never the real one -- see this

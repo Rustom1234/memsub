@@ -422,6 +422,10 @@ def scan_loops(
     search_dirs = [Path(d) for d in dirs] if dirs else default_scan_dirs()
     cutoff = time.time() - days * 86400
     findings: list[Finding] = []
+    seen_inodes: set[tuple[int, int]] = set()  # (st_dev, st_ino): dedup hardlinked
+    # session files shared between e.g. ~/.claude/projects and
+    # ~/.claude-remote/projects (docs/loops-2026-07-22.md caveat), keeping the
+    # first path encountered.
     for d in search_dirs:
         if not d.is_dir():
             continue
@@ -429,11 +433,16 @@ def scan_loops(
             if "/subagents/" in str(path):
                 continue
             try:
-                mtime = path.stat().st_mtime
+                st = path.stat()
             except OSError:
                 continue
+            mtime = st.st_mtime
             if mtime < cutoff or time.time() - mtime < min_age_secs:
                 continue
+            inode = (st.st_dev, st.st_ino)
+            if inode in seen_inodes:
+                continue
+            seen_inodes.add(inode)
             findings.extend(scan_session(path))
     findings.sort(key=lambda f: (_SEVERITY_ORDER.get(f.severity, 9), -f.ts))
     return findings

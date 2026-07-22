@@ -266,3 +266,31 @@ def test_default_scan_dirs_finds_every_dot_claude_star_projects(tmp_path, monkey
     assert str(tmp_path / ".claude" / "projects") in dirs
     assert str(tmp_path / ".claude-remote" / "projects") in dirs
     assert len(dirs) == 2
+
+
+# --------------------------------------------------------------------------- #
+# v1: dedup hardlinked session files across scanned directories (docs/
+# loops-2026-07-22.md caveat -- ~/.claude/projects and ~/.claude-remote/projects
+# can share the same file via os.link; scan_loops must count it once)
+# --------------------------------------------------------------------------- #
+def test_scan_loops_dedupes_hardlinked_session_across_dirs(tmp_path, monkeypatch):
+    import os
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    dir_a = tmp_path / "dir-a"
+    dir_b = tmp_path / "dir-b"
+    dir_a.mkdir()
+    dir_b.mkdir()
+    original = dir_a / "session.jsonl"
+    original.write_text("\n".join([
+        _msg("user", "fix the parser", T0),
+        _msg("assistant", "done", T0 + 60),
+        _msg("user", "now also add tests please", T0 + 120),
+    ]) + "\n")
+    linked = dir_b / "session.jsonl"
+    os.link(original, linked)  # same (st_dev, st_ino), different path
+
+    findings = scan_loops([dir_a, dir_b], min_age_secs=0)
+    sessions = {f.session for f in findings}
+    assert len(sessions) == 1
+    assert sessions == {str(original)}
