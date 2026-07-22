@@ -492,6 +492,96 @@ def _cmd_vault_check(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_garden_status(args: argparse.Namespace) -> int:
+    from . import garden
+
+    vault = Path(args.vault)
+    if not vault.exists():
+        print(f"no vault at {vault}")
+        return 1
+    store = None
+    db = Path(args.db) if args.db else None
+    if db is not None and db.exists():
+        store = EpisodicStore(db)
+    try:
+        notes = garden.resolve_publish_set(vault, store=store)
+    finally:
+        if store is not None:
+            store.close()
+    counts = garden.status_counts(notes)
+    print(f"published: {counts[garden.STATUS_PUBLISHED]}")
+    print(f"eligible, blocked by PII: {counts[garden.STATUS_BLOCKED_PII]}")
+    print(f"inferred, awaiting publish_inferred flag: {counts[garden.STATUS_INFERRED_AWAITING_FLAG]}")
+    for rel, note in sorted(notes.items()):
+        if note.status == garden.STATUS_BLOCKED_PII:
+            print(f"  blocked_pii: {rel} ({', '.join(note.pii_findings)})")
+        elif note.status == garden.STATUS_INFERRED_AWAITING_FLAG:
+            print(f"  inferred_awaiting_flag: {rel}")
+    return 0
+
+
+def _cmd_garden_review(args: argparse.Namespace) -> int:
+    from . import garden
+
+    vault = Path(args.vault)
+    if not vault.exists():
+        print(f"no vault at {vault}")
+        return 1
+    store = None
+    db = Path(args.db) if args.db else None
+    if db is not None and db.exists():
+        store = EpisodicStore(db)
+    try:
+        result = garden.review(vault, store=store)
+    finally:
+        if store is not None:
+            store.close()
+    diff = result.diff
+    for rel in diff.added:
+        print(f"  + {rel}")
+    for rel in diff.changed:
+        print(f"  ~ {rel}")
+    for rel in diff.removed:
+        print(f"  - {rel}")
+    if diff.clean:
+        print("no changes since last review")
+    print(f"{result.approved_count} note(s) approved for publish -> {vault}/{garden.MANIFEST_NAME}")
+    return 0
+
+
+def _cmd_garden_build(args: argparse.Namespace) -> int:
+    from . import garden
+
+    vault = Path(args.vault)
+    if not vault.exists():
+        print(f"no vault at {vault}")
+        return 1
+    out_dir = Path(args.out) if args.out else vault / garden.DEFAULT_SITE_DIRNAME
+    store = None
+    db = Path(args.db) if args.db else None
+    if db is not None and db.exists():
+        store = EpisodicStore(db)
+    try:
+        result = garden.build_site(vault, out_dir, store=store, yes=args.yes)
+    finally:
+        if store is not None:
+            store.close()
+    if result.needs_review is not None:
+        diff = result.needs_review
+        print("build refused: unreviewed changes to the publish set. Run `memsub garden review` first, or pass --yes.")
+        for rel in diff.added:
+            print(f"  + {rel} (new)")
+        for rel in diff.changed:
+            print(f"  ~ {rel} (content changed)")
+        return 1
+    print(
+        f"{result.published} note(s) published, {result.assets_copied} asset(s) copied, "
+        f"{result.blocked_pii} blocked by PII, {result.inferred_awaiting_flag} inferred awaiting flag "
+        f"-> {result.out_dir}"
+    )
+    return 0
+
+
 def _cmd_vault_serve(args: argparse.Namespace) -> int:
     from .vault_serve import serve_vault
 
@@ -894,6 +984,48 @@ def build_parser() -> argparse.ArgumentParser:
         "vault-only mode, derived from note frontmatter, if this path does not exist)",
     )
     v_serve.set_defaults(func=_cmd_vault_serve)
+
+    p_garden = sub.add_parser(
+        "garden",
+        help="publishable digital-garden static export: allowlist "
+        "(publish: true only), PII-blocked, no silent publish",
+    )
+    garden_sub = p_garden.add_subparsers(dest="garden_command", required=True)
+
+    g_status = garden_sub.add_parser(
+        "status", help="counts: published, blocked by PII, inferred awaiting publish_inferred flag"
+    )
+    g_status.add_argument("--vault", required=True, help="vault folder to scan")
+    g_status.add_argument(
+        "--db", default=None,
+        help="SQLite store for planted/last-tended dates (optional; falls back "
+        "to file frontmatter when omitted or the path does not exist)",
+    )
+    g_status.set_defaults(func=_cmd_garden_status)
+
+    g_review = garden_sub.add_parser(
+        "review",
+        help="print the pending publish-set diff and record it as approved "
+        "(<vault>/garden.json); `garden build` refuses unreviewed changes",
+    )
+    g_review.add_argument("--vault", required=True, help="vault folder to scan")
+    g_review.add_argument("--db", default=None, help="SQLite store for planted/last-tended dates (optional)")
+    g_review.set_defaults(func=_cmd_garden_review)
+
+    g_build = garden_sub.add_parser(
+        "build",
+        help="write the static garden to <vault>/garden-site/ (or --out); "
+        "refuses unreviewed additions/changes unless --yes",
+    )
+    g_build.add_argument("--vault", required=True, help="vault folder to scan")
+    g_build.add_argument("--out", default=None, help="output folder (default: <vault>/garden-site)")
+    g_build.add_argument("--db", default=None, help="SQLite store for planted/last-tended dates (optional)")
+    g_build.add_argument(
+        "--yes", action="store_true",
+        help="publish the current set even if garden review has not approved "
+        "it (also records this build's set as approved)",
+    )
+    g_build.set_defaults(func=_cmd_garden_build)
 
     p_stats = sub.add_parser(
         "stats", help="store summary: episode/namespace counts, checkpoints, db size"
