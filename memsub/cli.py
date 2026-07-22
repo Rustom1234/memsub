@@ -760,6 +760,64 @@ def _cmd_recall(args: argparse.Namespace) -> int:
         client.close()
 
 
+def _cmd_blackbox_scan(args: argparse.Namespace) -> int:
+    """The 60-second first-run experience: discover repos, index every
+    known transcript source, report clean or named recoverable losses.
+    See memsub/blackbox.py's module docstring."""
+    from . import blackbox
+
+    db = Path(args.db)
+    db.parent.mkdir(parents=True, exist_ok=True)
+    store = EpisodicStore(db)
+    try:
+        roots = [args.root] if args.root else None
+        report = blackbox.scan(store, roots=roots)
+    finally:
+        store.close()
+    print(report.render())
+    return 1 if report.incidents else 0
+
+
+def _cmd_blackbox_restore(args: argparse.Namespace) -> int:
+    from . import blackbox
+
+    db = Path(args.db)
+    if not db.exists():
+        print(f"no store at {db}")
+        return 1
+    store = EpisodicStore(db)
+    try:
+        at_ts = blackbox.parse_timestamp(args.at) if args.at else None
+        result = blackbox.restore_file(store, args.file, at_ts)
+    finally:
+        store.close()
+    if result is None:
+        suffix = f" at or before {args.at}" if args.at else ""
+        print(f"no known history for {args.file}{suffix}")
+        return 1
+    ts, content = result
+    Path(args.file).write_text(content)
+    print(f"restored {args.file} to the state transcripts prove existed at {blackbox.format_ts(ts)}")
+    return 0
+
+
+def _cmd_blackbox_status(args: argparse.Namespace) -> int:
+    from . import blackbox
+
+    db = Path(args.db)
+    if not db.exists():
+        print(f"no store at {db}")
+        return 1
+    store = EpisodicStore(db)
+    try:
+        roots = [args.root] if args.root else None
+        report = blackbox.status(store, roots=roots)
+    finally:
+        store.close()
+    print(report.render())
+    return 1 if report.current_incidents else 0
+
+
 def _cmd_mcp(args: argparse.Namespace) -> int:
     from .mcp_server import serve
     from .sdk import MemoryClient
@@ -1118,6 +1176,44 @@ def build_parser() -> argparse.ArgumentParser:
     l_json.add_argument("--projects-dir", default=None)
     l_json.add_argument("--since", type=int, default=7)
     l_json.set_defaults(func=_cmd_loops_json)
+
+    p_bb = sub.add_parser(
+        "blackbox",
+        help="flight recorder: record every file state your agents ever wrote, "
+        "detect silent disk rollbacks (see docs/blackbox-2026-07-22.md)",
+    )
+    bb_sub = p_bb.add_subparsers(dest="blackbox_command", required=True)
+
+    bb_scan = bb_sub.add_parser(
+        "scan",
+        help="discover repos, index agent transcripts, report clean or "
+        "recoverable losses with exact restore commands",
+    )
+    bb_scan.add_argument(
+        "--root", default=None, help="scan this directory instead of the default (~/projects)"
+    )
+    bb_scan.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    bb_scan.set_defaults(func=_cmd_blackbox_scan)
+
+    bb_restore = bb_sub.add_parser(
+        "restore", help="write a file's known content back to disk"
+    )
+    bb_restore.add_argument("file", help="path to restore")
+    bb_restore.add_argument(
+        "--at", default=None,
+        help="restore to this moment (ISO 8601 or 'YYYY-MM-DD HH:MM'); default: latest known state",
+    )
+    bb_restore.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    bb_restore.set_defaults(func=_cmd_blackbox_restore)
+
+    bb_status = bb_sub.add_parser(
+        "status", help="index stats, last sweep, and a fresh incident recheck"
+    )
+    bb_status.add_argument(
+        "--root", default=None, help="check this directory instead of the default (~/projects)"
+    )
+    bb_status.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    bb_status.set_defaults(func=_cmd_blackbox_status)
 
     p_mcp = sub.add_parser("mcp", help="run the MCP stdio server (for claude mcp add)")
     p_mcp.add_argument("--db", default=None, help="SQLite store path (default: $MEMSUB_DB or ~/.memsub/memory.db)")

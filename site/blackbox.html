@@ -45,7 +45,7 @@
       </details>
       <details class="stage" open>
         <summary><span class="stage-n">02</span>Restore</summary>
-        <div class="stage-body">Any file, as of any moment: latest full snapshot at that time plus every edit replayed on top. <code>blackbox log &lt;file&gt;</code> lists the versions; <code>restore --as-of</code> brings one back. Works even when the session, the machine, or the harness state is long gone.</div>
+        <div class="stage-body">Any file, as of any moment: latest full snapshot at that time plus every edit replayed on top. <code>blackbox restore &lt;file&gt; --at &lt;time&gt;</code> brings it back (omit <code>--at</code> for the latest known state). Works even when the session, the machine, or the harness state is long gone.</div>
       </details>
       <details class="stage" open>
         <summary><span class="stage-n">03</span>Alarm</summary>
@@ -63,15 +63,15 @@
     <div class="section-head reveal">
       <span class="eyebrow">measured, not claimed</span>
       <h2>Night one, real machine</h2>
-      <p>Built after an NFS incident silently reverted dozens of files across one developer's repos while git HEAD never moved. Every number below is from executed runs on 2026-07-21/22, ledgers committed.</p>
+      <p>Built after an NFS incident silently reverted dozens of files across one developer's repos while git HEAD never moved. Every number below is from an executed `blackbox scan` on 2026-07-22 (see docs/blackbox-2026-07-22.md for the full run).</p>
     </div>
     <div class="stat-grid mt-3 reveal">
-      <div class="stat-tile"><div class="stat-value accent">69</div><div class="stat-caption">files recovered, first day</div><div class="stat-sub">across 3 repos the owner believed were fine</div></div>
-      <div class="stat-tile"><div class="stat-value">9.9s</div><div class="stat-caption">full scan</div><div class="stat-sub">13 repos, 6,357 transcripts</div></div>
-      <div class="stat-tile"><div class="stat-value">6,797</div><div class="stat-caption">file states recorded</div><div class="stat-sub">and counting, every 30 minutes</div></div>
+      <div class="stat-tile"><div class="stat-value accent">40</div><div class="stat-caption">files found regressed</div><div class="stat-sub">across 3 repos the owner believed were fine</div></div>
+      <div class="stat-tile"><div class="stat-value">14.8s</div><div class="stat-caption">full scan</div><div class="stat-sub">13 repos, 6,373 transcripts checkpointed</div></div>
+      <div class="stat-tile"><div class="stat-value">6,892</div><div class="stat-caption">file states recorded</div><div class="stat-sub">this run alone, across 1,853 files</div></div>
       <div class="stat-tile"><div class="stat-value">0</div><div class="stat-caption">cloud bytes</div><div class="stat-sub">local SQLite, your disk, your key</div></div>
     </div>
-    <p class="footnote reveal">The recovered set included test files whose coverage had silently halved, a core corpus module eleven days stale, and a packaged app about to ship from rolled-back sources. None were detectable by git status: the working tree looked clean because the rollback WAS the working tree.</p>
+    <p class="footnote reveal">Scan only reports; nothing is written to disk until you run `blackbox restore` yourself. See docs/blackbox-2026-07-22.md for the parser confidence matrix and the does-NOT-do list: this is deliberately not oversold.</p>
   </div>
 </section>
 
@@ -80,13 +80,14 @@
     <div class="section-head reveal">
       <span class="eyebrow">get started</span>
       <h2>Sixty seconds to your first answer</h2>
-      <p>Ships inside memsub today (standalone package on the roadmap). Supports Claude Code transcripts natively; Codex session logs where formats match; Cursor next.</p>
+      <p>Ships inside memsub today as its own console script. Native Claude Code support; Codex CLI and Cursor parsers included, best-effort (see the docs for confidence levels); Aider via its own git history.</p>
     </div>
     <div class="runbook reveal">
-      <pre>cd memory-sublayer
-python3 -m memsub.cli blackbox scan   <span style="color:var(--text-faint)"># discovers your repos, indexes, reports</span></pre>
+      <pre>git clone &lt;this repo&gt; && cd memory-sublayer
+uv tool install .                     <span style="color:var(--text-faint)"># installs the `blackbox` command</span>
+blackbox scan                         <span style="color:var(--text-faint)"># discovers your repos, indexes, reports</span></pre>
       <pre><span style="color:var(--text-faint)"># it either says CLEAN, or names your lost work and how to get it back:</span>
-memsub filehist restore '&lt;file&gt;' --as-of '&lt;time it last existed&gt;'</pre>
+blackbox restore '&lt;file&gt;' --at '&lt;time it last existed&gt;'</pre>
     </div>
     <p class="manifesto mt-4 reveal">Blackbox is built on the belief that work your agents did for you is yours to keep: not for 30 days, not per-session, but permanently, on your own machine.</p>
   </div>
