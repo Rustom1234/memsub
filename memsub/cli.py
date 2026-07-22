@@ -1198,7 +1198,7 @@ def build_parser() -> argparse.ArgumentParser:
         "recoverable losses with exact restore commands",
     )
     bb_scan.add_argument(
-        "--root", default=None, help="scan this directory instead of the default (~/projects)"
+        "--root", default=None, help="scan this directory instead of the broadened defaults (common code dirs + cwd)"
     )
     bb_scan.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
     bb_scan.set_defaults(func=_cmd_blackbox_scan)
@@ -1222,7 +1222,7 @@ def build_parser() -> argparse.ArgumentParser:
         "status", help="index stats, last sweep, and a fresh incident recheck"
     )
     bb_status.add_argument(
-        "--root", default=None, help="check this directory instead of the default (~/projects)"
+        "--root", default=None, help="check this directory instead of the broadened defaults (common code dirs + cwd)"
     )
     bb_status.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
     bb_status.set_defaults(func=_cmd_blackbox_status)
