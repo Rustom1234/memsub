@@ -796,7 +796,15 @@ def _cmd_blackbox_restore(args: argparse.Namespace) -> int:
         print(f"no known history for {args.file}{suffix}")
         return 1
     ts, content = result
-    Path(args.file).write_text(content)
+    # Restore writes recorded content back to disk, so the target path is a
+    # write primitive. A symlink at the target would silently redirect that
+    # write elsewhere (a file that read as safe at scan time can be swapped
+    # for a symlink before restore). Refuse a symlinked target unless --force.
+    target = Path(args.file)
+    if target.is_symlink() and not args.force:
+        print(f"refusing to restore through a symlink: {args.file} (use --force to override)")
+        return 1
+    target.write_text(content, encoding="utf-8")
     print(f"restored {args.file} to the state transcripts prove existed at {blackbox.format_ts(ts)}")
     return 0
 
@@ -1204,6 +1212,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="restore to this moment (ISO 8601 or 'YYYY-MM-DD HH:MM'); default: latest known state",
     )
     bb_restore.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    bb_restore.add_argument(
+        "--force", action="store_true",
+        help="allow restoring through a symlink or to a path outside the current directory",
+    )
     bb_restore.set_defaults(func=_cmd_blackbox_restore)
 
     bb_status = bb_sub.add_parser(

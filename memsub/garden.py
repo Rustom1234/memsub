@@ -228,7 +228,13 @@ def resolve_publish_set(vault_root: Path, store=None) -> dict[str, GardenNote]:
         # demo/vault/topics/*.md) falls back to its full body, since there
         # is no machine section to strip in the first place.
         content_md = sections.content or body
-        title = note_title(relpath, _TitleShim(relpath, text))
+        # A memsub wikilink target is a slugified prefix of the linked memory's
+        # content, so a wikilink in the title line (topic pages, hand-authored
+        # notes) would leak an unpublished note's content into the public
+        # <title> and index. Strip wikilink markup from titles, keeping any
+        # human-authored alias, dropping the machine target.
+        raw_title = note_title(relpath, _TitleShim(relpath, text))
+        title = _strip_wikilinks_for_title(raw_title)
         stage = "seedling" if channel == CHANNEL_LLM_INFERRED else "evergreen"
         verified = channel == CHANNEL_USER_STATED or _parse_bool(fields.get("human_confirmed"))
         id_prefix = _id_prefix(relpath, fields)
@@ -388,15 +394,30 @@ def _note_url(note: GardenNote) -> str:
     return f"notes/{note.id_prefix}.html"
 
 
+def _strip_wikilinks_for_title(title: str) -> str:
+    """Replace [[target|alias]] with alias, [[target]] with nothing.
+
+    Titles cannot resolve links, so the machine target (a content slug of a
+    possibly-unpublished note) is never emitted; only a human-authored alias
+    survives."""
+    stripped = _WIKILINK_RE.sub(lambda m: (m.group(2) or "").strip(), title)
+    return " ".join(stripped.split())
+
+
 def _inline(text: str, resolve) -> str:
     text = html.escape(text, quote=False)
 
     def _wikilink(m: re.Match) -> str:
         target, alias = m.group(1), m.group(2)
-        display = html.escape((alias or target).strip())
         resolved = resolve(target)
         if resolved is None:
-            return f'<span class="wikilink private" title="private, not published">{display}</span>'
+            # Never render the target or alias text: a memsub wikilink target
+            # is slugify(content)[:50] of the linked memory (memsub.vault
+            # .note_wikilink), so echoing it would leak a prefix of an
+            # unpublished note's content, and this text is deliberately
+            # stripped before the PII scan. Emit a fixed label only.
+            return '<span class="wikilink private" title="private, not published">private</span>'
+        display = html.escape((alias or target).strip())
         return f'<a class="wikilink" href="{_note_url(resolved)}">{display}</a>'
 
     text = _WIKILINK_RE.sub(_wikilink, text)

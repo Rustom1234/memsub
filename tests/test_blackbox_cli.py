@@ -121,3 +121,29 @@ def test_cli_status_no_store_fails_cleanly(tmp_path, capsys):
     out = capsys.readouterr().out
     assert rc == 1
     assert "no store at" in out
+
+
+def test_cli_restore_refuses_symlink_target(world, capsys, tmp_path):
+    projects, repo, db = world
+    real = repo / "main.py"
+    outside = tmp_path / "victim.txt"
+    outside.write_text("do not overwrite\n")
+    real.unlink()
+    real.symlink_to(outside)
+    rc = main(["blackbox", "restore", str(real), "--db", str(db)])
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "symlink" in out
+    assert outside.read_text() == "do not overwrite\n"  # write was refused
+
+
+def test_cli_restore_force_overrides_symlink(world, capsys, tmp_path):
+    projects, repo, db = world
+    real = repo / "main.py"
+    outside = tmp_path / "victim.txt"
+    outside.write_text("old\n")
+    real.unlink()
+    real.symlink_to(outside)
+    rc = main(["blackbox", "restore", str(real), "--force", "--db", str(db)])
+    assert rc == 0
+    assert outside.read_text() == "v2 = 2\n"  # --force followed the symlink

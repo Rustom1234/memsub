@@ -283,7 +283,10 @@ def test_backlinks_computed_within_published_set(tmp_path):
 
 def test_unresolved_wikilink_renders_as_private_plain_text(tmp_path):
     vault = tmp_path / "vault"
-    _write(vault, "a.md", _note(content="See [[not-published-note]] for context."))
+    # The target text is a stand-in for a memsub wikilink, whose target is a
+    # slugified prefix of the linked memory's content; it must never appear
+    # in the published HTML.
+    _write(vault, "a.md", _note(content="See [[bank-account-4000-1234-not-published]] for context."))
     out = tmp_path / "out"
 
     result = garden.build_site(vault, out, yes=True)
@@ -291,7 +294,7 @@ def test_unresolved_wikilink_renders_as_private_plain_text(tmp_path):
     notes = garden.resolve_publish_set(vault)
     html_text = (out / "notes" / f"{notes['a.md'].id_prefix}.html").read_text(encoding="utf-8")
     assert "wikilink private" in html_text
-    assert "not-published-note" in html_text
+    assert "bank-account-4000-1234-not-published" not in html_text
 
 
 def test_wikilink_to_note_that_exists_but_is_not_published_stays_private(tmp_path):
