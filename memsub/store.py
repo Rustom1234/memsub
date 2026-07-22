@@ -8,6 +8,7 @@ where we need to inspect exactly what the agent could remember at any point).
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
 import time
@@ -282,7 +283,61 @@ class EpisodicStore:
             (ev.id, ev.ts, ev.episode_id, ev.event, json.dumps(ev.detail, sort_keys=True)),
         )
         self._conn.commit()
+        self._mirror_event(ev)
         return ev
+
+    def _mirror_path(self) -> Path | None:
+        if self.path == ":memory:":
+            return None
+        return Path(self.path + ".events.jsonl")
+
+    def _mirror_event(self, ev: MemoryEvent) -> None:
+        """Append the event to a sidecar JSONL next to the db file.
+
+        The mirror survives db-file rollbacks (the NFS incident class): the
+        events can be replayed into a fresh or rolled-back store with
+        rebuild_events_from_mirror. Append-only, best-effort: a mirror write
+        failure never blocks the primary insert.
+        """
+        mirror = self._mirror_path()
+        if mirror is None:
+            return
+        line = json.dumps(
+            {"id": ev.id, "ts": ev.ts, "episode_id": ev.episode_id,
+             "event": ev.event, "detail": ev.detail},
+            sort_keys=True,
+        )
+        try:
+            with open(mirror, "a", encoding="utf-8") as fh:
+                fh.write(line + "\n")
+        except OSError:
+            pass
+
+    def rebuild_events_from_mirror(self, mirror_path: str | Path) -> int:
+        """Replay a mirror JSONL into memory_events. Idempotent; returns inserts.
+
+        Seed lines without an "id" get a deterministic id from their content
+        so replaying the same file twice never duplicates. "detail" may be a
+        dict or an already-encoded JSON string (older seed lines)."""
+        inserted = 0
+        for raw in Path(mirror_path).read_text(encoding="utf-8").splitlines():
+            raw = raw.strip()
+            if not raw:
+                continue
+            rec = json.loads(raw)
+            detail = rec.get("detail", {})
+            detail_text = detail if isinstance(detail, str) else json.dumps(detail, sort_keys=True)
+            ev_id = rec.get("id") or hashlib.sha256(
+                f"{rec.get('ts')}|{rec['episode_id']}|{rec['event']}|{detail_text}".encode()
+            ).hexdigest()[:32]
+            cur = self._conn.execute(
+                "INSERT OR IGNORE INTO memory_events (id, ts, episode_id, event, detail)"
+                " VALUES (?, ?, ?, ?, ?)",
+                (ev_id, rec.get("ts", time.time()), rec["episode_id"], rec["event"], detail_text),
+            )
+            inserted += cur.rowcount
+        self._conn.commit()
+        return inserted
 
     def events(
         self,

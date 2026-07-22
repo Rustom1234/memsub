@@ -13,6 +13,8 @@ enforced on every call; unregistered namespaces are open by design.
 
 from __future__ import annotations
 
+import datetime as _dt
+
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -134,15 +136,32 @@ class MemoryClient:
         namespace: str | None = None,
         budget_tokens: int | None = None,
         log: bool = True,
+        date_from: str | None = None,
+        date_to: str | None = None,
     ) -> list[SearchHit]:
-        """Top-k active memories; with budget_tokens, only those that fit."""
+        """Top-k active memories; with budget_tokens, only those that fit.
+
+        date_from/date_to (ISO dates, inclusive) are a HARD window on episode
+        ts (the I1 temporal layer, docs/eng-review-2026-07-21.md): matches
+        outside the window are dropped, never demoted, and an empty window is
+        an honest empty answer. Omitting date_to leaves the window open-ended."""
         ns = namespace or self.namespace
         self.namespaces.check(self.agent, "read", ns)
         index = self._get_index(ns)
+        # Hard windows over-fetch so in-window hits are not crowded out of
+        # the top-k by out-of-window ones ranked above them.
+        fetch_k = k if date_from is None and date_to is None else max(k * 10, 50)
         if isinstance(index, HybridRetriever):
-            hits = [SearchHit(ep, score) for ep, score in index.search(query, k=k)]
+            hits = [SearchHit(ep, score) for ep, score in index.search(query, k=fetch_k)]
         else:
-            hits = [SearchHit(s.episode, s.score) for s in index.search(query, k=k)]
+            hits = [SearchHit(s.episode, s.score) for s in index.search(query, k=fetch_k)]
+        if date_from is not None or date_to is not None:
+            lo = (_dt.datetime.fromisoformat(date_from).timestamp()
+                  if date_from is not None else float("-inf"))
+            hi = ((_dt.datetime.fromisoformat(date_to) + _dt.timedelta(days=1)).timestamp()
+                  if date_to is not None else float("inf"))
+            hits = [h for h in hits if lo <= h.episode.ts < hi]
+        hits = hits[:k]
         packed = hits
         if budget_tokens is not None:
             packed, used = [], 0
