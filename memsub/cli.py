@@ -498,7 +498,7 @@ def _cmd_vault_serve(args: argparse.Namespace) -> int:
     # --root and --vault point at the same viewer (see memsub/vault_serve.py
     # module docstring); --root just overrides which folder is served.
     root = Path(args.root) if args.root else Path(args.vault)
-    return serve_vault(root, port=args.port, db_path=args.db)
+    return serve_vault(root, port=args.port, db_path=args.db, loops_dirs=args.projects_dir)
 
 
 def _cmd_wiki_ingest(args: argparse.Namespace) -> int:
@@ -913,6 +913,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--db", default=str(default_db_path()),
         help="SQLite store for the dashboard's real counts (best-effort: falls back to "
         "vault-only mode, derived from note frontmatter, if this path does not exist)",
+    )
+    v_serve.add_argument(
+        "--projects-dir", action="append", default=None,
+        help="transcripts dir(s) to scan for the /loops page (repeatable); off by "
+        "default (no loops scan, /loops shows 0 findings) since a scan takes a few "
+        "seconds against a real ~/.claude*/projects corpus",
     )
     v_serve.set_defaults(func=_cmd_vault_serve)
 
