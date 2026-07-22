@@ -910,6 +910,83 @@ def render_review_page(idx: VaultIndex) -> bytes:
 
 
 # --------------------------------------------------------------------------- #
+# Loops: dropped-work inbox (memsub/loops.py's Finding list, computed once
+# at server startup -- same "no live reload" contract idx/graph/sim_index
+# already have). Grouped by severity tier; interrupt tier is always open
+# (it's an unanswered ask), ambient/digest start collapsed in a <details>
+# (research rule: passive filtering beats making the user triage everything).
+# --------------------------------------------------------------------------- #
+def _short_session(path: str) -> str:
+    """Home-relative path for display when possible (shorter, still
+    unambiguous); falls back to the raw path outside $HOME."""
+    p = Path(path)
+    try:
+        return str(p.relative_to(Path.home()))
+    except ValueError:
+        return str(p)
+
+
+_LOOPS_TIER_INFO = {
+    "interrupt": ("interrupt", "an explicit ask went unanswered"),
+    "ambient": ("ambient", "background work vanished, nothing was explicitly asked"),
+    "digest": ("digest", "informational only"),
+}
+
+
+def _loops_rows(group) -> str:
+    return "".join(
+        '<li class="loops-row">'
+        f'<span class="badge badge-loops-{html.escape(f.confidence)}">{html.escape(f.confidence)}</span>'
+        f'<span class="loops-reason">{html.escape(f.reason)}</span>'
+        '<span class="loops-meta">'
+        f'{html.escape(_relative_time(f.ts))} &middot; <code>{html.escape(_short_session(f.session))}</code>'
+        "</span></li>"
+        for f in group
+    )
+
+
+def render_loops_page(findings, note_count: int = 0) -> bytes:
+    howto = (
+        '<p class="howto">Dropped-work detection over your Claude Code transcripts: '
+        "dangling tool calls, silent scheduled wakeups, auth/limit deaths, and unanswered "
+        "asks. Heuristics only, no LLM calls in this pass (does-NOT-do: "
+        "docs/loops-2026-07-22.md).</p>"
+    )
+    if not findings:
+        content = (
+            "<h1>Loops</h1>" + howto + '<p class="count">0 findings in the scanned window</p>'
+        )
+        return _page("Loops", content, note_count=note_count, breadcrumb="loops")
+
+    sections = []
+    for sev in ("interrupt", "ambient", "digest"):
+        group = [f for f in findings if f.severity == sev]
+        if not group:
+            continue
+        label, blurb = _LOOPS_TIER_INFO[sev]
+        rows = _loops_rows(group)
+        header = (
+            f'<h2><span class="badge badge-severity-{sev}">{html.escape(label)}</span> '
+            f'<span class="count">{len(group)} -- {html.escape(blurb)}</span></h2>'
+        )
+        body = f'<ul class="loops-list">{rows}</ul>'
+        if sev == "interrupt":
+            sections.append(f'<div class="loops-section">{header}{body}</div>')
+        else:
+            sections.append(
+                '<details class="loops-section">'
+                f"<summary>{html.escape(label)} tier ({len(group)}) -- click to expand</summary>"
+                f"{header}{body}</details>"
+            )
+    content = (
+        "<h1>Loops</h1>" + howto
+        + f'<p class="count">{len(findings)} finding(s) across severity tiers</p>'
+        + "".join(sections)
+    )
+    return _page("Loops", content, note_count=note_count, breadcrumb="loops")
+
+
+# --------------------------------------------------------------------------- #
 # Page chrome: dark Mission Control, monospace headings, one accent color
 # --------------------------------------------------------------------------- #
 _CSS = """
@@ -1049,6 +1126,22 @@ ul.review-list { list-style: none; padding: 0; display: grid; gap: 0.5rem; margi
 .badge-review-dup { background: rgba(124, 176, 255, 0.12); color: var(--c-observed); border-color: var(--c-observed); }
 .badge-review-stale { background: rgba(255, 107, 107, 0.12); color: var(--c-quarantined); border-color: var(--c-quarantined); }
 .badge-review-other { background: var(--bg-raised); color: var(--text-dim); border-color: var(--border); }
+
+/* loops (dropped-work inbox) */
+.loops-section { margin-top: 1.5rem; }
+.loops-section h2 { font-size: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+details.loops-section > summary { cursor: pointer; color: var(--text-dim); font-family: var(--mono); font-size: 0.85rem; padding: 0.3rem 0; }
+details.loops-section > summary + h2 { margin-top: 0.6rem; }
+ul.loops-list { list-style: none; padding: 0; display: grid; gap: 0.5rem; margin-top: 0.6rem; }
+.loops-row { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 0.55rem 0.85rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem; }
+.loops-reason { flex: 1 1 16rem; color: var(--text); }
+.loops-meta { color: var(--text-faint); font-size: 0.78rem; flex-basis: 100%; }
+.badge-severity-interrupt { background: rgba(255, 107, 107, 0.12); color: var(--c-quarantined); border-color: var(--c-quarantined); }
+.badge-severity-ambient { background: rgba(124, 176, 255, 0.12); color: var(--c-observed); border-color: var(--c-observed); }
+.badge-severity-digest { background: var(--bg-raised); color: var(--text-dim); border-color: var(--border); }
+.badge-loops-certain { background: rgba(74, 222, 128, 0.12); color: var(--c-verified); border-color: var(--c-verified); }
+.badge-loops-likely { background: rgba(255, 200, 87, 0.12); color: #ffc857; border-color: #ffc857; }
+.badge-loops-uncertain { background: var(--bg-raised); color: var(--text-dim); border-color: var(--border); }
 
 .stamp { max-width: 1100px; margin: 2rem auto 0; padding: 0.75rem 1rem; color: var(--text-faint); font-size: 0.78rem; font-family: var(--mono); border-top: 1px solid var(--border); }
 
@@ -1936,6 +2029,7 @@ def _page(
         '<a class="nav-btn" href="/graph">graph</a>'
         '<a class="nav-btn" href="/random">random</a>'
         '<a class="nav-btn" href="/review">review queue</a>'
+        '<a class="nav-btn" href="/loops">loops</a>'
         "</nav>"
     )
     footer = (
@@ -2617,8 +2711,8 @@ def render_blackbox_page(idx: VaultIndex, db_path: Path | None, path_query: str 
                     items.append(
                         f'<li><span class="brief-time">{day}</span> <b>{html.escape(kind)}</b> '
                         f'<span class="bb-tx">{html.escape(Path(tx).name)}</span>'
-                        f'<code class="bb-cmd">memsub filehist restore \'{html.escape(path_query)}\' '
-                        f"--as-of '{datetime.fromtimestamp(ts + 60).strftime('%Y-%m-%dT%H:%M')}'</code></li>"
+                        f'<code class="bb-cmd">memsub blackbox restore \'{html.escape(path_query)}\' '
+                        f"--at '{datetime.fromtimestamp(ts + 60).strftime('%Y-%m-%dT%H:%M')}'</code></li>"
                     )
                 history_html = (f'<h2 class="brief-h">{len(rows)} recorded state(s), newest first</h2>'
                                 f'<ul class="brief-list bb-list">{"".join(items)}</ul>')
@@ -2705,7 +2799,9 @@ def make_handler(
     graph=None,
     sim_index=None,
     ask_backend=None,
+    loops_findings=None,
 ) -> type[BaseHTTPRequestHandler]:
+    loops_findings = loops_findings or []
     class Handler(BaseHTTPRequestHandler):
         server_version = "memsub-vault-serve/2.0"
 
@@ -2742,6 +2838,19 @@ def make_handler(
 
             if parsed.path == "/review":
                 self._send(render_review_page(idx))
+                return
+
+            if parsed.path == "/loops":
+                self._send(render_loops_page(loops_findings, note_count=len(idx.notes)))
+                return
+
+            if parsed.path == "/api/loops.json":
+                import dataclasses
+
+                payload = json.dumps(
+                    [dataclasses.asdict(f) for f in loops_findings]
+                ).encode("utf-8")
+                self._send(payload, content_type="application/json; charset=utf-8")
                 return
 
             if parsed.path == "/graph":
@@ -2935,6 +3044,7 @@ def serve_vault(
     host: str = "127.0.0.1",
     port: int = 8766,
     db_path: Path | str | None = None,
+    loops_dirs: list[str] | None = None,
 ) -> int:
     root = root.expanduser().resolve()
     if not root.is_dir():
@@ -2959,15 +3069,29 @@ def serve_vault(
             ask_backend = build_backend(prefer="ollama", model="qwen3:8b")
         except RuntimeError as exc:
             print(f"ask: local ollama backend unavailable ({exc}); /ask will show an error until it is")
-    handler = make_handler(idx, resolved_db, graph, sim_index, ask_backend)
+    # /loops is opt-in (--projects-dir): scanning the real ~/.claude*/projects
+    # corpus takes a few seconds (memsub/loops.py's scan_loops), so plain
+    # `vault serve`/`vault serve --root` keeps its existing zero-extra-cost
+    # startup unless a caller asks for the loops scan explicitly. Built once
+    # at startup, same "no live reload" contract as idx/graph/sim_index.
+    loops_findings: list = []
+    if loops_dirs:
+        from .loops import scan_loops
+
+        try:
+            loops_findings = scan_loops(loops_dirs)
+        except Exception as exc:
+            print(f"loops: scan failed ({exc}); /loops will show 0 findings")
+    handler = make_handler(idx, resolved_db, graph, sim_index, ask_backend, loops_findings)
     with socketserver.ThreadingTCPServer((host, port), handler) as httpd:
         db_msg = (
             f", dashboard store: {resolved_db}"
             if resolved_db and resolved_db.exists()
             else ", dashboard: vault-only mode"
         )
+        loops_msg = f", loops: {len(loops_findings)} finding(s)" if loops_dirs else ", loops: not scanned (--projects-dir to enable)"
         print(
-            f"memsub vault serve: {len(idx.notes)} note(s) from {root}{db_msg}, "
+            f"memsub vault serve: {len(idx.notes)} note(s) from {root}{db_msg}{loops_msg}, "
             f"graph: {len(graph.notes)} note node(s) / {len(graph.hubs)} hub(s)"
         )
         print(f"listening on http://{host}:{port} (Ctrl-C to stop)")

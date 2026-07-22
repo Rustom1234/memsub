@@ -481,3 +481,96 @@ def test_api_resonate_end_to_end_finds_distant_match_and_persists_idea(tmp_path)
         assert newest.provenance.get("channel") == "user_stated"
     finally:
         verify_store.close()
+
+
+# --------------------------------------------------------------------------- #
+# /loops page + /api/loops.json (2026-07-22): dropped-work inbox rendered
+# from memsub.loops.Finding objects, computed once at server startup.
+# --------------------------------------------------------------------------- #
+def test_render_loops_page_empty_state():
+    from memsub.vault_serve import render_loops_page
+
+    page = render_loops_page([]).decode("utf-8")
+    assert "0 findings" in page
+
+
+def test_render_loops_page_groups_by_severity_and_collapses_low_tiers():
+    from memsub.loops import Finding
+    from memsub.vault_serve import render_loops_page
+
+    findings = [
+        Finding(session="/tmp/a.jsonl", ts=1_800_000_000.0,
+                reason="unanswered ask: \"add tests please\"",
+                severity="interrupt", confidence="certain", signal="unanswered_ask"),
+        Finding(session="/tmp/b.jsonl", ts=1_800_000_100.0,
+                reason="tool call 'Bash' never got a result: session died mid-action",
+                severity="ambient", confidence="certain", signal="dangling_tool_use"),
+    ]
+    page = render_loops_page(findings).decode("utf-8")
+    assert "unanswered ask" in page
+    assert "died mid-action" in page
+    # interrupt tier is always visible (no <details> wrapper)...
+    interrupt_pos = page.index("badge-severity-interrupt")
+    assert "<details" not in page[max(0, interrupt_pos - 200):interrupt_pos]
+    # ...ambient tier starts collapsed inside a <details>
+    assert "<details class=\"loops-section\">" in page
+    assert "click to expand" in page
+
+
+def test_loops_page_and_api_over_http_from_fixture_transcripts(tmp_path):
+    """A 'test vault': an isolated tmp_path fixture standing in for a real
+    ~/.claude*/projects transcripts dir (never the real one -- see this
+    module's docstring / CLAUDE.md rule on tmp fixtures only)."""
+    import json
+    import os
+    import socketserver
+    import time
+
+    from memsub.loops import scan_loops
+
+    root = tmp_path / "vault"
+    _write(root, "hello.md", "# Hello")
+    idx = build_index(root)
+
+    transcripts = tmp_path / "fake-claude-projects"
+    session = transcripts / "s1.jsonl"
+    session.parent.mkdir(parents=True)
+    ts = 1_800_000_000.0
+    session.write_text(
+        json.dumps({"type": "user", "timestamp": "2027-01-15T00:00:00Z",
+                    "message": {"content": [{"type": "text", "text": "fix the parser"}]}}) + "\n"
+        + json.dumps({"type": "assistant", "timestamp": "2027-01-15T00:01:00Z",
+                      "message": {"content": [{"type": "text", "text": "done"}]}}) + "\n"
+        + json.dumps({"type": "user", "timestamp": "2027-01-15T00:02:00Z",
+                      "message": {"content": [{"type": "text", "text": "now add tests please"}]}}) + "\n"
+    )
+    old = time.time() - 5000
+    os.utime(session, (old, old))
+
+    findings = scan_loops([transcripts], days=3650, min_age_secs=0)
+    assert findings, "fixture session should produce at least one finding"
+
+    handler = make_handler(idx, None, None, None, None, findings)
+    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), handler)
+    port = httpd.server_address[1]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        conn.request("GET", "/loops")
+        resp = conn.getresponse()
+        assert resp.status == 200
+        body = resp.read().decode("utf-8")
+        assert "unanswered ask" in body
+
+        conn.request("GET", "/api/loops.json")
+        resp = conn.getresponse()
+        assert resp.status == 200
+        payload = json.loads(resp.read())
+        assert isinstance(payload, list) and len(payload) == len(findings)
+        assert payload[0]["session"] == str(session)
+        conn.close()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)

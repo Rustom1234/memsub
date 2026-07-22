@@ -492,13 +492,103 @@ def _cmd_vault_check(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_garden_status(args: argparse.Namespace) -> int:
+    from . import garden
+
+    vault = Path(args.vault)
+    if not vault.exists():
+        print(f"no vault at {vault}")
+        return 1
+    store = None
+    db = Path(args.db) if args.db else None
+    if db is not None and db.exists():
+        store = EpisodicStore(db)
+    try:
+        notes = garden.resolve_publish_set(vault, store=store)
+    finally:
+        if store is not None:
+            store.close()
+    counts = garden.status_counts(notes)
+    print(f"published: {counts[garden.STATUS_PUBLISHED]}")
+    print(f"eligible, blocked by PII: {counts[garden.STATUS_BLOCKED_PII]}")
+    print(f"inferred, awaiting publish_inferred flag: {counts[garden.STATUS_INFERRED_AWAITING_FLAG]}")
+    for rel, note in sorted(notes.items()):
+        if note.status == garden.STATUS_BLOCKED_PII:
+            print(f"  blocked_pii: {rel} ({', '.join(note.pii_findings)})")
+        elif note.status == garden.STATUS_INFERRED_AWAITING_FLAG:
+            print(f"  inferred_awaiting_flag: {rel}")
+    return 0
+
+
+def _cmd_garden_review(args: argparse.Namespace) -> int:
+    from . import garden
+
+    vault = Path(args.vault)
+    if not vault.exists():
+        print(f"no vault at {vault}")
+        return 1
+    store = None
+    db = Path(args.db) if args.db else None
+    if db is not None and db.exists():
+        store = EpisodicStore(db)
+    try:
+        result = garden.review(vault, store=store)
+    finally:
+        if store is not None:
+            store.close()
+    diff = result.diff
+    for rel in diff.added:
+        print(f"  + {rel}")
+    for rel in diff.changed:
+        print(f"  ~ {rel}")
+    for rel in diff.removed:
+        print(f"  - {rel}")
+    if diff.clean:
+        print("no changes since last review")
+    print(f"{result.approved_count} note(s) approved for publish -> {vault}/{garden.MANIFEST_NAME}")
+    return 0
+
+
+def _cmd_garden_build(args: argparse.Namespace) -> int:
+    from . import garden
+
+    vault = Path(args.vault)
+    if not vault.exists():
+        print(f"no vault at {vault}")
+        return 1
+    out_dir = Path(args.out) if args.out else vault / garden.DEFAULT_SITE_DIRNAME
+    store = None
+    db = Path(args.db) if args.db else None
+    if db is not None and db.exists():
+        store = EpisodicStore(db)
+    try:
+        result = garden.build_site(vault, out_dir, store=store, yes=args.yes)
+    finally:
+        if store is not None:
+            store.close()
+    if result.needs_review is not None:
+        diff = result.needs_review
+        print("build refused: unreviewed changes to the publish set. Run `memsub garden review` first, or pass --yes.")
+        for rel in diff.added:
+            print(f"  + {rel} (new)")
+        for rel in diff.changed:
+            print(f"  ~ {rel} (content changed)")
+        return 1
+    print(
+        f"{result.published} note(s) published, {result.assets_copied} asset(s) copied, "
+        f"{result.blocked_pii} blocked by PII, {result.inferred_awaiting_flag} inferred awaiting flag "
+        f"-> {result.out_dir}"
+    )
+    return 0
+
+
 def _cmd_vault_serve(args: argparse.Namespace) -> int:
     from .vault_serve import serve_vault
 
     # --root and --vault point at the same viewer (see memsub/vault_serve.py
     # module docstring); --root just overrides which folder is served.
     root = Path(args.root) if args.root else Path(args.vault)
-    return serve_vault(root, port=args.port, db_path=args.db)
+    return serve_vault(root, port=args.port, db_path=args.db, loops_dirs=args.projects_dir)
 
 
 def _cmd_wiki_ingest(args: argparse.Namespace) -> int:
@@ -564,6 +654,27 @@ def _cmd_graph_backfill(args: argparse.Namespace) -> int:
         f"{result.links_created} link(s) {label}, {result.llm_calls} LLM call(s)"
     )
     store.close()
+    return 0
+
+
+def _cmd_loops_scan(args: argparse.Namespace) -> int:
+    from .loops import render_loops_report, scan_loops
+
+    dirs = [args.projects_dir] if args.projects_dir else None
+    findings = scan_loops(dirs, days=args.since)
+    print(render_loops_report(findings))
+    return 0
+
+
+def _cmd_loops_json(args: argparse.Namespace) -> int:
+    import dataclasses
+    import json as jsonmod
+
+    from .loops import scan_loops
+
+    dirs = [args.projects_dir] if args.projects_dir else None
+    findings = scan_loops(dirs, days=args.since)
+    print(jsonmod.dumps([dataclasses.asdict(f) for f in findings], indent=2))
     return 0
 
 
@@ -647,6 +758,72 @@ def _cmd_recall(args: argparse.Namespace) -> int:
         return 0
     finally:
         client.close()
+
+
+def _cmd_blackbox_scan(args: argparse.Namespace) -> int:
+    """The 60-second first-run experience: discover repos, index every
+    known transcript source, report clean or named recoverable losses.
+    See memsub/blackbox.py's module docstring."""
+    from . import blackbox
+
+    db = Path(args.db)
+    db.parent.mkdir(parents=True, exist_ok=True)
+    store = EpisodicStore(db)
+    try:
+        roots = [args.root] if args.root else None
+        report = blackbox.scan(store, roots=roots)
+    finally:
+        store.close()
+    print(report.render())
+    return 1 if report.incidents else 0
+
+
+def _cmd_blackbox_restore(args: argparse.Namespace) -> int:
+    from . import blackbox
+
+    db = Path(args.db)
+    if not db.exists():
+        print(f"no store at {db}")
+        return 1
+    store = EpisodicStore(db)
+    try:
+        at_ts = blackbox.parse_timestamp(args.at) if args.at else None
+        result = blackbox.restore_file(store, args.file, at_ts)
+    finally:
+        store.close()
+    if result is None:
+        suffix = f" at or before {args.at}" if args.at else ""
+        print(f"no known history for {args.file}{suffix}")
+        return 1
+    ts, content = result
+    # Restore writes recorded content back to disk, so the target path is a
+    # write primitive. A symlink at the target would silently redirect that
+    # write elsewhere (a file that read as safe at scan time can be swapped
+    # for a symlink before restore). Refuse a symlinked target unless --force.
+    target = Path(args.file)
+    if target.is_symlink() and not args.force:
+        print(f"refusing to restore through a symlink: {args.file} (use --force to override)")
+        return 1
+    target.write_text(content, encoding="utf-8")
+    print(f"restored {args.file} to the state transcripts prove existed at {blackbox.format_ts(ts)}")
+    return 0
+
+
+def _cmd_blackbox_status(args: argparse.Namespace) -> int:
+    from . import blackbox
+
+    db = Path(args.db)
+    if not db.exists():
+        print(f"no store at {db}")
+        return 1
+    store = EpisodicStore(db)
+    try:
+        roots = [args.root] if args.root else None
+        report = blackbox.status(store, roots=roots)
+    finally:
+        store.close()
+    print(report.render())
+    return 1 if report.current_incidents else 0
 
 
 def _cmd_mcp(args: argparse.Namespace) -> int:
@@ -893,7 +1070,55 @@ def build_parser() -> argparse.ArgumentParser:
         help="SQLite store for the dashboard's real counts (best-effort: falls back to "
         "vault-only mode, derived from note frontmatter, if this path does not exist)",
     )
+    v_serve.add_argument(
+        "--projects-dir", action="append", default=None,
+        help="transcripts dir(s) to scan for the /loops page (repeatable); off by "
+        "default (no loops scan, /loops shows 0 findings) since a scan takes a few "
+        "seconds against a real ~/.claude*/projects corpus",
+    )
     v_serve.set_defaults(func=_cmd_vault_serve)
+
+    p_garden = sub.add_parser(
+        "garden",
+        help="publishable digital-garden static export: allowlist "
+        "(publish: true only), PII-blocked, no silent publish",
+    )
+    garden_sub = p_garden.add_subparsers(dest="garden_command", required=True)
+
+    g_status = garden_sub.add_parser(
+        "status", help="counts: published, blocked by PII, inferred awaiting publish_inferred flag"
+    )
+    g_status.add_argument("--vault", required=True, help="vault folder to scan")
+    g_status.add_argument(
+        "--db", default=None,
+        help="SQLite store for planted/last-tended dates (optional; falls back "
+        "to file frontmatter when omitted or the path does not exist)",
+    )
+    g_status.set_defaults(func=_cmd_garden_status)
+
+    g_review = garden_sub.add_parser(
+        "review",
+        help="print the pending publish-set diff and record it as approved "
+        "(<vault>/garden.json); `garden build` refuses unreviewed changes",
+    )
+    g_review.add_argument("--vault", required=True, help="vault folder to scan")
+    g_review.add_argument("--db", default=None, help="SQLite store for planted/last-tended dates (optional)")
+    g_review.set_defaults(func=_cmd_garden_review)
+
+    g_build = garden_sub.add_parser(
+        "build",
+        help="write the static garden to <vault>/garden-site/ (or --out); "
+        "refuses unreviewed additions/changes unless --yes",
+    )
+    g_build.add_argument("--vault", required=True, help="vault folder to scan")
+    g_build.add_argument("--out", default=None, help="output folder (default: <vault>/garden-site)")
+    g_build.add_argument("--db", default=None, help="SQLite store for planted/last-tended dates (optional)")
+    g_build.add_argument(
+        "--yes", action="store_true",
+        help="publish the current set even if garden review has not approved "
+        "it (also records this build's set as approved)",
+    )
+    g_build.set_defaults(func=_cmd_garden_build)
 
     p_stats = sub.add_parser(
         "stats", help="store summary: episode/namespace counts, checkpoints, db size"
@@ -936,6 +1161,71 @@ def build_parser() -> argparse.ArgumentParser:
         "clear to be printed; see _cmd_recall's docstring for how this was tuned",
     )
     p_recall.set_defaults(func=_cmd_recall)
+
+    p_loops = sub.add_parser(
+        "loops",
+        help="dropped-work detection: sessions that died with work outstanding "
+        "(dangling tool calls, silent wakeups, auth/limit deaths, unanswered asks)",
+    )
+    loops_sub = p_loops.add_subparsers(dest="loops_command", required=True)
+    l_scan = loops_sub.add_parser(
+        "scan", help="triage-ordered report of findings (interrupt tier first)"
+    )
+    l_scan.add_argument(
+        "--projects-dir", default=None,
+        help="transcripts dir to scan (default: every ~/.claude*/projects that exists)",
+    )
+    l_scan.add_argument(
+        "--since", type=int, default=7, help="only sessions touched in the last N days (default 7)"
+    )
+    l_scan.set_defaults(func=_cmd_loops_scan)
+
+    l_json = loops_sub.add_parser("json", help="the same findings as machine-readable JSON")
+    l_json.add_argument("--projects-dir", default=None)
+    l_json.add_argument("--since", type=int, default=7)
+    l_json.set_defaults(func=_cmd_loops_json)
+
+    p_bb = sub.add_parser(
+        "blackbox",
+        help="flight recorder: record every file state your agents ever wrote, "
+        "detect silent disk rollbacks (see docs/blackbox-2026-07-22.md)",
+    )
+    bb_sub = p_bb.add_subparsers(dest="blackbox_command", required=True)
+
+    bb_scan = bb_sub.add_parser(
+        "scan",
+        help="discover repos, index agent transcripts, report clean or "
+        "recoverable losses with exact restore commands",
+    )
+    bb_scan.add_argument(
+        "--root", default=None, help="scan this directory instead of the default (~/projects)"
+    )
+    bb_scan.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    bb_scan.set_defaults(func=_cmd_blackbox_scan)
+
+    bb_restore = bb_sub.add_parser(
+        "restore", help="write a file's known content back to disk"
+    )
+    bb_restore.add_argument("file", help="path to restore")
+    bb_restore.add_argument(
+        "--at", default=None,
+        help="restore to this moment (ISO 8601 or 'YYYY-MM-DD HH:MM'); default: latest known state",
+    )
+    bb_restore.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    bb_restore.add_argument(
+        "--force", action="store_true",
+        help="allow restoring through a symlink or to a path outside the current directory",
+    )
+    bb_restore.set_defaults(func=_cmd_blackbox_restore)
+
+    bb_status = bb_sub.add_parser(
+        "status", help="index stats, last sweep, and a fresh incident recheck"
+    )
+    bb_status.add_argument(
+        "--root", default=None, help="check this directory instead of the default (~/projects)"
+    )
+    bb_status.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
+    bb_status.set_defaults(func=_cmd_blackbox_status)
 
     p_mcp = sub.add_parser("mcp", help="run the MCP stdio server (for claude mcp add)")
     p_mcp.add_argument("--db", default=None, help="SQLite store path (default: $MEMSUB_DB or ~/.memsub/memory.db)")
