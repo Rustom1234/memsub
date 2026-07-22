@@ -8,6 +8,7 @@ restore commands. The report is the product.
 
 import json
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -89,3 +90,36 @@ def test_scan_is_idempotent_and_fast_second_time(world):
     scan(store, roots=[projects], transcripts=[tdir])
     r2 = scan(store, roots=[projects], transcripts=[tdir])
     assert r2.states_indexed == 0  # incremental: nothing new to parse
+
+
+def test_discover_repos_dedupes_overlapping_roots(world):
+    _store, projects, *_ = world
+    # The same repo reached via two overlapping roots is listed once.
+    repos = discover_repos([projects, projects / "alpha", projects])
+    names = sorted(p.name for p in repos)
+    assert names == ["alpha", "beta"]
+
+
+def test_effective_roots_defaults_include_cwd(monkeypatch, tmp_path):
+    from memsub import blackbox
+    monkeypatch.chdir(tmp_path)
+    roots = blackbox._effective_roots(None)
+    assert Path(tmp_path) in [Path(r) for r in roots]
+    # explicit roots are passed through untouched
+    assert blackbox._effective_roots([tmp_path]) == [tmp_path]
+
+
+def test_discover_repos_skips_unreadable_dirs(world, tmp_path):
+    # A directory whose .git probe raises (permission denied, /tmp systemd
+    # dirs) must skip, not abort the scan.
+    _store, projects, *_ = world
+    blocked = tmp_path / "blocked"
+    blocked.mkdir()
+    (blocked / "sub").mkdir()
+    import os as _os
+    _os.chmod(blocked, 0o000)
+    try:
+        repos = discover_repos([projects, blocked])
+        assert sorted(p.name for p in repos) == ["alpha", "beta"]
+    finally:
+        _os.chmod(blocked, 0o755)

@@ -77,7 +77,14 @@ def discover_repos(roots: list[str | Path], max_depth: int = 3) -> list[Path]:
         stack = [(root, 0)]
         while stack:
             d, depth = stack.pop()
-            if (d / ".git").exists():
+            # A broadened root (or cwd) can descend into directories this user
+            # cannot stat (e.g. /tmp systemd-private-* dirs). A single
+            # unreadable dir must skip, never abort the whole scan.
+            try:
+                is_repo = (d / ".git").exists()
+            except OSError:
+                continue
+            if is_repo:
                 resolved = d.resolve()
                 if resolved not in seen:
                     seen.add(resolved)
