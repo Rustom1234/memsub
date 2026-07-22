@@ -567,6 +567,27 @@ def _cmd_graph_backfill(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_loops_scan(args: argparse.Namespace) -> int:
+    from .loops import render_loops_report, scan_loops
+
+    dirs = [args.projects_dir] if args.projects_dir else None
+    findings = scan_loops(dirs, days=args.since)
+    print(render_loops_report(findings))
+    return 0
+
+
+def _cmd_loops_json(args: argparse.Namespace) -> int:
+    import dataclasses
+    import json as jsonmod
+
+    from .loops import scan_loops
+
+    dirs = [args.projects_dir] if args.projects_dir else None
+    findings = scan_loops(dirs, days=args.since)
+    print(jsonmod.dumps([dataclasses.asdict(f) for f in findings], indent=2))
+    return 0
+
+
 def _fmt_age(seconds: float) -> str:
     """Compact relative age for a recall line, e.g. '3h ago', '12d ago'."""
     seconds = max(seconds, 0.0)
@@ -936,6 +957,29 @@ def build_parser() -> argparse.ArgumentParser:
         "clear to be printed; see _cmd_recall's docstring for how this was tuned",
     )
     p_recall.set_defaults(func=_cmd_recall)
+
+    p_loops = sub.add_parser(
+        "loops",
+        help="dropped-work detection: sessions that died with work outstanding "
+        "(dangling tool calls, silent wakeups, auth/limit deaths, unanswered asks)",
+    )
+    loops_sub = p_loops.add_subparsers(dest="loops_command", required=True)
+    l_scan = loops_sub.add_parser(
+        "scan", help="triage-ordered report of findings (interrupt tier first)"
+    )
+    l_scan.add_argument(
+        "--projects-dir", default=None,
+        help="transcripts dir to scan (default: every ~/.claude*/projects that exists)",
+    )
+    l_scan.add_argument(
+        "--since", type=int, default=7, help="only sessions touched in the last N days (default 7)"
+    )
+    l_scan.set_defaults(func=_cmd_loops_scan)
+
+    l_json = loops_sub.add_parser("json", help="the same findings as machine-readable JSON")
+    l_json.add_argument("--projects-dir", default=None)
+    l_json.add_argument("--since", type=int, default=7)
+    l_json.set_defaults(func=_cmd_loops_json)
 
     p_mcp = sub.add_parser("mcp", help="run the MCP stdio server (for claude mcp add)")
     p_mcp.add_argument("--db", default=None, help="SQLite store path (default: $MEMSUB_DB or ~/.memsub/memory.db)")

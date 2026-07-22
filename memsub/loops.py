@@ -437,3 +437,29 @@ def scan_loops(
             findings.extend(scan_session(path))
     findings.sort(key=lambda f: (_SEVERITY_ORDER.get(f.severity, 9), -f.ts))
     return findings
+
+
+_SEVERITY_LABELS = {
+    SEVERITY_INTERRUPT: "interrupt -- unanswered ask",
+    SEVERITY_AMBIENT: "ambient -- background work vanished",
+    SEVERITY_DIGEST: "digest -- informational",
+}
+
+
+def render_loops_report(findings: list[Finding]) -> str:
+    """Triage-ordered plain-text report: interrupt tier first, each line
+    carries the reason label, confidence, and session path (`memsub loops
+    scan`'s output)."""
+    if not findings:
+        return "no dropped-work findings"
+    lines: list[str] = []
+    for sev in (SEVERITY_INTERRUPT, SEVERITY_AMBIENT, SEVERITY_DIGEST):
+        group = [f for f in findings if f.severity == sev]
+        if not group:
+            continue
+        lines.append(f"== {_SEVERITY_LABELS[sev]}: {len(group)} ==")
+        for f in group:
+            when = datetime.datetime.fromtimestamp(f.ts).strftime("%Y-%m-%d %H:%M")
+            lines.append(f"  {when}  [{f.confidence}]  {f.reason}")
+            lines.append(f"      {f.session}")
+    return "\n".join(lines)
