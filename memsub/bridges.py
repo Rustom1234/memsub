@@ -442,7 +442,10 @@ def _filter_chips_html(bridges: list[Bridge]) -> str:
         key = _bucket_pair_key(br.a_bucket, br.b_bucket)
         counts[key] += 1
         lo, hi = sorted((br.a_bucket, br.b_bucket))
-        labels[key] = f"{lo} &harr; {hi}"
+        # Bucket names can derive from LLM-extracted entity text, so escape
+        # before interpolating into the chip label (the card render already
+        # escapes bucket names; this render site must match).
+        labels[key] = f"{html.escape(lo)} &harr; {html.escape(hi)}"
     chips = [f'<button class="chip active" data-bp="" type="button">all ({len(bridges)})</button>']
     for key in sorted(counts, key=lambda kk: -counts[kk]):
         chips.append(
@@ -583,7 +586,14 @@ def make_bridges_handler(state: _ServeState) -> type[BaseHTTPRequestHandler]:
         def do_POST(self) -> None:  # noqa: N802 (stdlib-mandated name)
             parsed = urllib.parse.urlparse(self.path)
             if parsed.path == "/api/verdict":
-                length = int(self.headers.get("Content-Length", 0) or 0)
+                try:
+                    length = int(self.headers.get("Content-Length", 0) or 0)
+                    if length < 0:
+                        raise ValueError("negative length")
+                except ValueError:
+                    self._send(b'{"ok": false}', status=400,
+                               content_type="application/json; charset=utf-8")
+                    return
                 raw = self.rfile.read(length) if length else b"{}"
                 try:
                     data = json.loads(raw.decode("utf-8"))

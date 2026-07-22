@@ -429,3 +429,30 @@ def test_http_server_serves_ok_response(tmp_path):
     finally:
         httpd.shutdown()
         thread.join(timeout=5)
+
+
+def test_render_page_isolates_a_throwing_section(monkeypatch):
+    # One section raising must not blank the others (fail-soft per section).
+    from memsub import mission
+    def _boom():
+        raise RuntimeError("boom")
+    monkeypatch.setattr(mission, "render_links_section", _boom)
+    page = mission.render_mission_page()
+    assert "section unavailable" in page
+    assert "AGENTS NOW" in page  # a sibling section still rendered
+
+
+def test_scan_repos_caps_git_calls_before_spawning(tmp_path, monkeypatch):
+    from memsub import mission
+    for i in range(12):
+        d = tmp_path / f"repo{i}"
+        (d / ".git").mkdir(parents=True)
+    calls = {"n": 0}
+    real_git = mission._git
+    def _counting_git(repo, *args):
+        calls["n"] += 1
+        return "" if args[0] == "status" else ("main" if args[0] == "rev-parse" else "0")
+    monkeypatch.setattr(mission, "_git", _counting_git)
+    out = mission.scan_repos(root=tmp_path, max_repos=8)
+    assert len(out) == 8
+    assert calls["n"] == 8 * 3  # exactly 3 git calls per kept repo, none wasted

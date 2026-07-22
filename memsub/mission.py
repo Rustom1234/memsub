@@ -45,6 +45,8 @@ MISSION_VERSION = "0.1.0"
 DEFAULT_WAITING_ON_YOU = Path.home() / ".memsub" / "waiting-on-you.json"
 
 SPEND_REFRESH_INTERVAL_S = 1800  # `npx ccusage` runs at most this often
+_spend_refresh_lock = threading.Lock()
+_spend_refresh_inflight: dict[str, bool] = {"running": False}
 SPEND_STALE_RENDER_S = 3600  # a cache older than this renders "refreshing"
 
 CLAUDE_PROJECT_DIRS_DEFAULT = [
@@ -189,7 +191,9 @@ def refresh_spend_cache(cache_dir: Path, runner=None) -> None:
     except Exception as exc:
         summary = {"error": str(exc)}
     summary["ts"] = time.time()
-    tmp = cache_dir / "spend.json.tmp"
+    # Unique tmp name per refresh so two overlapping writers cannot race on a
+    # shared tmp path (torn read / FileNotFoundError on replace).
+    tmp = cache_dir / f"spend.{os.getpid()}.{threading.get_ident()}.tmp"
     tmp.write_text(json.dumps(summary))
     tmp.replace(spend_cache_path(cache_dir))
 
@@ -212,7 +216,21 @@ def maybe_refresh_spend_async(
         fresh = False
     if fresh:
         return False
-    t = thread_cls(target=refresh_spend_cache, args=(cache_dir, runner), daemon=True)
+    # In-process guard: without it, concurrent page loads each pass the mtime
+    # check and spawn their own npx before any of them writes the cache.
+    with _spend_refresh_lock:
+        if _spend_refresh_inflight.get("running"):
+            return False
+        _spend_refresh_inflight["running"] = True
+
+    def _run() -> None:
+        try:
+            refresh_spend_cache(cache_dir, runner)
+        finally:
+            with _spend_refresh_lock:
+                _spend_refresh_inflight["running"] = False
+
+    t = thread_cls(target=_run, daemon=True)
     t.start()
     return True
 
@@ -407,6 +425,15 @@ def scan_repos(root: Path | None = None, max_repos: int = REPOS_MAX) -> list[Rep
         candidates = [d for d in root.iterdir() if d.is_dir() and (d / ".git").exists()]
     except OSError:
         return []
+    # Cheap pre-select by directory mtime and keep only max_repos before
+    # spending 3 git subprocesses per repo; otherwise the git cost grows with
+    # total repo count regardless of the cap.
+    def _mtime(d: Path) -> float:
+        try:
+            return d.stat().st_mtime
+        except OSError:
+            return 0.0
+    candidates = sorted(candidates, key=_mtime, reverse=True)[:max_repos]
     scored: list[tuple[float, RepoStatus]] = []
     for repo in candidates:
         ts_raw = _git(repo, "log", "-1", "--format=%ct")
@@ -546,15 +573,24 @@ def render_mission_page(
     fail-soft on its own; this wraps the whole assembly in one more
     try/except so a bug anywhere here still yields a 200 page, never a
     500 (the last line of defense the module docstring promises)."""
+    # Each section is isolated: a section that throws renders its own
+    # "unavailable" note and the other six still render (the module's
+    # fail-soft promise). The outer try is the final backstop so the page is
+    # never a 500 even if this assembly logic itself breaks.
+    def _safe(fn, *a):
+        try:
+            return fn(*a)
+        except Exception:
+            return '<section class="mc-section"><p class="unavailable">section unavailable</p></section>'
     try:
         sections = [
-            render_waiting_section(waiting_path),
-            render_spend_section(cache_dir),
-            render_agents_section(claude_project_dirs),
-            render_loops_section(),
-            render_blackbox_section(db_path),
-            render_repos_section(projects_root),
-            render_links_section(),
+            _safe(render_waiting_section, waiting_path),
+            _safe(render_spend_section, cache_dir),
+            _safe(render_agents_section, claude_project_dirs),
+            _safe(render_loops_section),
+            _safe(render_blackbox_section, db_path),
+            _safe(render_repos_section, projects_root),
+            _safe(render_links_section),
         ]
         body = "".join(s for s in sections if s)
     except Exception:

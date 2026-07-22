@@ -292,3 +292,12 @@ def test_find_bridges_caps_candidate_episodes(monkeypatch):
     kept_ids = {b.a_id for b in bridges} | {b.b_id for b in bridges}
     assert all(int(i.replace("ep", "")) >= 30 for i in kept_ids)
     store.close()
+
+
+def test_filter_chips_escape_bucket_names():
+    from memsub.bridges import Bridge, _filter_chips_html
+    b = Bridge(a_id="a", b_id="b", a_excerpt="x", b_excerpt="y",
+               a_bucket="<script>alert(1)</script>", b_bucket="book-dna", score=0.5)
+    html_out = _filter_chips_html([b])
+    assert "<script>alert(1)</script>" not in html_out
+    assert "&lt;script&gt;" in html_out
