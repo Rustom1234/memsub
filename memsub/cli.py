@@ -826,6 +826,12 @@ def _cmd_blackbox_status(args: argparse.Namespace) -> int:
     return 1 if report.current_incidents else 0
 
 
+def _cmd_mission_serve(args: argparse.Namespace) -> int:
+    from .mission import serve_mission
+
+    return serve_mission(port=args.port)
+
+
 def _cmd_mcp(args: argparse.Namespace) -> int:
     from .mcp_server import serve
     from .sdk import MemoryClient
@@ -1226,6 +1232,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     bb_status.add_argument("--db", default=str(default_db_path()), help="SQLite store path")
     bb_status.set_defaults(func=_cmd_blackbox_status)
+
+    p_mission = sub.add_parser(
+        "mission",
+        help="phone-first personal ops room: what happened, what is running, "
+        "what is waiting on you, what did it cost (see docs/mission-2026-07-22.md)",
+    )
+    mission_sub = p_mission.add_subparsers(dest="mission_command", required=True)
+    m_serve = mission_sub.add_parser("serve", help="serve the Mission Control page")
+    m_serve.add_argument("--port", type=int, default=8769, help="port to bind (127.0.0.1 only)")
+    m_serve.set_defaults(func=_cmd_mission_serve)
 
     p_mcp = sub.add_parser("mcp", help="run the MCP stdio server (for claude mcp add)")
     p_mcp.add_argument("--db", default=None, help="SQLite store path (default: $MEMSUB_DB or ~/.memsub/memory.db)")
