@@ -611,6 +611,22 @@ def test_dashboard_has_no_blackbox_tile_without_db(tmp_path):
     assert 'class="tile tile-link" href="/blackbox"' not in page
 
 
+def test_blackbox_page_renders_states_and_correct_restore_command(tmp_path):
+    """Regression test for the CLI command rename: the recovery command shown
+    on /blackbox must read `memsub blackbox restore ... --at ...` (the old
+    name is long gone, but the page's f-string could silently drift back)."""
+    import time
+
+    from memsub.vault_serve import render_blackbox_page
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    db_path = _seed_blackbox_store(tmp_path, time.time() - 120, incidents=1)
+    target = str(tmp_path / "main.py")
+    page = render_blackbox_page(idx, db_path, target).decode("utf-8")
+    assert "recorded state(s)" in page
+    assert f"memsub blackbox restore '{target}' --at '" in page
+
+
 def test_loops_page_and_api_over_http_from_fixture_transcripts(tmp_path):
     """A 'test vault': an isolated tmp_path fixture standing in for a real
     ~/.claude*/projects transcripts dir (never the real one -- see this
