@@ -360,7 +360,7 @@ def _referenced_assets(vault_root: Path, relpath: str, body: str) -> list[Path]:
             continue
         try:
             candidate = (note_dir / urllib.parse.unquote(ref)).resolve()
-        except (OSError, RuntimeError):
+        except (OSError, RuntimeError, ValueError):
             continue
         if candidate != vault_resolved and vault_resolved not in candidate.parents:
             continue  # traversal attempt: excluded, never copied

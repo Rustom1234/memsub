@@ -110,6 +110,37 @@ def test_safe_path_rejects_missing_file(tmp_path):
     assert safe_path(root, "ghost.md") is None
 
 
+def test_safe_path_rejects_embedded_null_byte(tmp_path):
+    # Path.resolve() raises ValueError on an embedded null byte -- confirm
+    # safe_path treats that the same as any other bad path (None), rather
+    # than letting the ValueError propagate and kill the connection.
+    root = tmp_path / "vault"
+    root.mkdir()
+    assert safe_path(root, "foo\x00bar") is None
+
+
+def test_note_route_with_null_byte_returns_clean_404(tmp_path):
+    import socketserver
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    handler = make_handler(idx, None, graph, sim)
+    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), handler)
+    port = httpd.server_address[1]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        conn.request("GET", "/note/foo%00bar")
+        resp = conn.getresponse()
+        assert resp.status == 404
+        resp.read()
+        conn.close()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+
+
 def test_serve_vault_over_http_smoke(tmp_path):
     """End-to-end: start the real server on an ephemeral port, hit the
     showcase root, the notes dashboard, and a note over HTTP, then shut it

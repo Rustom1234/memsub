@@ -102,6 +102,18 @@ def test_referenced_asset_is_copied_and_unreferenced_is_not(tmp_path):
     assert not (out / "assets" / "orphan.png").exists()
 
 
+def test_asset_reference_with_null_byte_is_excluded_not_a_crash(tmp_path):
+    # Path.resolve() raises ValueError on an embedded null byte; a note
+    # linking such a "path" must be excluded like any other bad reference,
+    # not crash the whole build.
+    vault = tmp_path / "vault"
+    _write(vault, "a.md", _note(content="See ![x](foo\x00bar.png) for details."))
+    out = tmp_path / "out"
+
+    result = garden.build_site(vault, out, yes=True)
+    assert result.assets_copied == 0
+
+
 def test_asset_reference_escaping_vault_root_is_excluded(tmp_path):
     vault = tmp_path / "vault"
     outside = tmp_path / "secret.txt"

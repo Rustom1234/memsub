@@ -173,7 +173,7 @@ def safe_path(root: Path, requested: str) -> Path | None:
     root_resolved = root.resolve()
     try:
         candidate = (root / requested).resolve()
-    except (OSError, RuntimeError):
+    except (OSError, RuntimeError, ValueError):
         return None
     if candidate != root_resolved and root_resolved not in candidate.parents:
         return None
