@@ -21,13 +21,17 @@ numbers are best-effort: if no SQLite store is found at --db (or it can't
 be opened), the page falls back to "vault-only mode" and derives every
 number from note frontmatter instead -- it never fabricates a store.
 
-Read-only and local-only by construction: no write endpoints exist anywhere
-(including the dashboard's store access, which only ever calls
-EpisodicStore's read methods and never opens a path that doesn't already
-exist on disk, so a GET request can never create a database file), the
-server binds 127.0.0.1 only, and every requested note path is resolved and
-checked to stay under the served root before the file is opened (see
-`_safe_path`), so a crafted URL cannot read anything outside the vault.
+Local-only by construction: the server binds 127.0.0.1 only, and every
+requested note path is resolved and checked to stay under the served root
+before the file is opened (see `safe_path`), so a crafted URL cannot read
+anything outside the vault. The GET side is read-only (including the
+dashboard's store access, which only ever calls EpisodicStore's read
+methods and never opens a path that doesn't already exist on disk, so a
+GET request can never create a database file), but two POST endpoints do
+write to the configured --db: `/api/verdict` (bridges keep/dismiss, always
+on) and `/api/resonate` (persists the submitted idea as a memory, gated
+behind `--allow-resonate-write`, off by default -- see `serve_vault`).
+`/api/ask` is read-only.
 """
 
 from __future__ import annotations
@@ -173,7 +177,7 @@ def safe_path(root: Path, requested: str) -> Path | None:
     root_resolved = root.resolve()
     try:
         candidate = (root / requested).resolve()
-    except (OSError, RuntimeError):
+    except (OSError, RuntimeError, ValueError):
         return None
     if candidate != root_resolved and root_resolved not in candidate.parents:
         return None
@@ -3018,9 +3022,14 @@ def render_showcase_page(
 # Garden tab: a preview of PUBLISHED notes only (memsub.garden's allowlist-
 # only, fail-closed publish set), plus a small status panel. The privacy
 # model is memsub.garden's own -- resolve_publish_set/status_counts are
-# imported and called as-is, never reimplemented here, and this route only
-# ever links to /note/<relpath> for notes that are already in idx.notes
-# (the same vault the rest of this server is already showing).
+# imported and called as-is, never reimplemented here. A published note
+# links to /garden/note/<relpath> (render_garden_note_page, below), never
+# to /note/<relpath> (render_note_page): that full-vault renderer has no
+# publish/private concept at all -- its Constellation panel embeds a linked
+# note's full text regardless of publish status, and its Details panel
+# shows frontmatter/provenance/audit -- so a published note that happens to
+# wikilink an unpublished one would otherwise leak that unpublished note's
+# content the moment someone opened it from the Garden tab.
 # --------------------------------------------------------------------------- #
 def render_garden_page(idx: VaultIndex, garden_notes: dict | None) -> bytes:
     from . import garden as garden_mod
@@ -3052,10 +3061,8 @@ def render_garden_page(idx: VaultIndex, garden_notes: dict | None) -> bytes:
                 badge_label = "evergreen &middot; verified" if note.verified else "evergreen"
             else:
                 badge_label = "seedling &middot; inferred, unverified"
-            href = "/note/" + urllib.parse.quote(note.relpath) if note.relpath in idx.notes else None
-            title_html = (
-                f'<a href="{href}">{html.escape(note.title)}</a>' if href else html.escape(note.title)
-            )
+            href = "/garden/note/" + urllib.parse.quote(note.relpath)
+            title_html = f'<a href="{href}">{html.escape(note.title)}</a>'
             when = _relative_time(note.last_tended or note.planted)
             cards.append(
                 '<li class="garden-card">'
@@ -3075,6 +3082,51 @@ def render_garden_page(idx: VaultIndex, garden_notes: dict | None) -> bytes:
         f"{status_html}{list_html}"
     )
     return _page("Garden", content, note_count=len(idx.notes), breadcrumb="garden", active="garden")
+
+
+def render_garden_note_page(relpath: str, garden_notes: dict) -> bytes:
+    """Garden-scoped note view for a single PUBLISHED note. Deliberately
+    reuses memsub.garden's own sanitized renderer (garden.render_markdown /
+    garden._inline) rather than render_note_page: wikilinks resolve only
+    against the published set (an unpublished target renders as a fixed
+    "private" span, never its title or content -- see garden._inline), and
+    there is no Constellation panel (which embeds a linked note's full text
+    as JSON regardless of publish status) and no Details/provenance block
+    (frontmatter, ids, audit log). Callers must have already checked the
+    note is in the published set (see the /garden/note/ route)."""
+    from . import garden as garden_mod
+
+    published = {r: n for r, n in garden_notes.items() if n.status == garden_mod.STATUS_PUBLISHED}
+    note = published[relpath]
+
+    def resolve(target: str):
+        target = target.strip()
+        cand = target if target.endswith(".md") else f"{target}.md"
+        if cand in published:
+            return published[cand]
+        stem = Path(target).stem
+        for rel, n in published.items():
+            if Path(rel).stem == stem:
+                return n
+        return None
+
+    badge_cls = "badge-evergreen" if note.stage == "evergreen" else "badge-seedling"
+    if note.stage == "evergreen":
+        badge_label = "evergreen &middot; verified" if note.verified else "evergreen"
+    else:
+        badge_label = "seedling &middot; inferred, unverified"
+    body_html = garden_mod.render_markdown(note.body, resolve)
+    when = _relative_time(note.last_tended or note.planted)
+    content = (
+        f"<h1>{html.escape(note.title)}</h1>"
+        f'<span class="badge {badge_cls}">{badge_label}</span>'
+        f'<p class="meta-date">last tended {html.escape(when)}</p>'
+        f'<div class="note-body">{body_html}</div>'
+    )
+    return _page(
+        note.title, content, note_count=len(garden_notes),
+        breadcrumb=f"garden / {note.title}", active="garden",
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -3123,6 +3175,7 @@ def make_handler(
     loops_findings=None,
     bridges_state=None,
     garden_notes: dict | None = None,
+    allow_resonate_write: bool = False,
 ) -> type[BaseHTTPRequestHandler]:
     # loops_findings=None means the server was never asked to scan (no
     # --projects-dir): distinct from "scanned, found nothing" (an empty
@@ -3174,6 +3227,26 @@ def make_handler(
 
             if parsed.path == "/garden":
                 self._send(render_garden_page(idx, garden_notes))
+                return
+
+            if parsed.path.startswith("/garden/note/"):
+                rel = parsed.path[len("/garden/note/"):]
+                resolved = safe_path(idx.root, rel)
+                if resolved is None:
+                    self._send(b"not found", status=404, content_type="text/plain")
+                    return
+                relpath = resolved.relative_to(idx.root).as_posix()
+                notes = garden_notes or {}
+                note = notes.get(relpath)
+                if note is None:
+                    self._send(b"not found", status=404, content_type="text/plain")
+                    return
+                from . import garden as garden_mod
+
+                if note.status != garden_mod.STATUS_PUBLISHED:
+                    self._send(b"not found", status=404, content_type="text/plain")
+                    return
+                self._send(render_garden_note_page(relpath, notes))
                 return
 
             if parsed.path == "/bridges":
@@ -3339,7 +3412,14 @@ def make_handler(
                 return
 
             if parsed.path == "/api/ask":
-                length = int(self.headers.get("Content-Length", 0) or 0)
+                try:
+                    length = int(self.headers.get("Content-Length", 0) or 0)
+                    if length < 0:
+                        raise ValueError("negative length")
+                except ValueError:
+                    self._send(b'{"error": "bad Content-Length"}', status=400,
+                               content_type="application/json; charset=utf-8")
+                    return
                 raw = self.rfile.read(length) if length else b"{}"
                 try:
                     data = json.loads(raw.decode("utf-8"))
@@ -3379,7 +3459,14 @@ def make_handler(
                 return
 
             if parsed.path == "/api/resonate":
-                length = int(self.headers.get("Content-Length", 0) or 0)
+                try:
+                    length = int(self.headers.get("Content-Length", 0) or 0)
+                    if length < 0:
+                        raise ValueError("negative length")
+                except ValueError:
+                    self._send(b'{"error": "bad Content-Length"}', status=400,
+                               content_type="application/json; charset=utf-8")
+                    return
                 raw = self.rfile.read(length) if length else b"{}"
                 try:
                     data = json.loads(raw.decode("utf-8"))
@@ -3411,7 +3498,12 @@ def make_handler(
                 try:
                     result = resonance_mod.resonate(idea, client.store, client.embedder, ask_backend)
                     persisted_id = None
-                    if idea:
+                    # Off by default: this is the one place this handler writes
+                    # to --db, and --db defaults to the operator's own store
+                    # (see cli.py), so an unauthenticated POST must not persist
+                    # anything unless the operator explicitly opted in with
+                    # --allow-resonate-write.
+                    if idea and allow_resonate_write:
                         persisted = client.add(idea, kind="idea", channel="user_stated")
                         persisted_id = persisted.id[:8]
                 finally:
@@ -3438,6 +3530,7 @@ def serve_vault(
     port: int = 8766,
     db_path: Path | str | None = None,
     loops_dirs: list[str] | None = None,
+    allow_resonate_write: bool = False,
 ) -> int:
     root = root.expanduser().resolve()
     if not root.is_dir():
@@ -3513,7 +3606,7 @@ def serve_vault(
     except Exception as exc:
         print(f"garden: scan failed ({exc}); /garden will show 0 published notes")
     handler = make_handler(idx, resolved_db, graph, sim_index, ask_backend, loops_findings,
-                            bridges_state, garden_notes)
+                            bridges_state, garden_notes, allow_resonate_write)
     with socketserver.ThreadingTCPServer((host, port), handler) as httpd:
         db_msg = (
             f", dashboard store: {resolved_db}"

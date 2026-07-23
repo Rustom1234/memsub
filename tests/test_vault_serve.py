@@ -110,6 +110,37 @@ def test_safe_path_rejects_missing_file(tmp_path):
     assert safe_path(root, "ghost.md") is None
 
 
+def test_safe_path_rejects_embedded_null_byte(tmp_path):
+    # Path.resolve() raises ValueError on an embedded null byte -- confirm
+    # safe_path treats that the same as any other bad path (None), rather
+    # than letting the ValueError propagate and kill the connection.
+    root = tmp_path / "vault"
+    root.mkdir()
+    assert safe_path(root, "foo\x00bar") is None
+
+
+def test_note_route_with_null_byte_returns_clean_404(tmp_path):
+    import socketserver
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    handler = make_handler(idx, None, graph, sim)
+    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), handler)
+    port = httpd.server_address[1]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        conn.request("GET", "/note/foo%00bar")
+        resp = conn.getresponse()
+        assert resp.status == 404
+        resp.read()
+        conn.close()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+
+
 def test_serve_vault_over_http_smoke(tmp_path):
     """End-to-end: start the real server on an ephemeral port, hit the
     showcase root, the notes dashboard, and a note over HTTP, then shut it
@@ -291,6 +322,54 @@ def test_api_graph_json_over_http_smoke_and_traversal_stays_safe(tmp_path):
         thread.join(timeout=5)
 
 
+def _raw_post_status(port: int, path: str, content_length_header: str, timeout: float = 5) -> str:
+    """Send a raw HTTP POST with an attacker-controlled Content-Length header
+    (http.client would recompute a correct one itself, so a real socket is
+    needed to reproduce a malformed/negative value) and return the status
+    line. A socket timeout here means the handler hung reading the body --
+    the DoS this guards against -- so the caller's own timeout is the
+    real assertion that it did not."""
+    import socket
+
+    sock = socket.create_connection(("127.0.0.1", port), timeout=timeout)
+    try:
+        request = (
+            f"POST {path} HTTP/1.1\r\n"
+            "Host: 127.0.0.1\r\n"
+            f"Content-Length: {content_length_header}\r\n"
+            "Connection: close\r\n\r\n"
+        )
+        sock.sendall(request.encode("ascii"))
+        response = b""
+        while True:
+            chunk = sock.recv(4096)
+            if not chunk:
+                break
+            response += chunk
+        return response.split(b"\r\n", 1)[0].decode("ascii")
+    finally:
+        sock.close()
+
+
+def test_api_ask_and_resonate_reject_malformed_content_length_without_hanging(tmp_path):
+    import socketserver
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    handler = make_handler(idx, None, graph, sim)
+    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), handler)
+    port = httpd.server_address[1]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        for path in ("/api/ask", "/api/resonate"):
+            assert "400" in _raw_post_status(port, path, "abc")
+            assert "400" in _raw_post_status(port, path, "-1")
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+
+
 # --------------------------------------------------------------------------- #
 # "Ask your brain" (2026-07-20): /ask page + /api/ask route
 # --------------------------------------------------------------------------- #
@@ -452,7 +531,10 @@ def test_api_resonate_end_to_end_finds_distant_match_and_persists_idea(tmp_path)
     seed_client.close()
 
     backend = MockBackend(responder=lambda s, m: "These connect because both are about shared imagery.")
-    handler = make_handler(idx, db_path, graph, sim, backend)
+    # allow_resonate_write=True: this test is specifically about the opt-in
+    # persistence path (see test_api_resonate_does_not_persist_by_default
+    # for the off-by-default behavior).
+    handler = make_handler(idx, db_path, graph, sim, backend, None, None, None, True)
     httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), handler)
     port = httpd.server_address[1]
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
@@ -485,6 +567,51 @@ def test_api_resonate_end_to_end_finds_distant_match_and_persists_idea(tmp_path)
         newest = verify_store.all()[-1]
         assert newest.content == idea
         assert newest.provenance.get("channel") == "user_stated"
+    finally:
+        verify_store.close()
+
+
+def test_api_resonate_does_not_persist_by_default(tmp_path):
+    import json
+    import socketserver
+
+    from memsub.backends import MockBackend
+    from memsub.sdk import MemoryClient
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    db_path = tmp_path / "memory.db"
+    seed_client = MemoryClient(db_path=db_path, namespace="claude-code")
+    seed_client.add("Maya wrote about the tide and coastline near the lighthouse.")
+    before_count = seed_client.store.count()
+    seed_client.close()
+
+    backend = MockBackend(responder=lambda s, m: "why")
+    # allow_resonate_write left at its default (False): a resonate POST must
+    # return the resonance result without writing anything to --db.
+    handler = make_handler(idx, db_path, graph, sim, backend)
+    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), handler)
+    port = httpd.server_address[1]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        conn.request(
+            "POST", "/api/resonate", body=json.dumps({"idea": "a brand new idea, never seen before"}),
+            headers={"Content-Type": "application/json"},
+        )
+        resp = conn.getresponse()
+        assert resp.status == 200
+        payload = json.loads(resp.read())
+        assert payload["persisted_id"] is None
+        conn.close()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+
+    verify_store = EpisodicStore(db_path)
+    try:
+        assert verify_store.count() == before_count  # no row added
     finally:
         verify_store.close()
 
@@ -768,10 +895,84 @@ def test_garden_page_shows_only_published_notes_with_status_panel(tmp_path):
     page = render_garden_page(idx, notes).decode("utf-8")
     assert '<a class="nav-tab active" href="/garden">garden</a>' in page
     assert "Some public-safe prose" in page
-    assert '<a href="/note/public.md">' in page
+    # published notes link through the garden-scoped route, never the
+    # full-vault /note/ renderer (see FIX 1 / render_garden_note_page)
+    assert '<a href="/garden/note/public.md">' in page
     assert "private.md" not in page
     assert "evergreen" in page and "verified" in page
     assert '<div class="tile-value accent" data-count="1">1</div>' in page  # published tile
+
+
+def test_garden_note_route_never_leaks_unpublished_linked_note(tmp_path):
+    """FIX 1 regression: a published note that wikilinks an unpublished note
+    must not leak that note's content or provenance/audit text when served
+    through the /garden/note/ route -- the leak class commit 054dd66 fixed
+    in garden.py's own static-site renderer, reopened when the Garden tab's
+    note view went through render_note_page (full-vault, no publish/private
+    concept: Constellation embeds a linked note's full text as JSON, Details
+    shows frontmatter/provenance/audit) instead of a garden-scoped route."""
+    import socketserver
+
+    from memsub import garden
+
+    root = tmp_path / "vault"
+    # namespace+created on both notes so both are "content notes" the graph
+    # connects (is_content_note) -- this is what makes public.md's
+    # Constellation include a node for secret.md at all, the exact
+    # condition the leak needs.
+    _write(
+        root, "public.md",
+        '---\nnamespace: "topics"\ncreated: "2026-07-01T00:00:00"\n'
+        'publish: "true"\nchannel: "user_stated"\n---\n\n'
+        "# A published idea\n\n## Content\n\nSee [[secret]] for more.\n",
+    )
+    _write(
+        root, "secret.md",
+        '---\nid: "deadbeefdeadbeef"\nnamespace: "topics"\n'
+        'created: "2026-07-01T00:00:00"\n---\n\n'
+        "# A secret idea\n\n## Content\n\n"
+        "VERY-SECRET-CONTENT-XYZ must never leak to the public garden.\n\n"
+        "## Provenance\n\n"
+        "- Run: `run-abcdef123456`\n"
+        "- Session: `sess-abcdef123456`\n\n"
+        "### Audit events\n\n"
+        "- 2026-07-01T00:00:00Z  **created**  actor=agent\n",
+    )
+    idx = build_index(root)
+    graph = build_graph_index(idx)
+    sim = build_similarity_index(idx, linked_neighbors(graph))
+    garden_notes = garden.resolve_publish_set(root)
+
+    handler = make_handler(idx, None, graph, sim, None, None, None, garden_notes)
+    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), handler)
+    port = httpd.server_address[1]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        conn.request("GET", "/garden/note/public.md")
+        resp = conn.getresponse()
+        assert resp.status == 200
+        page = resp.read().decode("utf-8")
+
+        # the unpublished note itself is never directly reachable either
+        conn.request("GET", "/garden/note/secret.md")
+        resp2 = conn.getresponse()
+        assert resp2.status == 404
+        resp2.read()
+        conn.close()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+
+    assert "VERY-SECRET-CONTENT-XYZ" not in page
+    assert "run-abcdef123456" not in page
+    assert "sess-abcdef123456" not in page
+    assert "deadbeefdeadbeef" not in page
+    assert "Constellation" not in page
+    assert "Details (ids, provenance, audit log)" not in page
+    assert "private" in page  # unresolved wikilink renders as the fixed private marker
 
 
 def test_garden_page_awaiting_flag_note_is_excluded_from_the_preview_list(tmp_path):
