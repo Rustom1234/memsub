@@ -531,7 +531,10 @@ def test_api_resonate_end_to_end_finds_distant_match_and_persists_idea(tmp_path)
     seed_client.close()
 
     backend = MockBackend(responder=lambda s, m: "These connect because both are about shared imagery.")
-    handler = make_handler(idx, db_path, graph, sim, backend)
+    # allow_resonate_write=True: this test is specifically about the opt-in
+    # persistence path (see test_api_resonate_does_not_persist_by_default
+    # for the off-by-default behavior).
+    handler = make_handler(idx, db_path, graph, sim, backend, None, None, None, True)
     httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), handler)
     port = httpd.server_address[1]
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
@@ -564,6 +567,51 @@ def test_api_resonate_end_to_end_finds_distant_match_and_persists_idea(tmp_path)
         newest = verify_store.all()[-1]
         assert newest.content == idea
         assert newest.provenance.get("channel") == "user_stated"
+    finally:
+        verify_store.close()
+
+
+def test_api_resonate_does_not_persist_by_default(tmp_path):
+    import json
+    import socketserver
+
+    from memsub.backends import MockBackend
+    from memsub.sdk import MemoryClient
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    db_path = tmp_path / "memory.db"
+    seed_client = MemoryClient(db_path=db_path, namespace="claude-code")
+    seed_client.add("Maya wrote about the tide and coastline near the lighthouse.")
+    before_count = seed_client.store.count()
+    seed_client.close()
+
+    backend = MockBackend(responder=lambda s, m: "why")
+    # allow_resonate_write left at its default (False): a resonate POST must
+    # return the resonance result without writing anything to --db.
+    handler = make_handler(idx, db_path, graph, sim, backend)
+    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), handler)
+    port = httpd.server_address[1]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        conn.request(
+            "POST", "/api/resonate", body=json.dumps({"idea": "a brand new idea, never seen before"}),
+            headers={"Content-Type": "application/json"},
+        )
+        resp = conn.getresponse()
+        assert resp.status == 200
+        payload = json.loads(resp.read())
+        assert payload["persisted_id"] is None
+        conn.close()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+
+    verify_store = EpisodicStore(db_path)
+    try:
+        assert verify_store.count() == before_count  # no row added
     finally:
         verify_store.close()
 

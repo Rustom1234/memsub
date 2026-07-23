@@ -588,7 +588,8 @@ def _cmd_vault_serve(args: argparse.Namespace) -> int:
     # --root and --vault point at the same viewer (see memsub/vault_serve.py
     # module docstring); --root just overrides which folder is served.
     root = Path(args.root) if args.root else Path(args.vault)
-    return serve_vault(root, port=args.port, db_path=args.db, loops_dirs=args.projects_dir)
+    return serve_vault(root, port=args.port, db_path=args.db, loops_dirs=args.projects_dir,
+                        allow_resonate_write=args.allow_resonate_write)
 
 
 def _cmd_wiki_ingest(args: argparse.Namespace) -> int:
@@ -1132,6 +1133,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="transcripts dir(s) to scan for the /loops page (repeatable); off by "
         "default (no loops scan, /loops shows 0 findings) since a scan takes a few "
         "seconds against a real ~/.claude*/projects corpus",
+    )
+    v_serve.add_argument(
+        "--allow-resonate-write", action="store_true", default=False,
+        help="let /api/resonate persist the submitted idea into --db as a new memory "
+        "(off by default: /api/resonate is otherwise read-only, returning only the "
+        "resonance result)",
     )
     v_serve.set_defaults(func=_cmd_vault_serve)
 

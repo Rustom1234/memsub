@@ -21,13 +21,17 @@ numbers are best-effort: if no SQLite store is found at --db (or it can't
 be opened), the page falls back to "vault-only mode" and derives every
 number from note frontmatter instead -- it never fabricates a store.
 
-Read-only and local-only by construction: no write endpoints exist anywhere
-(including the dashboard's store access, which only ever calls
-EpisodicStore's read methods and never opens a path that doesn't already
-exist on disk, so a GET request can never create a database file), the
-server binds 127.0.0.1 only, and every requested note path is resolved and
-checked to stay under the served root before the file is opened (see
-`_safe_path`), so a crafted URL cannot read anything outside the vault.
+Local-only by construction: the server binds 127.0.0.1 only, and every
+requested note path is resolved and checked to stay under the served root
+before the file is opened (see `safe_path`), so a crafted URL cannot read
+anything outside the vault. The GET side is read-only (including the
+dashboard's store access, which only ever calls EpisodicStore's read
+methods and never opens a path that doesn't already exist on disk, so a
+GET request can never create a database file), but two POST endpoints do
+write to the configured --db: `/api/verdict` (bridges keep/dismiss, always
+on) and `/api/resonate` (persists the submitted idea as a memory, gated
+behind `--allow-resonate-write`, off by default -- see `serve_vault`).
+`/api/ask` is read-only.
 """
 
 from __future__ import annotations
@@ -3123,6 +3127,7 @@ def make_handler(
     loops_findings=None,
     bridges_state=None,
     garden_notes: dict | None = None,
+    allow_resonate_write: bool = False,
 ) -> type[BaseHTTPRequestHandler]:
     # loops_findings=None means the server was never asked to scan (no
     # --projects-dir): distinct from "scanned, found nothing" (an empty
@@ -3425,7 +3430,12 @@ def make_handler(
                 try:
                     result = resonance_mod.resonate(idea, client.store, client.embedder, ask_backend)
                     persisted_id = None
-                    if idea:
+                    # Off by default: this is the one place this handler writes
+                    # to --db, and --db defaults to the operator's own store
+                    # (see cli.py), so an unauthenticated POST must not persist
+                    # anything unless the operator explicitly opted in with
+                    # --allow-resonate-write.
+                    if idea and allow_resonate_write:
                         persisted = client.add(idea, kind="idea", channel="user_stated")
                         persisted_id = persisted.id[:8]
                 finally:
@@ -3452,6 +3462,7 @@ def serve_vault(
     port: int = 8766,
     db_path: Path | str | None = None,
     loops_dirs: list[str] | None = None,
+    allow_resonate_write: bool = False,
 ) -> int:
     root = root.expanduser().resolve()
     if not root.is_dir():
@@ -3527,7 +3538,7 @@ def serve_vault(
     except Exception as exc:
         print(f"garden: scan failed ({exc}); /garden will show 0 published notes")
     handler = make_handler(idx, resolved_db, graph, sim_index, ask_backend, loops_findings,
-                            bridges_state, garden_notes)
+                            bridges_state, garden_notes, allow_resonate_write)
     with socketserver.ThreadingTCPServer((host, port), handler) as httpd:
         db_msg = (
             f", dashboard store: {resolved_db}"
