@@ -111,8 +111,9 @@ def test_safe_path_rejects_missing_file(tmp_path):
 
 
 def test_serve_vault_over_http_smoke(tmp_path):
-    """End-to-end: start the real server on an ephemeral port, hit the index
-    and a note over HTTP, then shut it down. Never leaves a server running."""
+    """End-to-end: start the real server on an ephemeral port, hit the
+    showcase root, the notes dashboard, and a note over HTTP, then shut it
+    down. Never leaves a server running."""
     root = tmp_path / "vault"
     _write(root, "hello.md", "# Hello\n\nA note with a [[missing]] link.")
 
@@ -131,7 +132,12 @@ def test_serve_vault_over_http_smoke(tmp_path):
         conn.request("GET", "/")
         resp = conn.getresponse()
         assert resp.status == 200
-        assert b"hello" in resp.read().lower()
+        assert b"memsub" in resp.read().lower()  # the showcase landing page
+
+        conn.request("GET", "/notes")
+        resp = conn.getresponse()
+        assert resp.status == 200
+        assert b"hello" in resp.read().lower()  # the notes dashboard lists it
 
         conn.request("GET", "/note/hello.md")
         resp = conn.getresponse()
@@ -297,7 +303,7 @@ def test_ask_page_renders_form_and_sample_chips(tmp_path):
     assert 'id="ask-input"' in page
     assert 'class="ask-chip"' in page
     assert "Chat" in page  # top hub entity from the fixture's shared-entity links
-    assert '<a class="nav-btn" href="/ask">ask</a>' in page
+    assert '<a class="nav-tab active" href="/ask">ask</a>' in page
 
 
 def test_api_ask_without_store_gives_honest_vault_only_message(tmp_path):
@@ -684,3 +690,205 @@ def test_loops_page_and_api_over_http_from_fixture_transcripts(tmp_path):
         httpd.shutdown()
         httpd.server_close()
         thread.join(timeout=5)
+
+
+# --------------------------------------------------------------------------- #
+# Unified UI (2026-07-23): nav tab bar, Showcase ("/"), Garden, Bridges
+# --------------------------------------------------------------------------- #
+def test_nav_has_all_eight_primary_tabs_with_active_state(tmp_path):
+    from memsub.vault_serve import render_graph_page
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    page = render_graph_page(idx, graph).decode("utf-8")
+    # the current page's own tab is highlighted...
+    assert '<a class="nav-tab active" href="/graph">graph</a>' in page
+    # ...and every other primary tab is present, not active
+    for href, label in [
+        ("/", "showcase"), ("/notes", "notes"), ("/garden", "garden"),
+        ("/bridges", "bridges"), ("/blackbox", "blackbox"), ("/loops", "loops"),
+        ("/ask", "ask"),
+    ]:
+        assert f'<a class="nav-tab" href="{href}">{label}</a>' in page
+
+
+def test_showcase_page_renders_hero_and_all_four_product_cards(tmp_path):
+    from memsub.vault_serve import render_showcase_page
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    page = render_showcase_page(idx, None).decode("utf-8")
+    assert '<a class="nav-tab active" href="/">showcase</a>' in page
+    for name, href in [("Garden", "/garden"), ("Bridges", "/bridges"),
+                       ("Blackbox", "/blackbox"), ("Loops", "/loops")]:
+        assert f"<h2>{name}</h2>" in page
+        assert f'href="{href}"' in page
+
+
+def test_showcase_page_shows_live_bridges_and_garden_counts(tmp_path):
+    from memsub.vault_serve import render_showcase_page
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    page = render_showcase_page(idx, None, bridges_count=7, garden_published=2).decode("utf-8")
+    assert "<strong>7</strong> found" in page
+    assert "<strong>2</strong> published" in page
+
+
+def test_showcase_page_honest_empty_states_when_blackbox_and_loops_not_scanned(tmp_path):
+    from memsub.vault_serve import render_showcase_page
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    page = render_showcase_page(idx, None).decode("utf-8")
+    assert "not yet scanned" in page  # blackbox: no --db
+    assert "not scanned (--projects-dir)" in page  # loops: not opted in
+
+
+def _garden_note(publish=None, channel=None, publish_inferred=None, extra_fm="") -> str:
+    lines = ['---', 'namespace: "topics"']
+    if publish is not None:
+        lines.append(f'publish: "{publish}"')
+    if channel is not None:
+        lines.append(f'channel: "{channel}"')
+    if publish_inferred is not None:
+        lines.append(f'publish_inferred: "{publish_inferred}"')
+    if extra_fm:
+        lines.append(extra_fm)
+    lines.append("---")
+    return "\n".join(lines) + "\n\n# A published idea\n\n## Content\n\nSome public-safe prose.\n"
+
+
+def test_garden_page_shows_only_published_notes_with_status_panel(tmp_path):
+    from memsub.vault_serve import build_index, render_garden_page
+    from memsub import garden
+
+    root = tmp_path / "vault"
+    _write(root, "public.md", _garden_note(publish="true", channel="user_stated"))
+    _write(root, "private.md", _garden_note(publish=None))  # never enters the publish set
+    idx = build_index(root)
+    notes = garden.resolve_publish_set(root)
+
+    page = render_garden_page(idx, notes).decode("utf-8")
+    assert '<a class="nav-tab active" href="/garden">garden</a>' in page
+    assert "Some public-safe prose" in page
+    assert '<a href="/note/public.md">' in page
+    assert "private.md" not in page
+    assert "evergreen" in page and "verified" in page
+    assert '<div class="tile-value accent" data-count="1">1</div>' in page  # published tile
+
+
+def test_garden_page_awaiting_flag_note_is_excluded_from_the_preview_list(tmp_path):
+    from memsub.vault_serve import build_index, render_garden_page
+    from memsub import garden
+
+    root = tmp_path / "vault"
+    _write(root, "seed.md", _garden_note(publish="true", channel="llm_inferred", publish_inferred=None))
+    idx = build_index(root)
+    notes = garden.resolve_publish_set(root)
+
+    page = render_garden_page(idx, notes).decode("utf-8")
+    assert "Some public-safe prose" not in page  # blocked by the fail-closed gate, not shown as published
+    assert '<div class="tile-label">awaiting publish_inferred flag</div>' in page
+
+
+def test_garden_page_empty_state_when_nothing_published(tmp_path):
+    from memsub.vault_serve import build_index, render_garden_page
+
+    root = tmp_path / "vault"
+    _write(root, "note.md", "# Just a note\n\nno frontmatter at all.")
+    idx = build_index(root)
+
+    page = render_garden_page(idx, {}).decode("utf-8")
+    assert "No published notes yet" in page
+
+
+def _make_bridge(a_id="a" * 40, b_id="b" * 40, score=0.5, why=None):
+    from memsub.bridges import Bridge
+
+    return Bridge(
+        a_id=a_id, b_id=b_id,
+        a_excerpt="Arjun switched Coldstart's inference to the Claude API.",
+        b_excerpt="Lena Petrova finished the onboarding flow design.",
+        a_bucket="entity:coldstart", b_bucket="entity:petrova",
+        score=score, why=why,
+    )
+
+
+def test_bridges_page_renders_cards_and_filter_chips():
+    from memsub.vault_serve import render_bridges_page
+
+    bridges = [_make_bridge(), _make_bridge(a_id="c" * 40, b_id="d" * 40, score=0.3)]
+    page = render_bridges_page(bridges, note_count=3).decode("utf-8")
+    assert '<a class="nav-tab active" href="/bridges">bridges</a>' in page
+    assert "2 unmade connections across your projects" in page
+    assert 'class="bridge-card"' in page
+    assert "entity:coldstart" in page and "entity:petrova" in page
+    assert 'data-action="keep"' in page and 'data-action="dismiss"' in page
+
+
+def test_bridges_page_empty_state():
+    from memsub.vault_serve import render_bridges_page
+
+    page = render_bridges_page([], note_count=0).decode("utf-8")
+    assert "No candidate bridges yet" in page
+
+
+def test_showcase_garden_bridges_routes_and_verdict_over_http(tmp_path):
+    """End-to-end: showcase/garden/bridges wired through make_handler + a
+    real bridges._ServeState, including a keep/dismiss verdict POST that
+    persists to the cache file (memsub.bridges' own mechanism, reused)."""
+    import json
+    import socketserver
+
+    from memsub.bridges import _ServeState, load_cache
+    from memsub import garden
+
+    root = tmp_path / "vault"
+    _write(root, "public.md", _garden_note(publish="true", channel="user_stated"))
+    idx = build_index(root)
+    garden_notes = garden.resolve_publish_set(root)
+    cache_path = tmp_path / "bridges.json"
+    bridges_state = _ServeState(bridges=[_make_bridge()], cache_path=cache_path)
+
+    handler = make_handler(idx, None, None, None, None, None, bridges_state, garden_notes)
+    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), handler)
+    port = httpd.server_address[1]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+
+        conn.request("GET", "/")
+        resp = conn.getresponse()
+        assert resp.status == 200
+        assert b"<strong>1</strong> found" in resp.read()  # showcase's live bridges count
+
+        conn.request("GET", "/garden")
+        resp = conn.getresponse()
+        assert resp.status == 200
+        assert b"Some public-safe prose" in resp.read()
+
+        conn.request("GET", "/bridges")
+        resp = conn.getresponse()
+        assert resp.status == 200
+        assert b"bridge-card" in resp.read()
+
+        pair = f"{'a' * 40}|{'b' * 40}"
+        conn.request(
+            "POST", "/api/verdict",
+            body=json.dumps({"pair": pair, "verdict": "dismiss"}),
+            headers={"Content-Type": "application/json"},
+        )
+        resp = conn.getresponse()
+        assert resp.status == 200
+        assert json.loads(resp.read()) == {"ok": True}
+
+        conn.request("GET", "/bridges")
+        resp = conn.getresponse()
+        body = resp.read()
+        assert resp.status == 200
+        assert b"No candidate bridges yet" in body  # the one bridge was dismissed
+
+        conn.close()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+    assert load_cache(cache_path)["verdicts"] == {pair: "dismiss"}

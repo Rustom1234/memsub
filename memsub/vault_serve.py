@@ -1012,7 +1012,7 @@ def render_loops_page(findings, note_count: int = 0) -> bytes:
         content = (
             "<h1>Loops</h1>" + howto + '<p class="count">0 findings in the scanned window</p>'
         )
-        return _page("Loops", content, note_count=note_count, breadcrumb="loops")
+        return _page("Loops", content, note_count=note_count, breadcrumb="loops", active="loops")
 
     sections = []
     for sev in ("interrupt", "ambient", "digest"):
@@ -1039,7 +1039,7 @@ def render_loops_page(findings, note_count: int = 0) -> bytes:
         + f'<p class="count">{len(findings)} finding(s) across severity tiers</p>'
         + "".join(sections)
     )
-    return _page("Loops", content, note_count=note_count, breadcrumb="loops")
+    return _page("Loops", content, note_count=note_count, breadcrumb="loops", active="loops")
 
 
 # --------------------------------------------------------------------------- #
@@ -1368,6 +1368,55 @@ ol.ask-sources li, ul.ask-nearest li { padding: 0.15rem 0; }
 .bb-cmd { display: block; margin-top: 0.25rem; color: var(--text-dim); font-size: 0.75rem; }
 .bb-incident { font-family: var(--mono); font-size: 0.78rem; color: var(--text-dim); padding: 0.2rem 0; border-bottom: 1px dashed var(--border); }
 .bb-log { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 0.8rem 1rem; max-width: 72rem; }
+
+/* unified top nav: primary tab row, active-tab state */
+.topnav { flex-wrap: wrap; row-gap: 0.5rem; }
+.topnav-row { display: flex; align-items: center; gap: 0.9rem; flex: 1 1 100%; }
+.nav-tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; flex: 1 1 100%; }
+.nav-tab { color: var(--text-dim); font-size: 0.82rem; font-family: var(--mono); padding: 0.3rem 0.65rem; border-radius: 6px; }
+.nav-tab:hover { color: var(--accent); text-decoration: none; }
+.nav-tab.active { color: var(--accent); background: var(--accent-dim); }
+
+/* Showcase landing page */
+.hero { padding: 1.25rem 0 0.5rem; }
+.hero h1 { font-size: 1.6rem; margin: 0 0 0.5rem; }
+.hero p { color: var(--text-dim); max-width: 42rem; font-size: 0.96rem; }
+.product-grid { display: grid; gap: 0.9rem; margin-top: 1.4rem; }
+.product-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.1rem 1.2rem; display: flex; flex-direction: column; gap: 0.55rem; }
+.product-card h2 { font-size: 1.05rem; margin: 0; }
+.product-card p.desc { color: var(--text-dim); font-size: 0.88rem; margin: 0; }
+.product-stats { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; font-family: var(--mono); font-size: 0.78rem; color: var(--text-dim); }
+.product-stats strong { color: var(--accent); }
+.product-card .nav-btn { align-self: flex-start; margin-top: auto; }
+@media (min-width: 720px) { .product-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* Bridges tab: memsub.bridges' own card/chip rendering, reused by import */
+.chip-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.9rem 0 1.1rem; }
+.bridge-grid { display: grid; gap: 0.8rem; }
+.bridge-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 0.9rem 1rem; }
+.bridge-card.kept { border-color: var(--accent); }
+.bridge-chips { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
+.bucket-chip { font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; border: 1px solid; border-radius: 999px; padding: 0.15rem 0.55rem; }
+.bridge-arrow { color: var(--text-dim); }
+.bridge-pair { display: grid; gap: 0.5rem; }
+.bridge-excerpt { margin: 0; padding: 0.55rem 0.7rem; background: var(--bg-raised); border-radius: 8px; font-size: 0.9rem; }
+.bridge-why { margin: 0.6rem 0 0; font-size: 0.85rem; color: var(--accent); font-style: italic; }
+.bridge-strength { margin: 0.7rem 0 0.6rem; height: 5px; background: var(--bg-raised); border-radius: 3px; overflow: hidden; }
+.bridge-strength-fill { height: 100%; background: var(--accent); }
+.bridge-actions { display: flex; gap: 0.5rem; }
+.bridge-actions button { font-family: var(--mono); font-size: 0.78rem; border-radius: 6px; padding: 0.3rem 0.7rem; cursor: pointer; border: 1px solid var(--border); background: var(--bg-raised); color: var(--text); }
+.btn-keep:hover { color: var(--accent); border-color: var(--accent); }
+.btn-dismiss:hover { color: #ff8a8a; border-color: #ff8a8a; }
+@media (min-width: 640px) { .bridge-pair { grid-template-columns: 1fr 1fr; } }
+
+/* Garden tab: publish-set preview + status panel (memsub.garden) */
+.garden-status { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 0.9rem 0 1.3rem; }
+.garden-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+.garden-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 0.8rem 1rem; }
+.garden-card h3 { margin: 0 0 0.35rem; font-size: 0.98rem; }
+.garden-card p { margin: 0.3rem 0 0; color: var(--text-dim); font-size: 0.85rem; }
+.badge-evergreen { background: rgba(74, 222, 128, 0.12); color: var(--c-verified); border-color: var(--c-verified); }
+.badge-seedling { background: rgba(185, 140, 255, 0.12); color: var(--c-inferred); border-color: var(--c-inferred); }
 """
 
 _MERMAID_INIT = f"""
@@ -2065,28 +2114,53 @@ _GRAPH_JS = """
 """
 
 
+_TABS: list[tuple[str, str, str]] = [
+    ("showcase", "/", "showcase"),
+    ("notes", "/notes", "notes"),
+    ("garden", "/garden", "garden"),
+    ("bridges", "/bridges", "bridges"),
+    ("blackbox", "/blackbox", "blackbox"),
+    ("loops", "/loops", "loops"),
+    ("graph", "/graph", "graph"),
+    ("ask", "/ask", "ask"),
+]
+
+
+def _nav_tabs_html(active: str | None) -> str:
+    parts = []
+    for key, href, label in _TABS:
+        cls = "nav-tab active" if key == active else "nav-tab"
+        parts.append(f'<a class="{cls}" href="{href}">{label}</a>')
+    return "".join(parts)
+
+
 def _page(
     title: str,
     body: str,
     include_mermaid: bool = False,
     note_count: int = 0,
     breadcrumb: str | None = None,
+    active: str | None = None,
 ) -> bytes:
+    """Shared page chrome for every vault-serve route: a sticky top nav with
+    the 8 primary product tabs (showcase/notes/garden/bridges/blackbox/loops/
+    graph/ask, active-state highlighted) plus a secondary row of utility
+    links (resonate, brief, review queue, random) that predate the unified
+    tab bar and stay reachable without crowding the primary tabs."""
     mermaid = _MERMAID_INIT if include_mermaid else ""
     crumb = f'<span class="crumb">{html.escape(breadcrumb)}</span>' if breadcrumb else ""
     nav = (
         '<nav class="topnav">'
+        '<div class="topnav-row">'
         '<a class="brand" href="/">memsub<span class="accent">::</span>vault</a>'
         f"{crumb}"
         '<span class="nav-spacer"></span>'
-        '<a class="nav-btn" href="/ask">ask</a>'
-        '<a class="nav-btn" href="/brief">brief</a>'
-        '<a class="nav-btn" href="/blackbox">blackbox</a>'
         '<a class="nav-btn" href="/resonate">resonate</a>'
-        '<a class="nav-btn" href="/graph">graph</a>'
-        '<a class="nav-btn" href="/random">random</a>'
+        '<a class="nav-btn" href="/brief">brief</a>'
         '<a class="nav-btn" href="/review">review queue</a>'
-        '<a class="nav-btn" href="/loops">loops</a>'
+        '<a class="nav-btn" href="/random">random</a>'
+        "</div>"
+        f'<div class="nav-tabs">{_nav_tabs_html(active)}</div>'
         "</nav>"
     )
     footer = (
@@ -2344,7 +2418,7 @@ def render_graph_page(idx: VaultIndex, graph) -> bytes:
         f"{empty_note}"
         f"{_GRAPH_JS}"
     )
-    return _page("Graph", content, note_count=len(idx.notes), breadcrumb="graph")
+    return _page("Graph", content, note_count=len(idx.notes), breadcrumb="graph", active="graph")
 
 
 # --------------------------------------------------------------------------- #
@@ -2454,7 +2528,7 @@ def render_ask_page(idx: VaultIndex, graph=None) -> bytes:
         '<div id="ask-conversation"></div>'
         f"{_ASK_JS}"
     )
-    return _page("Ask your brain", content, note_count=len(idx.notes), breadcrumb="ask")
+    return _page("Ask your brain", content, note_count=len(idx.notes), breadcrumb="ask", active="ask")
 
 
 # --------------------------------------------------------------------------- #
@@ -2726,7 +2800,7 @@ def render_blackbox_page(idx: VaultIndex, db_path: Path | None, path_query: str 
     store = _open_store_readonly(db_path)
     if store is None:
         return _page("Blackbox", "<h1>Blackbox</h1><p class='count'>No store attached.</p>",
-                     note_count=len(idx.notes), breadcrumb="blackbox")
+                     note_count=len(idx.notes), breadcrumb="blackbox", active="blackbox")
     try:
         conn = store._conn
         try:
@@ -2774,9 +2848,12 @@ def render_blackbox_page(idx: VaultIndex, db_path: Path | None, path_query: str 
                 history_html = (f'<h2 class="brief-h">{len(rows)} recorded state(s), newest first</h2>'
                                 f'<ul class="brief-list bb-list">{"".join(items)}</ul>')
 
-        # recent incidents from the sweep log
+        # recent incidents from the sweep log, co-located with the configured
+        # --db (never a hardcoded real-homedir path -- a demo/vault-only
+        # instance pointed at demo/memory.db must never surface the real
+        # machine's incident log)
         incidents_html = ""
-        log_path = Path.home() / ".memsub" / "flight-incidents.log"
+        log_path = db_path.parent / "flight-incidents.log"
         if log_path.exists():
             tail = log_path.read_text(errors="replace").strip().splitlines()[-12:]
             if tail:
@@ -2795,7 +2872,7 @@ def render_blackbox_page(idx: VaultIndex, db_path: Path | None, path_query: str 
             + tiles + '<h2 class="brief-h">File time machine</h2>' + lookup_html
             + history_html + incidents_html
         )
-        return _page("Blackbox", body, note_count=len(idx.notes), breadcrumb="blackbox")
+        return _page("Blackbox", body, note_count=len(idx.notes), breadcrumb="blackbox", active="blackbox")
     finally:
         store.close()
 
@@ -2840,7 +2917,7 @@ def render_index_page(
     content = (
         f"{dashboard_html}"
         '<section class="search-section">'
-        '<form action="/" method="get" id="search-form">'
+        '<form action="/notes" method="get" id="search-form">'
         '<input type="text" name="q" id="search-input" placeholder="search filenames and content..." '
         f'value="{html.escape(query)}" autocomplete="off">'
         "</form>"
@@ -2850,7 +2927,182 @@ def render_index_page(
         f"{_DASHBOARD_JS}"
         f"{_SEARCH_JS}"
     )
-    return _page("memsub vault", content, note_count=len(idx.notes))
+    return _page("memsub vault", content, note_count=len(idx.notes), breadcrumb="notes", active="notes")
+
+
+# --------------------------------------------------------------------------- #
+# Showcase: the "/" landing page. Hero + one card per product (Garden,
+# Bridges, Blackbox, Loops), each with a short description and a LIVE,
+# read-only stat pulled from the same sources their own routes already
+# compute -- never a second, divergent computation. Numbers come in as
+# plain values (counts, an (ts, incidents) pair) rather than the richer
+# objects (a bridges._ServeState, a garden publish-set dict) so this
+# function stays trivially unit-testable and never recomputes anything
+# itself; the HTTP route below is the one place that reads those richer
+# objects, once per request, never recomputing bridges/garden from scratch.
+# --------------------------------------------------------------------------- #
+def render_showcase_page(
+    idx: VaultIndex,
+    db_path: Path | None,
+    bridges_count: int = 0,
+    garden_published: int = 0,
+    loops_findings: list | None = None,
+    loops_enabled: bool = False,
+) -> bytes:
+    stats = compute_dashboard_stats(idx, db_path)
+    bb = _blackbox_dashboard_stats(db_path)
+    loops_n = len(loops_findings) if loops_enabled and loops_findings is not None else None
+
+    cards = [
+        (
+            "Garden",
+            "/garden",
+            "A publishable digital garden: allowlist-only (publish: true), PII-scanned, "
+            "review-gated. Nothing leaves the vault without an explicit human flag.",
+            f"<strong>{garden_published}</strong> published",
+        ),
+        (
+            "Bridges",
+            "/bridges",
+            "Non-obvious connections mined across projects: semantically close, sharing no "
+            "entity link, never recalled together in the same query.",
+            f"<strong>{bridges_count}</strong> found",
+        ),
+        (
+            "Blackbox",
+            "/blackbox",
+            "A flight recorder for every file your agents touch. Nothing an agent produces "
+            "can be silently lost; regressions raise alarms.",
+            (
+                f"<strong>{bb[1]}</strong> incident(s) &middot; last sweep {html.escape(_relative_time(bb[0]))}"
+                if bb is not None
+                else "not yet scanned"
+            ),
+        ),
+        (
+            "Loops",
+            "/loops",
+            "Dropped-work detection over your Claude Code transcripts: unanswered asks, "
+            "dangling tool calls, silent scheduled-wakeup deaths.",
+            (f"<strong>{loops_n}</strong> open" if loops_n is not None else "not scanned (--projects-dir)"),
+        ),
+    ]
+    cards_html = "".join(
+        '<div class="product-card">'
+        f"<h2>{html.escape(name)}</h2>"
+        f'<p class="desc">{html.escape(desc)}</p>'
+        f'<div class="product-stats">{stat_html}</div>'
+        f'<a class="nav-btn" href="{href}">open {html.escape(name.lower())}</a>'
+        "</div>"
+        for name, href, desc, stat_html in cards
+    )
+    content = (
+        '<section class="hero">'
+        "<h1>memsub: a memory sublayer with receipts</h1>"
+        "<p>Four products over one append-only, provenance-tracked memory store -- "
+        f'{stats["total"]:,} memories tracked right now. Every number on this page is '
+        "server-rendered from a real store, read-only.</p>"
+        "</section>"
+        f'<div class="product-grid">{cards_html}</div>'
+    )
+    return _page("memsub", content, note_count=len(idx.notes), active="showcase")
+
+
+# --------------------------------------------------------------------------- #
+# Garden tab: a preview of PUBLISHED notes only (memsub.garden's allowlist-
+# only, fail-closed publish set), plus a small status panel. The privacy
+# model is memsub.garden's own -- resolve_publish_set/status_counts are
+# imported and called as-is, never reimplemented here, and this route only
+# ever links to /note/<relpath> for notes that are already in idx.notes
+# (the same vault the rest of this server is already showing).
+# --------------------------------------------------------------------------- #
+def render_garden_page(idx: VaultIndex, garden_notes: dict | None) -> bytes:
+    from . import garden as garden_mod
+
+    notes = garden_notes or {}
+    counts = garden_mod.status_counts(notes)
+    published = [n for n in notes.values() if n.status == garden_mod.STATUS_PUBLISHED]
+    published.sort(key=lambda n: -(n.last_tended or n.planted or 0))
+
+    status_html = (
+        '<div class="garden-status">'
+        + _tile("published", counts[garden_mod.STATUS_PUBLISHED], accent=True)
+        + _tile("blocked by PII", counts[garden_mod.STATUS_BLOCKED_PII])
+        + _tile("awaiting publish_inferred flag", counts[garden_mod.STATUS_INFERRED_AWAITING_FLAG])
+        + "</div>"
+    )
+
+    if not published:
+        list_html = (
+            '<p class="count">No published notes yet. A note enters the garden only with '
+            "explicit <code>publish: true</code> frontmatter -- see "
+            "<code>memsub garden status</code>.</p>"
+        )
+    else:
+        cards = []
+        for note in published:
+            badge_cls = "badge-evergreen" if note.stage == "evergreen" else "badge-seedling"
+            if note.stage == "evergreen":
+                badge_label = "evergreen &middot; verified" if note.verified else "evergreen"
+            else:
+                badge_label = "seedling &middot; inferred, unverified"
+            href = "/note/" + urllib.parse.quote(note.relpath) if note.relpath in idx.notes else None
+            title_html = (
+                f'<a href="{href}">{html.escape(note.title)}</a>' if href else html.escape(note.title)
+            )
+            when = _relative_time(note.last_tended or note.planted)
+            cards.append(
+                '<li class="garden-card">'
+                f'<span class="badge {badge_cls}">{badge_label}</span>'
+                f"<h3>{title_html}</h3>"
+                f"<p>last tended {html.escape(when)}</p>"
+                "</li>"
+            )
+        list_html = f'<ul class="garden-list">{"".join(cards)}</ul>'
+
+    content = (
+        "<h1>Garden</h1>"
+        '<p class="howto">A publishable digital garden: allowlist-only '
+        "(<code>publish: true</code>), PII-scanned, review-gated. This preview shows only "
+        "the published set -- see <code>memsub garden status</code> / "
+        "<code>memsub garden build</code> for the full workflow.</p>"
+        f"{status_html}{list_html}"
+    )
+    return _page("Garden", content, note_count=len(idx.notes), breadcrumb="garden", active="garden")
+
+
+# --------------------------------------------------------------------------- #
+# Bridges tab: memsub.bridges' own constellation cards/chips/client script,
+# imported and reused as-is (never reforked into this file) inside vault-
+# serve's own page chrome. Computed once at server start and cached (see
+# serve_vault) -- this function only ever renders whatever list it is given.
+# --------------------------------------------------------------------------- #
+def render_bridges_page(bridges: list, note_count: int = 0) -> bytes:
+    from .bridges import _JS as _bridges_js
+    from .bridges import _card_html, _filter_chips_html
+
+    n = len(bridges)
+    if not bridges:
+        content = (
+            "<h1>Bridges</h1>"
+            '<p class="howto">Non-obvious connections mined across projects (memsub.bridges): '
+            "semantically close, sharing no entity link, never surfaced together in the same "
+            "recall -- a candidate finder, not a truth engine.</p>"
+            '<p class="count">No candidate bridges yet -- run <code>memsub bridges scan</code> '
+            "against a populated store, or check back after more memories accumulate.</p>"
+        )
+        return _page("Bridges", content, note_count=note_count, breadcrumb="bridges", active="bridges")
+
+    content = (
+        f"<h1>{n} unmade connection{'' if n == 1 else 's'} across your projects</h1>"
+        '<p class="howto">Semantically close pairs living in different project buckets, '
+        "sharing no entity link, never surfaced together in the same recall. Keep pins a pair "
+        "to the top; dismiss removes it permanently.</p>"
+        f'<div class="chip-row">{_filter_chips_html(bridges)}</div>'
+        '<div class="bridge-grid">' + "".join(_card_html(b) for b in bridges) + "</div>"
+        f"<script>{_bridges_js}</script>"
+    )
+    return _page("Bridges", content, note_count=note_count, breadcrumb="bridges", active="bridges")
 
 
 # --------------------------------------------------------------------------- #
@@ -2863,12 +3115,19 @@ def make_handler(
     sim_index=None,
     ask_backend=None,
     loops_findings=None,
+    bridges_state=None,
+    garden_notes: dict | None = None,
 ) -> type[BaseHTTPRequestHandler]:
     # loops_findings=None means the server was never asked to scan (no
     # --projects-dir): distinct from "scanned, found nothing" (an empty
     # list), so the dashboard tile can tell the two apart.
     loops_enabled = loops_findings is not None
     loops_findings = loops_findings or []
+    # bridges_state is a bridges._ServeState (bridges list + cache_path +
+    # lock) built once at server start (see serve_vault) -- None means
+    # bridges were never computed (no --db), same "opt-in tile" contract
+    # loops already has. garden_notes is a resolve_publish_set() dict, also
+    # built once at server start; None means it was never scanned.
     class Handler(BaseHTTPRequestHandler):
         server_version = "memsub-vault-serve/2.0"
 
@@ -2891,9 +3150,35 @@ def make_handler(
             parsed = urllib.parse.urlparse(self.path)
 
             if parsed.path == "/":
+                bridges_n = len(bridges_state.bridges) if bridges_state is not None else 0
+                garden_published = 0
+                if garden_notes is not None:
+                    from . import garden as garden_mod
+
+                    garden_published = sum(
+                        1 for n in garden_notes.values() if n.status == garden_mod.STATUS_PUBLISHED
+                    )
+                self._send(render_showcase_page(idx, db_path, bridges_n, garden_published,
+                                                 loops_findings, loops_enabled))
+                return
+
+            if parsed.path == "/notes":
                 query = urllib.parse.parse_qs(parsed.query).get("q", [""])[0]
                 self._send(render_index_page(idx, query, db_path, graph, sim_index,
                                               loops_findings, loops_enabled))
+                return
+
+            if parsed.path == "/garden":
+                self._send(render_garden_page(idx, garden_notes))
+                return
+
+            if parsed.path == "/bridges":
+                if bridges_state is None:
+                    self._send(render_bridges_page([], note_count=len(idx.notes)))
+                    return
+                with bridges_state.lock:
+                    snapshot = list(bridges_state.bridges)
+                self._send(render_bridges_page(snapshot, note_count=len(idx.notes)))
                 return
 
             if parsed.path == "/random":
@@ -3012,6 +3297,42 @@ def make_handler(
 
         def do_POST(self) -> None:  # noqa: N802 (stdlib-mandated name)
             parsed = urllib.parse.urlparse(self.path)
+
+            if parsed.path == "/api/verdict":
+                # Bridges keep/dismiss: the exact mechanism memsub.bridges'
+                # own serve_bridges uses (set_verdict + apply_verdicts),
+                # imported and reused here rather than reforked, updating
+                # the in-memory snapshot and the on-disk cache together
+                # under bridges_state's own lock.
+                from .bridges import apply_verdicts, load_cache, set_verdict
+
+                if bridges_state is None:
+                    self._send(b'{"ok": false}', status=400, content_type="application/json; charset=utf-8")
+                    return
+                try:
+                    length = int(self.headers.get("Content-Length", 0) or 0)
+                    if length < 0:
+                        raise ValueError("negative length")
+                except ValueError:
+                    self._send(b'{"ok": false}', status=400, content_type="application/json; charset=utf-8")
+                    return
+                raw = self.rfile.read(length) if length else b"{}"
+                try:
+                    data = json.loads(raw.decode("utf-8"))
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    data = {}
+                pair = str(data.get("pair", ""))
+                verdict = str(data.get("verdict", ""))
+                if "|" not in pair or verdict not in ("keep", "dismiss"):
+                    self._send(b'{"ok": false}', status=400, content_type="application/json; charset=utf-8")
+                    return
+                a_id, b_id = pair.split("|", 1)
+                with bridges_state.lock:
+                    set_verdict(bridges_state.cache_path, a_id, b_id, verdict)
+                    verdicts = load_cache(bridges_state.cache_path).get("verdicts", {})
+                    bridges_state.bridges = apply_verdicts(bridges_state.bridges, verdicts)
+                self._send(b'{"ok": true}', content_type="application/json; charset=utf-8")
+                return
 
             if parsed.path == "/api/ask":
                 length = int(self.headers.get("Content-Length", 0) or 0)
@@ -3151,7 +3472,44 @@ def serve_vault(
         except Exception as exc:
             loops_findings = []  # opted in, but the scan itself failed
             print(f"loops: scan failed ({exc}); /loops will show 0 findings")
-    handler = make_handler(idx, resolved_db, graph, sim_index, ask_backend, loops_findings)
+    # Bridges: computed (or reloaded from cache) once at startup -- never a
+    # per-request recompute. Cache lives next to whatever --db was given
+    # (e.g. demo/memory.db -> demo/bridges.json), never the operator's own
+    # ~/.memsub/bridges.json, so a demo instance can never read or write the
+    # real cache. use_llm=False: the "why" garnish needs a reachable local
+    # ollama daemon and would otherwise add real latency to every server
+    # startup for a cosmetic line; the constellation works fully without it.
+    bridges_state = None
+    if resolved_db and resolved_db.exists():
+        from .bridges import _ServeState, compute_bridges
+        from .embed import build_embedder
+
+        bridges_cache_path = resolved_db.parent / "bridges.json"
+        try:
+            b_store = EpisodicStore(resolved_db)
+            try:
+                bridges_list = compute_bridges(
+                    b_store, build_embedder(prefer="hashing"), k=50,
+                    cache_path=bridges_cache_path, use_llm=False,
+                )
+            finally:
+                b_store.close()
+            bridges_state = _ServeState(bridges=bridges_list, cache_path=bridges_cache_path)
+        except Exception as exc:
+            print(f"bridges: unavailable ({exc}); /bridges will show 0 findings")
+    # Garden: the publish-set scan (memsub.garden.resolve_publish_set) is a
+    # single markdown pass over whatever vault this server is already
+    # pointed at (e.g. demo/vault) -- built once at startup, same "no live
+    # reload" contract as idx/graph/sim_index.
+    garden_notes: dict | None = None
+    try:
+        from . import garden as garden_mod
+
+        garden_notes = garden_mod.resolve_publish_set(root)
+    except Exception as exc:
+        print(f"garden: scan failed ({exc}); /garden will show 0 published notes")
+    handler = make_handler(idx, resolved_db, graph, sim_index, ask_backend, loops_findings,
+                            bridges_state, garden_notes)
     with socketserver.ThreadingTCPServer((host, port), handler) as httpd:
         db_msg = (
             f", dashboard store: {resolved_db}"
@@ -3159,8 +3517,12 @@ def serve_vault(
             else ", dashboard: vault-only mode"
         )
         loops_msg = f", loops: {len(loops_findings)} finding(s)" if loops_dirs else ", loops: not scanned (--projects-dir to enable)"
+        bridges_msg = f", bridges: {len(bridges_state.bridges)} found" if bridges_state else ", bridges: not computed (no --db)"
+        garden_n = sum(1 for n in (garden_notes or {}).values() if n.status == garden_mod.STATUS_PUBLISHED) if garden_notes is not None else 0
+        garden_msg = f", garden: {garden_n} published"
         print(
-            f"memsub vault serve: {len(idx.notes)} note(s) from {root}{db_msg}{loops_msg}, "
+            f"memsub vault serve: {len(idx.notes)} note(s) from {root}{db_msg}{loops_msg}"
+            f"{bridges_msg}{garden_msg}, "
             f"graph: {len(graph.notes)} note node(s) / {len(graph.hubs)} hub(s)"
         )
         print(f"listening on http://{host}:{port} (Ctrl-C to stop)")
