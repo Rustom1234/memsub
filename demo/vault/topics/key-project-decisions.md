@@ -6,6 +6,9 @@ member_count: 12
 member_hash: "2d433ddd72624e13"
 created: "2026-07-21T16:58:30"
 updated: "2026-07-21T16:58:30"
+publish: "true"
+channel: "llm_inferred"
+publish_inferred: "true"
 ---
 
 <!-- memsub:distill:begin -->

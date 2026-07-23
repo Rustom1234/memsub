@@ -2,7 +2,13 @@
 # Beads / Dolt files (added by bd init)
 .dolt/
 *.db
+*.db.events.jsonl
 .beads-credential-key
+
+# demo/ build artifacts: regenerated locally by scripts/build_demo_vault.py
+# (memory.db) and vault_serve's own bridges cache (never committed, never
+# the operator's real ~/.memsub/bridges.json)
+demo/bridges.json
 
 # Project
 .claude/
