@@ -1371,7 +1371,13 @@ ol.ask-sources li, ul.ask-nearest li { padding: 0.15rem 0; }
 
 /* unified top nav: primary tab row, active-tab state */
 .topnav { flex-wrap: wrap; row-gap: 0.5rem; }
-.topnav-row { display: flex; align-items: center; gap: 0.9rem; flex: 1 1 100%; }
+.topnav-row { display: flex; flex-wrap: wrap; row-gap: 0.3rem; align-items: center; gap: 0.6rem; flex: 1 1 100%; }
+@media (max-width: 480px) {
+  /* phone-first: the secondary utility links (resonate/brief/review/random)
+     are the least essential row -- collapse the spacer so they wrap onto
+     their own line under the brand instead of squeezing it horizontally. */
+  .topnav-row .nav-spacer { flex-basis: 100%; height: 0; }
+}
 .nav-tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; flex: 1 1 100%; }
 .nav-tab { color: var(--text-dim); font-size: 0.82rem; font-family: var(--mono); padding: 0.3rem 0.65rem; border-radius: 6px; }
 .nav-tab:hover { color: var(--accent); text-decoration: none; }
@@ -3155,9 +3161,7 @@ def make_handler(
                 if garden_notes is not None:
                     from . import garden as garden_mod
 
-                    garden_published = sum(
-                        1 for n in garden_notes.values() if n.status == garden_mod.STATUS_PUBLISHED
-                    )
+                    garden_published = garden_mod.status_counts(garden_notes)[garden_mod.STATUS_PUBLISHED]
                 self._send(render_showcase_page(idx, db_path, bridges_n, garden_published,
                                                  loops_findings, loops_enabled))
                 return
@@ -3518,7 +3522,7 @@ def serve_vault(
         )
         loops_msg = f", loops: {len(loops_findings)} finding(s)" if loops_dirs else ", loops: not scanned (--projects-dir to enable)"
         bridges_msg = f", bridges: {len(bridges_state.bridges)} found" if bridges_state else ", bridges: not computed (no --db)"
-        garden_n = sum(1 for n in (garden_notes or {}).values() if n.status == garden_mod.STATUS_PUBLISHED) if garden_notes is not None else 0
+        garden_n = garden_mod.status_counts(garden_notes)[garden_mod.STATUS_PUBLISHED] if garden_notes is not None else 0
         garden_msg = f", garden: {garden_n} published"
         print(
             f"memsub vault serve: {len(idx.notes)} note(s) from {root}{db_msg}{loops_msg}"
