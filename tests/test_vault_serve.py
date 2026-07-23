@@ -895,10 +895,84 @@ def test_garden_page_shows_only_published_notes_with_status_panel(tmp_path):
     page = render_garden_page(idx, notes).decode("utf-8")
     assert '<a class="nav-tab active" href="/garden">garden</a>' in page
     assert "Some public-safe prose" in page
-    assert '<a href="/note/public.md">' in page
+    # published notes link through the garden-scoped route, never the
+    # full-vault /note/ renderer (see FIX 1 / render_garden_note_page)
+    assert '<a href="/garden/note/public.md">' in page
     assert "private.md" not in page
     assert "evergreen" in page and "verified" in page
     assert '<div class="tile-value accent" data-count="1">1</div>' in page  # published tile
+
+
+def test_garden_note_route_never_leaks_unpublished_linked_note(tmp_path):
+    """FIX 1 regression: a published note that wikilinks an unpublished note
+    must not leak that note's content or provenance/audit text when served
+    through the /garden/note/ route -- the leak class commit 054dd66 fixed
+    in garden.py's own static-site renderer, reopened when the Garden tab's
+    note view went through render_note_page (full-vault, no publish/private
+    concept: Constellation embeds a linked note's full text as JSON, Details
+    shows frontmatter/provenance/audit) instead of a garden-scoped route."""
+    import socketserver
+
+    from memsub import garden
+
+    root = tmp_path / "vault"
+    # namespace+created on both notes so both are "content notes" the graph
+    # connects (is_content_note) -- this is what makes public.md's
+    # Constellation include a node for secret.md at all, the exact
+    # condition the leak needs.
+    _write(
+        root, "public.md",
+        '---\nnamespace: "topics"\ncreated: "2026-07-01T00:00:00"\n'
+        'publish: "true"\nchannel: "user_stated"\n---\n\n'
+        "# A published idea\n\n## Content\n\nSee [[secret]] for more.\n",
+    )
+    _write(
+        root, "secret.md",
+        '---\nid: "deadbeefdeadbeef"\nnamespace: "topics"\n'
+        'created: "2026-07-01T00:00:00"\n---\n\n'
+        "# A secret idea\n\n## Content\n\n"
+        "VERY-SECRET-CONTENT-XYZ must never leak to the public garden.\n\n"
+        "## Provenance\n\n"
+        "- Run: `run-abcdef123456`\n"
+        "- Session: `sess-abcdef123456`\n\n"
+        "### Audit events\n\n"
+        "- 2026-07-01T00:00:00Z  **created**  actor=agent\n",
+    )
+    idx = build_index(root)
+    graph = build_graph_index(idx)
+    sim = build_similarity_index(idx, linked_neighbors(graph))
+    garden_notes = garden.resolve_publish_set(root)
+
+    handler = make_handler(idx, None, graph, sim, None, None, None, garden_notes)
+    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), handler)
+    port = httpd.server_address[1]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        conn.request("GET", "/garden/note/public.md")
+        resp = conn.getresponse()
+        assert resp.status == 200
+        page = resp.read().decode("utf-8")
+
+        # the unpublished note itself is never directly reachable either
+        conn.request("GET", "/garden/note/secret.md")
+        resp2 = conn.getresponse()
+        assert resp2.status == 404
+        resp2.read()
+        conn.close()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+
+    assert "VERY-SECRET-CONTENT-XYZ" not in page
+    assert "run-abcdef123456" not in page
+    assert "sess-abcdef123456" not in page
+    assert "deadbeefdeadbeef" not in page
+    assert "Constellation" not in page
+    assert "Details (ids, provenance, audit log)" not in page
+    assert "private" in page  # unresolved wikilink renders as the fixed private marker
 
 
 def test_garden_page_awaiting_flag_note_is_excluded_from_the_preview_list(tmp_path):
