@@ -322,6 +322,54 @@ def test_api_graph_json_over_http_smoke_and_traversal_stays_safe(tmp_path):
         thread.join(timeout=5)
 
 
+def _raw_post_status(port: int, path: str, content_length_header: str, timeout: float = 5) -> str:
+    """Send a raw HTTP POST with an attacker-controlled Content-Length header
+    (http.client would recompute a correct one itself, so a real socket is
+    needed to reproduce a malformed/negative value) and return the status
+    line. A socket timeout here means the handler hung reading the body --
+    the DoS this guards against -- so the caller's own timeout is the
+    real assertion that it did not."""
+    import socket
+
+    sock = socket.create_connection(("127.0.0.1", port), timeout=timeout)
+    try:
+        request = (
+            f"POST {path} HTTP/1.1\r\n"
+            "Host: 127.0.0.1\r\n"
+            f"Content-Length: {content_length_header}\r\n"
+            "Connection: close\r\n\r\n"
+        )
+        sock.sendall(request.encode("ascii"))
+        response = b""
+        while True:
+            chunk = sock.recv(4096)
+            if not chunk:
+                break
+            response += chunk
+        return response.split(b"\r\n", 1)[0].decode("ascii")
+    finally:
+        sock.close()
+
+
+def test_api_ask_and_resonate_reject_malformed_content_length_without_hanging(tmp_path):
+    import socketserver
+
+    idx, graph, sim = _fixture_vault(tmp_path)
+    handler = make_handler(idx, None, graph, sim)
+    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), handler)
+    port = httpd.server_address[1]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        for path in ("/api/ask", "/api/resonate"):
+            assert "400" in _raw_post_status(port, path, "abc")
+            assert "400" in _raw_post_status(port, path, "-1")
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+
+
 # --------------------------------------------------------------------------- #
 # "Ask your brain" (2026-07-20): /ask page + /api/ask route
 # --------------------------------------------------------------------------- #

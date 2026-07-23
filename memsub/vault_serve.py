@@ -3339,7 +3339,14 @@ def make_handler(
                 return
 
             if parsed.path == "/api/ask":
-                length = int(self.headers.get("Content-Length", 0) or 0)
+                try:
+                    length = int(self.headers.get("Content-Length", 0) or 0)
+                    if length < 0:
+                        raise ValueError("negative length")
+                except ValueError:
+                    self._send(b'{"error": "bad Content-Length"}', status=400,
+                               content_type="application/json; charset=utf-8")
+                    return
                 raw = self.rfile.read(length) if length else b"{}"
                 try:
                     data = json.loads(raw.decode("utf-8"))
@@ -3379,7 +3386,14 @@ def make_handler(
                 return
 
             if parsed.path == "/api/resonate":
-                length = int(self.headers.get("Content-Length", 0) or 0)
+                try:
+                    length = int(self.headers.get("Content-Length", 0) or 0)
+                    if length < 0:
+                        raise ValueError("negative length")
+                except ValueError:
+                    self._send(b'{"error": "bad Content-Length"}', status=400,
+                               content_type="application/json; charset=utf-8")
+                    return
                 raw = self.rfile.read(length) if length else b"{}"
                 try:
                     data = json.loads(raw.decode("utf-8"))
