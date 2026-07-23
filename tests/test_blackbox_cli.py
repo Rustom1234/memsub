@@ -104,6 +104,18 @@ def test_cli_restore_unknown_file_fails(world, capsys):
     assert "no known history" in out
 
 
+def test_cli_restore_bad_at_value_fails_cleanly(world, capsys):
+    projects, repo, db = world
+    target = str(repo / "main.py")
+    rc = main(["blackbox", "restore", target, "--at", "not-a-date", "--db", str(db)])
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "not-a-date" in out
+    assert "not a recognized timestamp" in out
+    # the file was never touched
+    assert (repo / "main.py").read_text() == "v1 = 1\n"
+
+
 def test_cli_status_reports_index_stats(world, capsys):
     projects, repo, db = world
     main(["blackbox", "scan", "--root", str(projects), "--db", str(db)])

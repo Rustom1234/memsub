@@ -787,7 +787,11 @@ def _cmd_blackbox_restore(args: argparse.Namespace) -> int:
         return 1
     store = EpisodicStore(db)
     try:
-        at_ts = blackbox.parse_timestamp(args.at) if args.at else None
+        try:
+            at_ts = blackbox.parse_timestamp(args.at) if args.at else None
+        except ValueError:
+            print(f"--at value {args.at!r} is not a recognized timestamp (expected 'YYYY-MM-DD HH:MM' or ISO 8601)")
+            return 1
         result = blackbox.restore_file(store, args.file, at_ts)
     finally:
         store.close()
