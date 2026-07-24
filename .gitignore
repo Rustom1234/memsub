@@ -6,9 +6,15 @@
 .beads-credential-key
 
 # demo/ build artifacts: regenerated locally by scripts/build_demo_vault.py
-# (memory.db) and vault_serve's own bridges cache (never committed, never
-# the operator's real ~/.memsub/bridges.json)
+# (memory.db, its WAL/SHM sidecar files) and vault_serve's own bridges
+# cache (never committed, never the operator's real ~/.memsub/bridges.json)
 demo/bridges.json
+demo/memory.db-shm
+demo/memory.db-wal
+
+# Real personal store/vault: these live outside the repo (~/.memsub,
+# ~/memsub-vault) and must never be copied in; demo/ is the only
+# public-safe brain (fictional Arjun Mehta persona).
 
 # Project
 .claude/
@@ -21,3 +27,9 @@ experiments/lying-game/results/runs/
 .gstack/
 data/locomo10.json
 data/longmemeval_s_cleaned.json
+
+# Node (site/ has no build step today, but keep this repo GitHub-clean
+# if one is ever added)
+node_modules/
+package-lock.json
+npm-debug.log*
