@@ -1,33 +1,34 @@
 ---
-id: "ec3a82359a921e5da15e3ca43d88340598949b48"
+id: "efd2ba981b9f79f9c97ad44e6fe9f68db160ec42"
 namespace: "arjun-mehta"
 kind: "fact"
 type: "observed"
 status: "active"
-created: "2026-06-12T14:26:00"
-last_updated: "2026-06-12T14:26:00"
-content_hash: "00c51d8e9f077c22"
+created: "2026-03-01T09:03:00"
+last_updated: "2026-03-01T09:03:00"
+content_hash: "c70b62a8d5bd5967"
 ---
 
-# Arjun started listening to an indie-SaaS podcast episode about pricing a first c
+# Arjun set up Coldstart's waitlist landing page using early screenshots from the 
 
 ## Content
 
-Arjun started listening to an indie-SaaS podcast episode about pricing a first commercial release.
+Arjun set up Coldstart's waitlist landing page using early screenshots from the prototype dashboard.
 
 ## Provenance
 
 - Run: `demo-build-2026-07-21`
-- Session: `arjun-2026-06-12`
+- Session: `arjun-2026-03-01`
 - channel: user_stated
-- channel_sig: 2bc9bc435b23da57cd3c835b857d73948b24381b13787bc6431a9c6eb688b806
+- channel_sig: 46a4ad091e48d4feae29af2ec17d45f942bc547dc9541f64ca6f3ae336d37c31
 - origin: demo_build
 - persona: arjun-mehta
-- tag: reading.pricing_podcast
+- tag: launch.waitlist_page
 
 ### Audit events
 
-- 2026-07-21T16:56:37  **graphed**
+- 2026-07-24T13:26:19  **fused_into**  by=fusion:f8081be8c0d000cd entity=Coldstart
+- 2026-07-24T13:25:59  **graphed**
 
 ## Links
 
@@ -35,7 +36,7 @@ Arjun started listening to an indie-SaaS podcast episode about pricing a first c
 - shares entity **Arjun** with [[arjun-set-his-consulting-rate-for-brightpath-legal--74a16fa0]]
 - shares entity **Arjun** with [[grace-lin-brightpath-legal-s-product-lead-became-a--6bd5e049]]
 - shares entity **Arjun** with [[arjun-took-on-a-consulting-contract-with-brightpat--d3b35602]]
-- shares entity **Arjun** with [[arjun-weighed-the-pros-and-cons-of-self-hosting-op--8d01c9ba]]
+- shares entity **Arjun** with [[arjun-compared-self-hosting-open-weight-models-on--8d01c9ba]]
 - shares entity **Arjun** with [[arjun-committed-to-waking-up-at-five-a-m-to-focus--67a7c07c]]
 - shares entity **Arjun** with [[arjun-read-through-hosted-api-pricing-tiers-and-ra--45dc2eb9]]
 - shares entity **Arjun** with [[arjun-switched-to-a-standing-desk-after-long-devel--ab29dadf]]

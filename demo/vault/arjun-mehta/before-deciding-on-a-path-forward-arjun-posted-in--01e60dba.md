@@ -27,17 +27,18 @@ Before deciding on a path forward, Arjun posted in an applied-LLM engineering fo
 
 ### Audit events
 
-- 2026-07-21T16:57:10  **fused_into**  by=fusion:a6d47ef8aa5f5012 entity=LLM
-- 2026-07-21T16:56:53  **fused_into**  by=fusion:699753d661d57c93 entity=API
-- 2026-07-21T16:56:36  **graphed**
+- 2026-07-24T13:26:49  **fused_into**  by=fusion:2b64cbea5a047231 entity=APIs
+- 2026-07-24T13:26:41  **fused_into**  by=fusion:a6d47ef8aa5f5012 entity=LLM
+- 2026-07-24T13:26:20  **fused_into**  by=fusion:699753d661d57c93 entity=API
+- 2026-07-24T13:25:59  **graphed**
 
 ## Links
 
 - shares entity **API** with [[arjun-read-through-hosted-api-pricing-tiers-and-ra--45dc2eb9]]
+- shares entity **API** with [[before-deciding-on-a-path-forward-arjun-compared-s--fusion:2]]
 - shares entity **API** with [[arjun-started-batch-cooking-on-sundays-to-make-sur--ecc068fd]]
-- shares entity **API** with [[arjun-re-ran-the-reply-triage-evaluation-against-t--9a9aed16]]
-- shares entity **API** with [[arjun-began-going-through-the-claude-api-s-tool-us--14912f06]]
+- shares entity **API** with [[arjun-re-ran-the-reply-triage-eval-against-the-cla--9a9aed16]]
+- shares entity **API** with [[arjun-began-working-through-the-claude-api-s-tool--14912f06]]
 - shares entity **API** with [[arjun-decided-to-switch-coldstart-s-inference-from--497a99fe]]
 - shares entity **API** with [[after-a-long-crunch-week-during-the-api-migration--22bf1053]]
 - shares entity **API** with [[arjun-published-a-devlog-explaining-the-switch-fro--731831a1]]
-- shares entity **API** with [[arjun-spent-a-week-porting-coldstart-s-prompt-chai--89a52703]]

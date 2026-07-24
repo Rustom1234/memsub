@@ -27,12 +27,12 @@ During Coldstart's April evaluation run, the self-hosted Qwen3 8B model misread 
 
 ### Audit events
 
-- 2026-07-21T16:56:36  **graphed**
+- 2026-07-24T13:25:59  **graphed**
 
 ## Links
 
 - shares entity **Coldstart** with [[arjun-s-core-idea-for-coldstart-is-an-agent-that-r--3c23f99c]]
-- shares entity **Coldstart** with [[arjun-weighed-the-pros-and-cons-of-self-hosting-op--8d01c9ba]]
+- shares entity **Coldstart** with [[arjun-compared-self-hosting-open-weight-models-on--8d01c9ba]]
 - shares entity **Coldstart** with [[arjun-committed-to-waking-up-at-five-a-m-to-focus--67a7c07c]]
 - shares entity **Coldstart** with [[arjun-began-reading-designing-machine-learning-sys--9cf9d91d]]
 - shares entity **Coldstart** with [[arjun-began-running-three-times-a-week-to-break-up--2a8f5c7b]]

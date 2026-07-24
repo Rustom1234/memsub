@@ -27,9 +27,9 @@ Lena Petrova delivered the analytics and settings screens, leaving the onboardin
 
 ### Audit events
 
-- 2026-07-21T16:56:57  **fused_into**  by=fusion:6ceec83fb96504e8 entity=Petrova
-- 2026-07-21T16:56:55  **fused_into**  by=fusion:670ea594324fa61c entity=Lena
-- 2026-07-21T16:56:37  **graphed**
+- 2026-07-24T13:26:25  **fused_into**  by=fusion:6ceec83fb96504e8 entity=Petrova
+- 2026-07-24T13:26:23  **fused_into**  by=fusion:670ea594324fa61c entity=Lena
+- 2026-07-24T13:26:00  **graphed**
 
 ## Links
 

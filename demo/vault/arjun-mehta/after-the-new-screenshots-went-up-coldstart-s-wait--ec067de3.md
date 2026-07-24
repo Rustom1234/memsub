@@ -27,15 +27,17 @@ After the new screenshots went up, Coldstart's waitlist crossed five hundred sig
 
 ### Audit events
 
-- 2026-07-21T16:56:37  **graphed**
+- 2026-07-24T13:26:36  **fused_into**  by=fusion:e4e0f0e5b1b5e4ec entity=After
+- 2026-07-24T13:26:00  **graphed**
 
 ## Links
 
+- supersedes [[after-the-devlog-post-was-shared-on-an-indie-hacke--b4f3e45c]]
 - shares entity **After** with [[after-the-brightpath-legal-negotiation-took-longer--ce064a9e]]
 - shares entity **After** with [[after-a-full-day-of-migration-work-left-his-eyes-s--f93794f5]]
 - shares entity **After** with [[after-the-devlog-post-was-shared-on-an-indie-hacke--b4f3e45c]]
 - shares entity **After** with [[after-a-long-crunch-week-during-the-api-migration--22bf1053]]
 - shares entity **After** with [[after-the-claude-api-migration-a-second-pilot-conf--f5f1e2eb]]
+- shares entity **After** with [[after-the-claude-api-migration-a-second-pilot-conf--fusion:e]]
 - shares entity **Coldstart** with [[arjun-s-core-idea-for-coldstart-is-an-agent-that-r--3c23f99c]]
-- shares entity **Coldstart** with [[arjun-weighed-the-pros-and-cons-of-self-hosting-op--8d01c9ba]]
-- shares entity **Coldstart** with [[arjun-committed-to-waking-up-at-five-a-m-to-focus--67a7c07c]]
+- shares entity **Coldstart** with [[arjun-compared-self-hosting-open-weight-models-on--8d01c9ba]]

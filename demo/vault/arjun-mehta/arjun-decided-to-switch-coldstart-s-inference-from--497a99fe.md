@@ -27,20 +27,20 @@ Arjun decided to switch Coldstart's inference from the self-hosted Qwen3 stack t
 
 ### Audit events
 
-- 2026-07-21T16:56:54  **fused_into**  by=fusion:5b96bbe26be28bbe entity=Claude
-- 2026-07-21T16:56:53  **fused_into**  by=fusion:699753d661d57c93 entity=API
-- 2026-07-21T16:56:51  **fused_into**  by=fusion:a07112598f75af73 entity=Coldstart
-- 2026-07-21T16:56:49  **fused_into**  by=fusion:7db35a4994cdfaec entity=Arjun
-- 2026-07-21T16:56:37  **graphed**
+- 2026-07-24T13:26:22  **fused_into**  by=fusion:5b96bbe26be28bbe entity=Claude
+- 2026-07-24T13:26:20  **fused_into**  by=fusion:699753d661d57c93 entity=API
+- 2026-07-24T13:26:19  **fused_into**  by=fusion:f8081be8c0d000cd entity=Coldstart
+- 2026-07-24T13:26:14  **fused_into**  by=fusion:14bd82baa0613ad3 entity=Arjun
+- 2026-07-24T13:26:00  **graphed**
 
 ## Links
 
 - supersedes [[arjun-chose-to-run-coldstart-s-inference-on-a-self--fd2ddec5]]
 - shares entity **API** with [[arjun-read-through-hosted-api-pricing-tiers-and-ra--45dc2eb9]]
 - shares entity **API** with [[before-deciding-on-a-path-forward-arjun-posted-in--01e60dba]]
+- shares entity **API** with [[before-deciding-on-a-path-forward-arjun-compared-s--fusion:2]]
 - shares entity **API** with [[arjun-started-batch-cooking-on-sundays-to-make-sur--ecc068fd]]
-- shares entity **API** with [[arjun-re-ran-the-reply-triage-evaluation-against-t--9a9aed16]]
-- shares entity **API** with [[arjun-began-going-through-the-claude-api-s-tool-us--14912f06]]
+- shares entity **API** with [[arjun-re-ran-the-reply-triage-eval-against-the-cla--9a9aed16]]
+- shares entity **API** with [[arjun-began-working-through-the-claude-api-s-tool--14912f06]]
 - shares entity **API** with [[after-a-long-crunch-week-during-the-api-migration--22bf1053]]
 - shares entity **API** with [[arjun-published-a-devlog-explaining-the-switch-fro--731831a1]]
-- shares entity **API** with [[arjun-spent-a-week-porting-coldstart-s-prompt-chai--89a52703]]

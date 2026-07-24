@@ -27,11 +27,11 @@ Arjun's Brightpath Legal contract with Grace Lin ended after a final round of wo
 
 ### Audit events
 
-- 2026-07-21T16:57:11  **fused_into**  by=fusion:98df0cfd8b4f748e entity=Lin
-- 2026-07-21T16:57:09  **fused_into**  by=fusion:fca1ffe1d31c989e entity=Grace
-- 2026-07-21T16:57:00  **fused_into**  by=fusion:63ebf7fd1b90e567 entity=Legal
-- 2026-07-21T16:56:58  **fused_into**  by=fusion:4985fd0896a1f2a5 entity=Brightpath
-- 2026-07-21T16:56:37  **graphed**
+- 2026-07-24T13:26:42  **fused_into**  by=fusion:98df0cfd8b4f748e entity=Lin
+- 2026-07-24T13:26:40  **fused_into**  by=fusion:fca1ffe1d31c989e entity=Grace
+- 2026-07-24T13:26:29  **fused_into**  by=fusion:63ebf7fd1b90e567 entity=Legal
+- 2026-07-24T13:26:27  **fused_into**  by=fusion:4985fd0896a1f2a5 entity=Brightpath
+- 2026-07-24T13:26:00  **graphed**
 
 ## Links
 
@@ -39,7 +39,7 @@ Arjun's Brightpath Legal contract with Grace Lin ended after a final round of wo
 - shares entity **Arjun** with [[arjun-set-his-consulting-rate-for-brightpath-legal--74a16fa0]]
 - shares entity **Arjun** with [[grace-lin-brightpath-legal-s-product-lead-became-a--6bd5e049]]
 - shares entity **Arjun** with [[arjun-took-on-a-consulting-contract-with-brightpat--d3b35602]]
-- shares entity **Arjun** with [[arjun-weighed-the-pros-and-cons-of-self-hosting-op--8d01c9ba]]
+- shares entity **Arjun** with [[arjun-compared-self-hosting-open-weight-models-on--8d01c9ba]]
 - shares entity **Arjun** with [[arjun-committed-to-waking-up-at-five-a-m-to-focus--67a7c07c]]
 - shares entity **Arjun** with [[arjun-read-through-hosted-api-pricing-tiers-and-ra--45dc2eb9]]
 - shares entity **Arjun** with [[arjun-switched-to-a-standing-desk-after-long-devel--ab29dadf]]

@@ -3,9 +3,9 @@ id: "b4f3e45ca4bf8c8b86276d3dd05958c40ccdd50f"
 namespace: "arjun-mehta"
 kind: "fact"
 type: "observed"
-status: "active"
+status: "superseded"
 created: "2026-03-20T10:47:00"
-last_updated: "2026-03-20T10:47:00"
+last_updated: "2026-07-24T13:26:51"
 content_hash: "2188cb5044ea4262"
 ---
 
@@ -27,15 +27,17 @@ After the devlog post was shared on an indie-hackers forum, Coldstart's waitlist
 
 ### Audit events
 
-- 2026-07-21T16:56:36  **graphed**
+- 2026-07-24T13:26:51  **superseded**  by=ec067de326d4e3102d86a46cec45ee63d2826dbe judge_model=qwen3:8b reason=contradiction
+- 2026-07-24T13:25:59  **graphed**
 
 ## Links
 
+- superseded by [[after-the-new-screenshots-went-up-coldstart-s-wait--ec067de3]]
 - shares entity **After** with [[after-the-brightpath-legal-negotiation-took-longer--ce064a9e]]
 - shares entity **After** with [[after-a-full-day-of-migration-work-left-his-eyes-s--f93794f5]]
 - shares entity **After** with [[after-a-long-crunch-week-during-the-api-migration--22bf1053]]
 - shares entity **After** with [[after-the-claude-api-migration-a-second-pilot-conf--f5f1e2eb]]
 - shares entity **After** with [[after-the-new-screenshots-went-up-coldstart-s-wait--ec067de3]]
+- shares entity **After** with [[after-the-claude-api-migration-a-second-pilot-conf--fusion:e]]
 - shares entity **Coldstart** with [[arjun-s-core-idea-for-coldstart-is-an-agent-that-r--3c23f99c]]
-- shares entity **Coldstart** with [[arjun-weighed-the-pros-and-cons-of-self-hosting-op--8d01c9ba]]
-- shares entity **Coldstart** with [[arjun-committed-to-waking-up-at-five-a-m-to-focus--67a7c07c]]
+- shares entity **Coldstart** with [[arjun-compared-self-hosting-open-weight-models-on--8d01c9ba]]

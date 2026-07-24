@@ -27,18 +27,18 @@ Arjun began an LLM-integration contract with Corvid Analytics, a small data-anal
 
 ### Audit events
 
-- 2026-07-21T16:57:14  **fused_into**  by=fusion:dac05fa1e593669a entity=Corvid
-- 2026-07-21T16:57:12  **fused_into**  by=fusion:04a9fda3ddeae9d6 entity=Analytics
-- 2026-07-21T16:57:10  **fused_into**  by=fusion:a6d47ef8aa5f5012 entity=LLM
-- 2026-07-21T16:56:36  **graphed**
+- 2026-07-24T13:26:45  **fused_into**  by=fusion:dac05fa1e593669a entity=Corvid
+- 2026-07-24T13:26:44  **fused_into**  by=fusion:04a9fda3ddeae9d6 entity=Analytics
+- 2026-07-24T13:26:41  **fused_into**  by=fusion:a6d47ef8aa5f5012 entity=LLM
+- 2026-07-24T13:25:59  **graphed**
 
 ## Links
 
 - shares entity **Analytics** with [[omar-haddad-the-cto-at-corvid-analytics-briefed-ar--a7a8151a]]
 - shares entity **Analytics** with [[arjun-shipped-the-first-natural-language-to-sql-pr--a6240f19]]
 - shares entity **Analytics** with [[arjun-raised-his-hourly-consulting-rate-to-120-beg--f0e6fd08]]
-- shares entity **Analytics** with [[arjun-worked-on-llm-integration-projects-with-brig--fusion:a]]
+- shares entity **Analytics** with [[arjun-is-involved-in-multiple-projects-related-to--fusion:a]]
 - shares entity **Analytics** with [[arjun-shipped-the-hardened-query-layer-for-corvid--d8dc4bda]]
-- shares entity **Analytics** with [[arjun-developed-a-hardened-natural-language-to-sql--fusion:0]]
-- shares entity **Analytics** with [[arjun-worked-on-developing-a-natural-language-to-s--fusion:d]]
+- shares entity **Analytics** with [[arjun-worked-on-developing-a-natural-language-to-s--fusion:0]]
+- shares entity **Analytics** with [[arjun-developed-a-hardened-natural-language-to-sql--fusion:d]]
 - shares entity **Analytics** with [[omar-haddad-the-cto-at-corvid-analytics-initially--fusion:0]]

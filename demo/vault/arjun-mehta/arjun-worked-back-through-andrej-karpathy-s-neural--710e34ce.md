@@ -1,35 +1,33 @@
 ---
-id: "83f92374f994f6808c6f7e8eedc56834a44a1750"
+id: "710e34ce07e8753def0f92eb7c7330750a42bb10"
 namespace: "arjun-mehta"
 kind: "fact"
 type: "observed"
 status: "active"
-created: "2026-05-25T11:50:00"
-last_updated: "2026-05-25T11:50:00"
-content_hash: "cf562c3791bf5943"
+created: "2026-03-08T18:11:00"
+last_updated: "2026-03-08T18:11:00"
+content_hash: "2ed65af9e89ff25f"
 ---
 
-# Arjun decided that the first booked meeting should happen within fourteen days o
+# Arjun worked back through Andrej Karpathy's neural-networks-from-scratch videos 
 
 ## Content
 
-Arjun decided that the first booked meeting should happen within fourteen days of signup, aligning with the promise on Coldstart's landing page.
+Arjun worked back through Andrej Karpathy's neural-networks-from-scratch videos as a refresher while Coldstart's eval runs finished overnight.
 
 ## Provenance
 
 - Run: `demo-build-2026-07-21`
-- Session: `arjun-2026-05-25`
+- Session: `arjun-2026-03-08`
 - channel: user_stated
-- channel_sig: 5ccd3b0a580b44772a3b071f0127f177450feaae4b688db56c25e905e81b3486
+- channel_sig: e2a49b361efa37ffe499e2afd268491bc4b9458b9f6cbc1bdd54f0785779174d
 - origin: demo_build
 - persona: arjun-mehta
-- tag: product.time_target
+- tag: reading.karpathy_videos
 
 ### Audit events
 
-- 2026-07-21T16:56:51  **fused_into**  by=fusion:a07112598f75af73 entity=Coldstart
-- 2026-07-21T16:56:49  **fused_into**  by=fusion:7db35a4994cdfaec entity=Arjun
-- 2026-07-21T16:56:37  **graphed**
+- 2026-07-24T13:25:59  **graphed**
 
 ## Links
 
@@ -37,7 +35,7 @@ Arjun decided that the first booked meeting should happen within fourteen days o
 - shares entity **Arjun** with [[arjun-set-his-consulting-rate-for-brightpath-legal--74a16fa0]]
 - shares entity **Arjun** with [[grace-lin-brightpath-legal-s-product-lead-became-a--6bd5e049]]
 - shares entity **Arjun** with [[arjun-took-on-a-consulting-contract-with-brightpat--d3b35602]]
-- shares entity **Arjun** with [[arjun-weighed-the-pros-and-cons-of-self-hosting-op--8d01c9ba]]
+- shares entity **Arjun** with [[arjun-compared-self-hosting-open-weight-models-on--8d01c9ba]]
 - shares entity **Arjun** with [[arjun-committed-to-waking-up-at-five-a-m-to-focus--67a7c07c]]
 - shares entity **Arjun** with [[arjun-read-through-hosted-api-pricing-tiers-and-ra--45dc2eb9]]
 - shares entity **Arjun** with [[arjun-switched-to-a-standing-desk-after-long-devel--ab29dadf]]
