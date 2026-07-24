@@ -2,6 +2,7 @@
 name = "memory-sublayer"
 version = "0.1.0"
 description = "Local-first, zero-infrastructure memory for AI agents (SQLite + local embeddings + a policy layer), served over MCP"
+license = { text = "MIT" }
 requires-python = ">=3.12"
 dependencies = ["numpy"]
 
